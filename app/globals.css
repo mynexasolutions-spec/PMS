@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand-50: #eefbf1;
+  --color-brand-100: #d6f5de;
+  --color-brand-200: #b0eac1;
+  --color-brand-300: #7dd999;
+  --color-brand-400: #4cc274;
+  --color-brand-500: #2ba55a;
+  --color-brand-600: #1f8a4c;
+  --color-brand-700: #1b7a40;
+  --color-brand-800: #14632f;
+  --color-brand-900: #0f4d25;
+
+  --color-ink: #121c16;
+  --color-muted: #6b7a72;
+  --color-line: #e6eee8;
+
+  --shadow-card: 0 1px 2px rgba(16, 60, 35, 0.04), 0 8px 24px -8px rgba(16, 60, 35, 0.08);
+}
+
+body {
+  background:
+    radial-gradient(900px 500px at 100% 100%, rgba(120, 210, 150, 0.14), transparent 70%),
+    linear-gradient(180deg, #fbfdfb 0%, #f3f9f5 100%);
+  background-attachment: fixed;
+  color: var(--color-ink);
+  min-height: 100vh;
+}
+
+@keyframes menu-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply rounded-2xl border border-line bg-white shadow-card;
+  }
+  .eyebrow {
+    @apply text-[12.5px] font-semibold uppercase tracking-[0.16em] text-ink/70;
+  }
+  .btn-primary {
+    @apply inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-[14px] font-semibold text-white shadow-sm transition hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-secondary {
+    @apply inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-line bg-white px-4 text-[14px] font-medium shadow-[0_1px_3px_rgba(16,60,35,0.06)] transition hover:bg-[#f6faf7];
+  }
+  .btn-compact {
+    @apply h-9 px-3.5 text-[13.5px];
+  }
+  .icon-btn {
+    @apply grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-line bg-white shadow-[0_1px_3px_rgba(16,60,35,0.06)] transition hover:bg-[#f6faf7];
+  }
+  .dots-btn {
+    @apply grid h-7 w-7 shrink-0 place-items-center rounded-md text-ink/70 transition hover:bg-black/5;
+  }
+  .dots-btn[aria-expanded="true"] {
+    @apply bg-black/10 text-ink;
+  }
+  .menu-popover {
+    @apply absolute right-0 top-full z-30 mt-1.5 min-w-[196px] origin-top-right rounded-xl border border-line bg-white p-1.5 shadow-[0_18px_40px_-12px_rgba(16,60,35,0.35)];
+    animation: menu-pop 0.14s ease-out;
+  }
+  .menu-popover button {
+    @apply flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[14.5px] font-medium text-ink transition hover:bg-[#eef6f0];
+  }
+  .menu-popover button svg {
+    @apply shrink-0 text-ink/55;
+  }
+  .menu-popover button.danger {
+    @apply text-red-600 hover:bg-red-50;
+  }
+  .menu-popover button.danger svg {
+    @apply text-red-500;
+  }
+  .menu-popover hr {
+    @apply my-1 border-line;
+  }
+  .field {
+    @apply grid gap-1.5 text-[13.5px] font-medium text-ink/80;
+  }
+  .field input,
+  .field select,
+  .field textarea {
+    @apply w-full rounded-lg border border-line bg-white px-3 py-2 text-[14.5px] font-normal text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200;
+  }
+  .check-box {
+    @apply grid h-[22px] w-[22px] shrink-0 place-items-center rounded-[5px] border-[1.5px] border-ink/55 bg-white text-white transition;
+  }
+  .check-box[aria-pressed="true"] {
+    @apply border-brand-700 bg-brand-700;
+  }
+  .empty-view {
+    @apply rounded-xl border border-dashed border-line bg-white/60 px-4 py-6 text-center text-[14px] text-muted;
+  }
+}
