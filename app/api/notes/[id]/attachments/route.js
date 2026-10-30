@@ -15,6 +15,11 @@ export async function POST(request, { params }) {
   const note = noteId === null ? null : getNote(noteId);
   if (!note) return fail("Note not found.", 404);
 
+  const isManager = auth.user.role === "admin" || auth.user.role === "manager";
+  if (!isManager && note.userId !== auth.user.id) {
+    return fail("You can only add attachments to your own notes.", 403);
+  }
+
   let form;
   try {
     form = await request.formData();

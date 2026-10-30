@@ -28,5 +28,7 @@ export async function DELETE(request, { params }) {
 
   const id = await idFrom(params);
   if (id === null) return fail("Invalid focus item id.");
+  const isManager = auth.user.role === "admin" || auth.user.role === "manager";
+  if (!isManager) return fail("Only managers can delete focus items.", 403);
   return deleteFocusItem(id) ? noContent() : fail("Focus item not found.", 404);
 }

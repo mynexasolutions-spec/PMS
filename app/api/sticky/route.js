@@ -10,7 +10,13 @@ export async function GET(request) {
   const auth = await authorize(request);
   if (auth.error) return auth.error;
 
-  return Response.json({ notes: getStickyNotes() });
+  const notes = getStickyNotes();
+  if (auth.user.role === "member") {
+    const filtered = notes.filter((n) => n.userId === auth.user.id || n.userId == null);
+    return Response.json({ notes: filtered });
+  }
+
+  return Response.json({ notes });
 }
 
 export async function POST(request) {
@@ -25,5 +31,5 @@ export async function POST(request) {
   if (body.category != null && !STICKY_CATEGORIES.includes(body.category)) return fail("Invalid category.");
 
   const color = isStickyColor(body.color) ? body.color : "yellow";
-  return Response.json({ note: createStickyNote(content, color, body.category ?? null) }, { status: 201 });
+  return Response.json({ note: createStickyNote(content, color, body.category ?? null, auth.user.id) }, { status: 201 });
 }

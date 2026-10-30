@@ -8,7 +8,7 @@ import { useCloseOnOutsideClick } from "./useCloseOnOutsideClick";
 
 /** A round avatar button: click it to hand the task or to-do to anyone on the team (or nobody). */
 export default function AssigneePicker({ value, onChange, size = 26, className = "", align = "left" }) {
-  const { users } = useApp();
+  const { users, isMember } = useApp();
   const [open, setOpen] = useState(false);
   useCloseOnOutsideClick(open, () => setOpen(false));
   const person = users.find((user) => user.id === value);
@@ -16,6 +16,20 @@ export default function AssigneePicker({ value, onChange, size = 26, className =
     setOpen(false);
     if (id !== value) onChange(id);
   };
+
+  if (isMember) {
+    return (
+      <div className={className} title={person ? `Assigned to ${person.name}` : "Unassigned"}>
+        {person ? (
+          <Avatar user={person} size={size} />
+        ) : (
+          <span className="grid place-items-center rounded-full border border-dashed border-ink/35 text-ink/55" style={{ width: size, height: size }}>
+            <UserPlus size={Math.round(size * 0.55)} />
+          </span>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className={`relative ${className}`}>

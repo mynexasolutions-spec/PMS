@@ -1,4 +1,5 @@
-import { MANAGERS, authorize } from "@/lib/auth";
+import { authorize } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { createSecret, getProject, listSecrets } from "@/lib/db/repo";
 import { fail, idFrom, readJson } from "@/lib/http";
 import { encryptSecret } from "@/lib/vault";
@@ -11,20 +12,24 @@ const noStore = { "Cache-Control": "no-store" };
 
 /** The list of a project's secrets (labels and who touched them), never their contents. Managers and admins only. */
 export async function GET(request, { params }) {
-  const auth = await authorize(request, MANAGERS);
+  const auth = await authorize(request);
   if (auth.error) return auth.error;
 
   const id = await idFrom(params);
-  if (id === null || !getProject(id)) return fail("Project not found.", 404);
+  const project = id === null ? null : getProject(id);
+  if (!project) return fail("Project not found.", 404);
+  if (!can.viewVault(auth.user, project)) return fail("Forbidden.", 403);
   return Response.json({ secrets: listSecrets(id) }, { headers: noStore });
 }
 
 export async function POST(request, { params }) {
-  const auth = await authorize(request, MANAGERS);
+  const auth = await authorize(request);
   if (auth.error) return auth.error;
 
   const projectId = await idFrom(params);
-  if (projectId === null || !getProject(projectId)) return fail("Project not found.", 404);
+  const project = projectId === null ? null : getProject(projectId);
+  if (!project) return fail("Project not found.", 404);
+  if (!can.viewVault(auth.user, project)) return fail("Forbidden.", 403);
 
   const body = await readJson(request);
   if (!body) return fail("Invalid request.");

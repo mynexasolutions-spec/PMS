@@ -102,4 +102,33 @@ body {
   .empty-view {
     @apply rounded-xl border border-dashed border-line bg-white/60 px-4 py-6 text-center text-[14px] text-muted;
   }
+
+  /* Custom sleek scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #d4e2d8;
+    border-radius: 9999px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #a9c7b1;
+  }
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #d4e2d8 transparent;
+  }
+
+  /* Hide scrollbar utility */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }

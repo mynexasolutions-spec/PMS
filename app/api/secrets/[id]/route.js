@@ -1,5 +1,6 @@
-import { MANAGERS, authorize } from "@/lib/auth";
-import { deleteSecret, getSecretRow, listSecrets, logSecretAccess, updateSecret } from "@/lib/db/repo";
+import { authorize } from "@/lib/auth";
+import { can } from "@/lib/permissions";
+import { deleteSecret, getProject, getSecretRow, listSecrets, logSecretAccess, updateSecret } from "@/lib/db/repo";
 import { fail, idFrom, noContent, readJson } from "@/lib/http";
 import { decryptSecret, encryptSecret } from "@/lib/vault";
 import { cleanSecretData, validLabel } from "@/lib/secret-schema";
@@ -11,12 +12,15 @@ const noStore = { "Cache-Control": "no-store" };
 
 /** Opens a secret: decrypts it and records who looked. Managers and admins only. */
 export async function GET(request, { params }) {
-  const auth = await authorize(request, MANAGERS);
+  const auth = await authorize(request);
   if (auth.error) return auth.error;
 
   const id = await idFrom(params);
   const row = id === null ? null : getSecretRow(id);
   if (!row) return fail("Not found.", 404);
+
+  const project = getProject(row.projectId);
+  if (!can.viewVault(auth.user, project)) return fail("Forbidden.", 403);
 
   let data;
   try {
@@ -29,12 +33,15 @@ export async function GET(request, { params }) {
 }
 
 export async function PATCH(request, { params }) {
-  const auth = await authorize(request, MANAGERS);
+  const auth = await authorize(request);
   if (auth.error) return auth.error;
 
   const id = await idFrom(params);
   const row = id === null ? null : getSecretRow(id);
   if (!row) return fail("Not found.", 404);
+
+  const project = getProject(row.projectId);
+  if (!can.viewVault(auth.user, project)) return fail("Forbidden.", 403);
 
   const body = await readJson(request);
   if (!body) return fail("Invalid request.");
@@ -56,10 +63,13 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  const auth = await authorize(request, MANAGERS);
+  const auth = await authorize(request);
   if (auth.error) return auth.error;
 
   const id = await idFrom(params);
-  if (id === null) return fail("Invalid id.");
+  const row = id === null ? null : getSecretRow(id);
+  if (!row) return fail("Not found.", 404);
+  const project = getProject(row.projectId);
+  if (!can.viewVault(auth.user, project)) return fail("Forbidden.", 403);
   return deleteSecret(id) ? noContent() : fail("Not found.", 404);
 }

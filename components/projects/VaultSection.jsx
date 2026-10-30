@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { ExternalLink, Eye, EyeOff, FileCode2, KeyRound, Lock, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Download, ExternalLink, Eye, EyeOff, FileCode2, KeyRound, Lock, Pencil, Plus, ShieldCheck, Trash2, Upload } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
 import CopyButton from "@/components/ui/CopyButton";
 import Modal from "@/components/ui/Modal";
@@ -39,7 +39,7 @@ function Locked({ copy }) {
       </span>
       <h2 className="text-[19px] font-bold tracking-tight">{copy.title} are for managers</h2>
       <p className="max-w-[420px] text-[14.5px] text-muted">
-        Passwords and .env files are only visible to managers and admins. If you need something from here, ask one of them.
+        Passwords and .env files are only visible to managers, admins, and the team member assigned to this project. If you need access, ask an admin or manager to assign you.
       </p>
     </section>
   );
@@ -173,6 +173,28 @@ function SecretCard({ secret, kind, copy, onEdit, onDelete, onViewed }) {
     if (opened) onEdit(secret, opened);
   }
 
+  async function downloadEnv() {
+    const secretData = data ?? (await open());
+    if (!secretData?.text) return;
+    const blob = new Blob([secretData.text], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    const trimmed = (secret.label || "").trim();
+    const lower = trimmed.toLowerCase();
+    const filename = !trimmed || lower === "production" || lower === "prod" || lower === "default" || lower === "env"
+      ? ".env"
+      : trimmed.startsWith(".env")
+        ? trimmed
+        : `.env.${lower.replace(/[^a-z0-9_.-]/g, "-")}`;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    notify(`Downloaded ${filename}`);
+  }
+
   return (
     <article className="panel p-5">
       <div className="flex flex-wrap items-start gap-3.5">
@@ -203,6 +225,17 @@ function SecretCard({ secret, kind, copy, onEdit, onDelete, onViewed }) {
             </button>
           )}
           {kind === "env" && <CopyButton label="Copy .env" text={async () => (data ?? (await open()))?.text} />}
+          {kind === "env" && (
+            <button
+              type="button"
+              className="btn-secondary btn-compact inline-flex items-center gap-1.5"
+              onClick={downloadEnv}
+              disabled={busy}
+              title="Download as .env file"
+            >
+              <Download size={15} /> Download .env
+            </button>
+          )}
           <button type="button" className="icon-btn h-9 w-9" onClick={edit} aria-label={`Edit ${secret.label}`} disabled={busy}>
             <Pencil size={15} />
           </button>
@@ -234,6 +267,39 @@ function SecretModal({ kind, copy, projectId, secret, initial, onClose, onSaved 
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const fileInputRef = useRef(null);
+
+  function handleFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result;
+      if (typeof content === "string") {
+        setText(content);
+        if (!label.trim()) {
+          const fname = file.name.toLowerCase();
+          let guessed = "";
+          if (fname.includes("prod")) guessed = "Production";
+          else if (fname.includes("stag")) guessed = "Staging";
+          else if (fname.includes("dev") || fname.includes("local")) guessed = "Development";
+          else if (fname.includes("test")) guessed = "Testing";
+          else if (fname.startsWith(".env.") && fname.length > 5) {
+            const suffix = file.name.slice(5);
+            guessed = suffix.charAt(0).toUpperCase() + suffix.slice(1);
+          } else if (fname === ".env") {
+            guessed = "Production";
+          } else {
+            const clean = file.name.replace(/^\./, "").replace(/\.env$/, "").replace(/^env\./, "");
+            guessed = clean ? clean.charAt(0).toUpperCase() + clean.slice(1) : "Production";
+          }
+          if (guessed) setLabel(guessed);
+        }
+        notify(`Loaded ${file.name}`);
+      }
+    };
+    reader.readAsText(file);
+  }
   const setField = (name) => (event) => setFields((current) => ({ ...current, [name]: event.target.value }));
 
   async function submit(event) {
@@ -267,19 +333,57 @@ function SecretModal({ kind, copy, projectId, secret, initial, onClose, onSaved 
         </label>
 
         {kind === "env" ? (
-          <label className="field">
-            File contents
-            <textarea
-              required
-              rows={10}
-              maxLength={20000}
-              spellCheck={false}
-              placeholder={"DATABASE_URL=postgres://...\nSECRET_KEY=..."}
-              className="font-mono text-[13px]"
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-            />
-          </label>
+          <div className="grid gap-1.5">
+            <div className="flex items-center justify-between">
+              <label htmlFor="env-contents" className="text-[13.5px] font-medium text-ink/80">
+                File contents
+              </label>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-[#f4fbf6] px-2.5 py-1 text-[12.5px] font-semibold text-brand-700 transition hover:bg-[#e6f6eb] hover:border-brand-400"
+              >
+                <Upload size={13} strokeWidth={2.2} /> Upload .env file
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".env*,.txt,text/*,*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFile(file);
+                  e.target.value = "";
+                }}
+              />
+            </div>
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragging(true);
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragging(false);
+                const file = e.dataTransfer.files?.[0];
+                if (file) handleFile(file);
+              }}
+              className={`relative rounded-lg transition ${dragging ? "ring-2 ring-brand-500 bg-brand-50/50" : ""}`}
+            >
+              <textarea
+                id="env-contents"
+                required
+                rows={10}
+                maxLength={20000}
+                spellCheck={false}
+                placeholder={"DATABASE_URL=postgres://...\nSECRET_KEY=...\n\n(Tip: Click 'Upload .env file' above or drop your .env file here)"}
+                className="w-full rounded-lg border border-line bg-white px-3 py-2 font-mono text-[13px] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+                value={text}
+                onChange={(event) => setText(event.target.value)}
+              />
+            </div>
+          </div>
         ) : (
           <>
             <div className="grid gap-4 sm:grid-cols-2">

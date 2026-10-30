@@ -19,7 +19,7 @@ function Select({ label, value, onChange, children, full = false }) {
 }
 
 export default function IssueModal() {
-  const { issueModal, closeIssueModal, createIssue, tasks, projects, users, currentUser } = useApp();
+  const { issueModal, closeIssueModal, createIssue, tasks, projects, users, currentUser, isMember, myProjects, myTasks } = useApp();
   const parent = issueModal.parent;
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -27,7 +27,7 @@ export default function IssueModal() {
     type: parent ? "Subtask" : "Task",
     status: "todo",
     priority: "medium",
-    projectId: parent?.projectId ?? issueModal.projectId ?? projects[0]?.id ?? null,
+    projectId: parent?.projectId ?? issueModal.projectId ?? (isMember ? myProjects[0]?.id : projects[0]?.id) ?? null,
     parentId: parent?.id ?? null,
     assigneeId: currentUser.id,
     dueAt: issueModal.dueAt ?? "",
@@ -58,21 +58,27 @@ export default function IssueModal() {
           </Select>
           <Select label="Parent task" full value={form.parentId ?? ""} onChange={(value) => set({ parentId: value ? Number(value) : null })}>
             <option value="">No parent — top level</option>
-            {tasks.map((task) => <option key={task.id} value={task.id}>{task.issueKey} · {task.title}</option>)}
+            {(isMember ? myTasks : tasks).map((task) => <option key={task.id} value={task.id}>{task.issueKey} · {task.title}</option>)}
           </Select>
           <Select label="Project" value={form.projectId ?? ""} onChange={(value) => set({ projectId: Number(value) })}>
-            {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+            {(isMember ? myProjects : projects).map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
           </Select>
           <Select label="Priority" value={form.priority} onChange={(priority) => set({ priority })}>
             {PRIORITIES.map((priority) => <option key={priority} value={priority}>{priorityLabel[priority]}</option>)}
           </Select>
           <Select label="Assign to" value={form.assigneeId ?? ""} onChange={(value) => set({ assigneeId: value ? Number(value) : null })}>
-            {users
-              .filter((user) => user.active)
-              .map((user) => (
-                <option key={user.id} value={user.id}>{user.id === currentUser.id ? `${user.name} (me)` : user.name}</option>
-              ))}
-            <option value="">Unassigned</option>
+            {isMember ? (
+              <option value={currentUser.id}>{currentUser.name} (me)</option>
+            ) : (
+              <>
+                {users
+                  .filter((user) => user.active)
+                  .map((user) => (
+                    <option key={user.id} value={user.id}>{user.id === currentUser.id ? `${user.name} (me)` : user.name}</option>
+                  ))}
+                <option value="">Unassigned</option>
+              </>
+            )}
           </Select>
           <label className="field">
             Due date

@@ -1,5 +1,5 @@
 import { MANAGERS, authorize } from "@/lib/auth";
-import { createProject, getProjects } from "@/lib/db/repo";
+import { createNotification, createProject, getProjects } from "@/lib/db/repo";
 import { DEFAULT_STAGE, isStage } from "@/lib/constants";
 import { fail, readJson } from "@/lib/http";
 
@@ -9,7 +9,9 @@ export const dynamic = "force-dynamic";
 export async function GET(request) {
   const auth = await authorize(request);
   if (auth.error) return auth.error;
-  return Response.json({ projects: getProjects() });
+  const all = getProjects();
+  const projects = auth.user.role === "member" ? all.filter((p) => p.assigneeId === auth.user.id) : all;
+  return Response.json({ projects });
 }
 
 /** Managers and admins create projects. */
@@ -27,8 +29,22 @@ export async function POST(request) {
   if (body.stage !== undefined && !isStage(body.stage)) return fail("Invalid project stage.");
 
   const color = /^#[0-9a-f]{6}$/i.test(body.color ?? "") ? body.color : "#4e8447";
+  const assigneeId = body.assigneeId != null ? Number(body.assigneeId) : null;
   try {
-    return Response.json({ project: createProject(name, color, description || null, body.stage ?? DEFAULT_STAGE) }, { status: 201 });
+    const project = createProject(name, color, description || null, body.stage ?? DEFAULT_STAGE, assigneeId);
+    if (assigneeId) {
+      try {
+        createNotification({
+          userId: assigneeId,
+          title: "New Project Assigned",
+          message: `${auth.user.name} assigned you to project "${project.name}"`,
+          link: `/projects/${project.id}`,
+        });
+      } catch (err) {
+        console.error("Failed to create notification:", err);
+      }
+    }
+    return Response.json({ project }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message.includes("UNIQUE")) {
       return fail("A project with that name already exists.", 409);

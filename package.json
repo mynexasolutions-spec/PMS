@@ -9,9 +9,9 @@
     "create-admin": "node scripts/create-admin.js"
   },
   "dependencies": {
-    "@prisma/adapter-better-sqlite3": "^7.10.1",
-    "@prisma/client": "^7.10.1",
-    "better-sqlite3": "^13.0.3",
+
+
+
     "lucide-react": "^1.63.0",
     "next": "^16.4.3",
     "react": "^19.3.1",
@@ -20,6 +20,9 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
     "tailwindcss": "^4.3.3"
+  },
+  "engines": {
+    "node": ">=22.13"
   },
   "type": "module"
 }

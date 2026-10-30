@@ -1,5 +1,5 @@
 import { authorize } from "@/lib/auth";
-import { createTask, getTasks } from "@/lib/db/repo";
+import { createNotification, createTask, getTasks } from "@/lib/db/repo";
 import { getUser } from "@/lib/db/users";
 import { PRIORITIES, TASK_STATUSES, TASK_TYPES } from "@/lib/constants";
 import { fail, readJson } from "@/lib/http";
@@ -42,6 +42,18 @@ export async function POST(request) {
       createdBy: auth.user.id,
       dueAt: typeof body.dueAt === "string" ? body.dueAt : null,
     });
+    if (body.assigneeId) {
+      try {
+        createNotification({
+          userId: Number(body.assigneeId),
+          title: "New Task Assigned",
+          message: `${auth.user.name} assigned you to task "${task.issueKey}: ${task.title}"`,
+          link: `/projects/${task.projectId}`,
+        });
+      } catch (err) {
+        console.error("Failed to create notification:", err);
+      }
+    }
     return Response.json({ task }, { status: 201 });
   } catch (error) {
     console.error(error);

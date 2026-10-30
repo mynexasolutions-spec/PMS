@@ -41,13 +41,17 @@ function PhaseBadge({ n, done, current }) {
 }
 
 export default function ProjectProgress() {
-  const { progress, projectProgress } = useApp();
+  const { progress, projectProgress, myProgress, myProjectProgress, isMember } = useApp();
+
+  const displayProgress = isMember ? myProgress : progress;
+  const list = isMember ? myProjectProgress : projectProgress;
+  const eyebrowText = isMember ? "My assigned projects" : "All projects";
 
   return (
-    <section className="panel p-5">
+    <section className="panel p-5 h-full flex flex-col justify-between">
       <div className="flex items-center gap-3.5">
         <div>
-          <p className="eyebrow">All projects</p>
+          <p className="eyebrow">{eyebrowText}</p>
           <h2 className="text-[21px] font-bold tracking-tight">Project progress</h2>
         </div>
         <Link href="/tasks" className="ml-auto inline-flex items-center gap-1.5 text-[14px] font-medium text-brand-700 hover:underline">
@@ -55,35 +59,44 @@ export default function ProjectProgress() {
         </Link>
       </div>
 
-      <div className="mt-3 flex flex-col items-center gap-8 md:flex-row">
-        <div className="md:pl-3">
-          <Ring percent={progress} />
+      {list.length === 0 ? (
+        <div className="my-auto flex flex-col items-center justify-center rounded-2xl border border-dashed border-line bg-[#fafcfb] py-10 text-center">
+          <p className="text-[16px] font-bold text-ink">No projects assigned yet</p>
+          <p className="mt-1 max-w-[360px] text-[13.5px] text-muted">
+            Once an admin or manager assigns a project to you, its progress graph and details will appear here.
+          </p>
         </div>
-        <ul className="w-full flex-1 space-y-[13px] md:border-l md:border-line md:pl-8">
-          {projectProgress.map(({ project, total, done, percent }, index) => {
-            const complete = total > 0 && percent === 100;
-            const current = percent > 0 && percent < 100;
-            return (
-              <li key={project.id} className="flex items-center gap-3.5">
-                <PhaseBadge n={index + 1} done={complete} current={current} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <p className="text-[15px] font-semibold leading-tight">{project.name}</p>
-                    <StageChip stage={project.stage} />
-                  </div>
-                  <p className="mt-0.5 text-[13px] text-muted">{done} of {total} tasks done</p>
-                  {current && (
-                    <div className="mt-1.5 h-[6px] rounded-full bg-[#e8ecea]">
-                      <div className="h-full rounded-full bg-gradient-to-r from-[#3cb865] to-[#1f8a4c]" style={{ width: `${percent}%` }} />
+      ) : (
+        <div className="mt-4 flex flex-1 flex-col items-center gap-8 md:flex-row">
+          <div className="md:pl-3">
+            <Ring percent={displayProgress} />
+          </div>
+          <ul className="w-full flex-1 space-y-[13px] md:border-l md:border-line md:pl-8">
+            {list.map(({ project, total, done, percent }, index) => {
+              const complete = total > 0 && percent === 100;
+              const current = percent > 0 && percent < 100;
+              return (
+                <li key={project.id} className="flex items-center gap-3.5">
+                  <PhaseBadge n={index + 1} done={complete} current={current} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <p className="text-[15px] font-semibold leading-tight">{project.name}</p>
+                      <StageChip stage={project.stage} />
                     </div>
-                  )}
-                </div>
-                <span className="w-[44px] text-right text-[14px] text-ink/80">{percent}%</span>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
+                    <p className="mt-0.5 text-[13px] text-muted">{done} of {total} tasks done</p>
+                    {current && (
+                      <div className="mt-1.5 h-[6px] rounded-full bg-[#e8ecea]">
+                        <div className="h-full rounded-full bg-gradient-to-r from-[#3cb865] to-[#1f8a4c]" style={{ width: `${percent}%` }} />
+                      </div>
+                    )}
+                  </div>
+                  <span className="w-[44px] text-right text-[14px] text-ink/80">{percent}%</span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </section>
   );
 }

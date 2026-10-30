@@ -14,6 +14,8 @@ export async function POST(request) {
   const body = await readJson(request);
   if (!DATE_RE.test(body?.from ?? "") || !DATE_RE.test(body?.to ?? "")) return fail("Valid dates are required.");
 
-  const moved = carryOverTodos(body.from, body.to);
+  const isManager = auth.user.role === "admin" || auth.user.role === "manager";
+  const userId = isManager ? null : auth.user.id;
+  const moved = carryOverTodos(body.from, body.to, userId);
   return Response.json({ moved, todos: getTodos() });
 }

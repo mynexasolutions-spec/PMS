@@ -13,9 +13,20 @@ export async function PATCH(request, { params }) {
   if (auth.error) return auth.error;
 
   const id = await idFrom(params);
-  if (id === null || !getTodo(id)) return fail("To-do not found.", 404);
+  if (id === null) return fail("Invalid to-do id.");
+  const existingTodo = getTodo(id);
+  if (!existingTodo) return fail("To-do not found.", 404);
+
+  const isManager = auth.user.role === "admin" || auth.user.role === "manager";
+  if (!isManager && existingTodo.assigneeId !== auth.user.id && existingTodo.createdBy !== auth.user.id) {
+    return fail("You can only update your own to-dos.", 403);
+  }
 
   const body = await readJson(request);
+  if (!body) return fail("Invalid request.");
+  if (!isManager && body.assigneeId !== undefined && body.assigneeId !== auth.user.id) {
+    return fail("Team members cannot reassign to-dos to other users.", 403);
+  }
   if (!body) return fail("Invalid request.");
 
   const title = typeof body.title === "string" ? body.title.trim() : undefined;

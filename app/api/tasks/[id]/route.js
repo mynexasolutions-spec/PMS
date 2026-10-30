@@ -1,5 +1,5 @@
 import { authorize } from "@/lib/auth";
-import { deleteTask, getTask, updateTask } from "@/lib/db/repo";
+import { createNotification, deleteTask, getTask, updateTask } from "@/lib/db/repo";
 import { getUser } from "@/lib/db/users";
 import { PRIORITIES, TASK_STATUSES, TASK_TYPES } from "@/lib/constants";
 import { fail, idFrom, noContent, readJson } from "@/lib/http";
@@ -16,9 +16,20 @@ export async function PATCH(request, { params }) {
   if (auth.error) return auth.error;
 
   const id = await idFrom(params);
-  if (id === null || !getTask(id)) return fail("Task not found.", 404);
+  if (id === null) return fail("Invalid task id.");
+  const existingTask = getTask(id);
+  if (!existingTask) return fail("Task not found.", 404);
+
+  const isManager = auth.user.role === "admin" || auth.user.role === "manager";
+  if (!isManager && existingTask.assigneeId !== auth.user.id && existingTask.createdBy !== auth.user.id) {
+    return fail("You can only update tasks assigned to you.", 403);
+  }
 
   const body = await readJson(request);
+  if (!body) return fail("Invalid request.");
+  if (!isManager && body.assigneeId !== undefined && body.assigneeId !== auth.user.id) {
+    return fail("Team members cannot reassign tasks to other users.", 403);
+  }
   if (!body) return fail("Invalid request.");
   if (body.title !== undefined && !(typeof body.title === "string" && body.title.trim())) return fail("A title is required.");
   if (body.type !== undefined && !TASK_TYPES.includes(body.type)) return fail("Invalid task type.");
@@ -32,7 +43,19 @@ export async function PATCH(request, { params }) {
 
   const task = updateTask(id, body);
   if (!task) return fail("No valid fields supplied.");
-  return Response.json({ task });
+  if (body.assigneeId && Number(body.assigneeId) !== existingTask.assigneeId) {
+      try {
+        createNotification({
+          userId: Number(body.assigneeId),
+          title: "Task Assigned",
+          message: `${auth.user.name} assigned you to task "${task.issueKey}: ${task.title}"`,
+          link: `/projects/${task.projectId}`,
+        });
+      } catch (err) {
+        console.error("Failed to create notification:", err);
+      }
+    }
+    return Response.json({ task });
 }
 
 export async function DELETE(request, { params }) {

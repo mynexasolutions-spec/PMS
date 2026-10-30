@@ -6,6 +6,11 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 export const metadata = {
   title: "Nexa PMS – Project Management",
   description: "Nexa Solutions internal project management system",
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/apple-icon.png",
+  },
 };
 
 export default function RootLayout({ children }) {

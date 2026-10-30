@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { ListTodo, MessagesSquare, ShieldCheck } from "lucide-react";
 import { THEMES, themeKey } from "@/components/overview/timeTheme";
 
@@ -122,8 +123,8 @@ export default function LoginHero({ initialHour }) {
       <Scene themeName={themeName} />
 
       <div className="flex items-center gap-3">
-        <div className="grid h-[44px] w-[44px] place-items-center rounded-[12px] bg-gradient-to-br from-[#0b1d14] to-[#1d5c36] text-[23px] font-bold text-white shadow-md ring-1 ring-white/20">
-          N
+        <div className="grid h-[44px] w-[44px] place-items-center rounded-[12px] bg-white shadow-md ring-1 ring-black/10 p-1.5">
+          <Image src="/logo.png" alt="Nexa PMS Logo" width={38} height={38} className="h-full w-full object-contain" priority />
         </div>
         <div className="leading-tight">
           <p className="text-[22px] font-bold tracking-tight">Nexa PMS</p>

@@ -39,7 +39,7 @@ export default function ProjectView({ projectId, initialTab = "tasks" }) {
   const project = projects.find((item) => item.id === projectId);
   const [tab, setTab] = useState(TABS.some((item) => item.id === initialTab) ? initialTab : "tasks");
   const canManage = can.manageProjects(currentUser);
-  const canVault = can.viewVault(currentUser);
+  const canVault = can.viewVault(currentUser, project);
 
   function selectTab(id) {
     setTab(id);
@@ -47,14 +47,26 @@ export default function ProjectView({ projectId, initialTab = "tasks" }) {
     window.history.replaceState(null, "", id === "tasks" ? `/projects/${projectId}` : `/projects/${projectId}?tab=${id}`);
   }
 
-  if (!project) {
+  const isMember = currentUser?.role === "member";
+  const isAssigned = !isMember || (project && project.assigneeId === currentUser?.id);
+
+  if (!project || !isAssigned) {
     return (
       <div className="space-y-[14px] px-5 pb-6 pt-4 md:px-[30px]">
         <Link href="/projects" className="relative z-10 inline-flex items-center gap-1.5 text-[14px] font-medium text-brand-700 hover:underline">
-          <ArrowLeft size={15} /> All projects
+          <ArrowLeft size={15} /> {isMember ? "My projects" : "All projects"}
         </Link>
-        <Greeting showWave={false} showQuote={false} title="Project not found" subtitle="It may have been removed." />
-        <div className="empty-view">This project doesn&apos;t exist. Pick one from the Projects page.</div>
+        <Greeting
+          showWave={false}
+          showQuote={false}
+          title={!project ? "Project not found" : "Access restricted"}
+          subtitle={!project ? "It may have been removed." : "Only managers and the assigned team member can view this project."}
+        />
+        <div className="empty-view">
+          {!project
+            ? "This project doesn't exist. Pick one from the Projects page."
+            : "You are not assigned to this project. Ask an admin or manager if you need to work on it."}
+        </div>
       </div>
     );
   }
@@ -67,7 +79,7 @@ export default function ProjectView({ projectId, initialTab = "tasks" }) {
   return (
     <div className="space-y-[14px] px-5 pb-6 pt-4 md:px-[30px]">
       <Link href="/projects" className="relative z-10 inline-flex items-center gap-1.5 text-[14px] font-medium text-brand-700 hover:underline">
-        <ArrowLeft size={15} /> All projects
+        <ArrowLeft size={15} /> {isMember ? "My projects" : "All projects"}
       </Link>
       <Greeting
         showWave={false}

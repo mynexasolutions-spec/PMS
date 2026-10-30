@@ -34,6 +34,7 @@ export function AppProvider({ initial, children }) {
   const [focusItems, setFocusItems] = useState(initial.focus);
   const [users, setUsers] = useState(initial.users);
   const [commentCounts, setCommentCounts] = useState(initial.commentCounts);
+  const [notifications, setNotifications] = useState(initial.notifications ?? []);
   const currentUser = initial.user;
 
   const [query, setQuery] = useState("");
@@ -74,6 +75,37 @@ export function AppProvider({ initial, children }) {
 
   const notify = setToast;
 
+  // ---------- notifications ----------
+
+  async function markNotificationAsRead(id) {
+    setNotifications((current) => current.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    await request(`/api/notifications/${id}`, "PATCH");
+  }
+
+  async function markAllNotificationsAsRead() {
+    setNotifications((current) => current.map((n) => ({ ...n, read: true })));
+    await request("/api/notifications", "PATCH");
+  }
+
+  async function refreshNotifications() {
+    const { ok, data } = await request("/api/notifications", "GET");
+    if (ok && data?.notifications) {
+      setNotifications(data.notifications);
+    }
+  }
+
+  useEffect(() => {
+    if (!currentUser) return;
+    refreshNotifications();
+    const interval = window.setInterval(refreshNotifications, 10_000);
+    window.addEventListener("focus", refreshNotifications);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshNotifications);
+    };
+  }, [currentUser]);
+
+
   // ---------- tasks ----------
 
   async function updateTask(id, update) {
@@ -113,13 +145,14 @@ export function AppProvider({ initial, children }) {
 
   // ---------- projects ----------
 
-  async function createProject(name, color, description = "") {
-    const { ok, data } = await request("/api/projects", "POST", { name, color, description });
+  async function createProject(name, color, description = "", assigneeId = null) {
+    const { ok, data } = await request("/api/projects", "POST", { name, color, description, assigneeId });
     if (!ok) {
       notify(data?.error ?? "The project could not be created.");
       return null;
     }
     setProjects((current) => [...current, data.project]);
+    refreshNotifications();
     notify(`${data.project.name} created.`);
     return data.project;
   }
@@ -135,6 +168,7 @@ export function AppProvider({ initial, children }) {
       return false;
     }
     setProjects((current) => current.map((project) => (project.id === id ? data.project : project)));
+    refreshNotifications();
     return true;
   }
 
@@ -341,6 +375,39 @@ export function AppProvider({ initial, children }) {
   const active = tasks.filter((task) => task.status === "progress").length;
   const progress = tasks.length ? Math.round((completed / tasks.length) * 100) : 0;
 
+  const isMember = currentUser?.role === "member";
+  const myTasks = useMemo(
+    () => (isMember ? tasks.filter((t) => t.assigneeId === currentUser?.id) : tasks),
+    [isMember, tasks, currentUser?.id],
+  );
+  const myTodos = useMemo(
+    () => (isMember ? todos.filter((t) => t.assigneeId === currentUser?.id) : todos),
+    [isMember, todos, currentUser?.id],
+  );
+  const myProjects = useMemo(
+    () => (isMember ? projects.filter((project) => project.assigneeId === currentUser?.id) : projects),
+    [isMember, projects, currentUser?.id],
+  );
+
+  const myProjectTasks = useMemo(() => {
+    if (!isMember) return tasks;
+    const myIds = new Set(myProjects.map((p) => p.id));
+    return tasks.filter((task) => myIds.has(task.projectId));
+  }, [isMember, tasks, myProjects]);
+
+  const myCompleted = myProjectTasks.filter((task) => task.status === "done").length;
+  const myProgress = myProjectTasks.length ? Math.round((myCompleted / myProjectTasks.length) * 100) : 0;
+
+  const myProjectProgress = useMemo(
+    () =>
+      myProjects.map((project) => {
+        const own = tasks.filter((task) => task.projectId === project.id);
+        const done = own.filter((task) => task.status === "done").length;
+        return { project, total: own.length, done, percent: own.length ? Math.round((done / own.length) * 100) : 0 };
+      }),
+    [myProjects, tasks],
+  );
+
   const projectProgress = useMemo(
     () =>
       projects.map((project) => {
@@ -351,12 +418,13 @@ export function AppProvider({ initial, children }) {
     [projects, tasks],
   );
 
+  const deadlineTasks = isMember ? myTasks : tasks;
   const nextDeadline = useMemo(() => {
     const floor = now ? startOfDay(now).getTime() : 0;
     return tasks
       .filter((task) => task.status !== "done" && task.dueAt && new Date(task.dueAt).getTime() >= floor)
       .sort((a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime())[0];
-  }, [now, tasks]);
+  }, [now, deadlineTasks]);
 
   const deadlineDays = nextDeadline && now ? daysBetween(now, new Date(nextDeadline.dueAt)) : null;
   const deadlineLabel =
@@ -370,7 +438,7 @@ export function AppProvider({ initial, children }) {
       const monday = startOfDay(now);
       monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
       todayIndex = daysBetween(monday, now);
-      for (const task of tasks) {
+      for (const task of deadlineTasks) {
         if (task.status === "done" || !task.dueAt) continue;
         const offset = daysBetween(monday, new Date(task.dueAt));
         if (offset >= 0 && offset < 7) counts[offset] += 1;
@@ -382,8 +450,9 @@ export function AppProvider({ initial, children }) {
       total: counts.reduce((sum, value) => sum + value, 0),
       heights: counts.map((count) => Math.max(8, Math.round((count / max) * 100))),
     };
-  }, [now, tasks]);
+  }, [now, deadlineTasks]);
 
+  const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
   const todayTodos = todos.filter((todo) => todo.todoDate === todayDate);
   // The badge counts what is on *my* plate today.
   const openTodosToday = todayTodos.filter((todo) => !todo.done && todo.assigneeId === currentUser.id).length;
@@ -397,7 +466,7 @@ export function AppProvider({ initial, children }) {
 
   const value = {
     // data
-    tasks, projects, notes, todos, sticky, focusItems, users, commentCounts, currentUser,
+    tasks, projects, notes, todos, sticky, focusItems, users, commentCounts, currentUser, notifications, unreadNotificationsCount, markNotificationAsRead, markAllNotificationsAsRead, refreshNotifications,
     signOut, addUser, editUser, setCommentCount,
     // ui state
     query, setQuery, toast, notify, now, todayDate, sidebarOpen, setSidebarOpen,
@@ -409,7 +478,7 @@ export function AppProvider({ initial, children }) {
     addFocus, toggleFocus, deleteFocus, createSticky, toggleSticky, deleteSticky,
     goToProject: (project) => router.push(`/projects/${project.id}`),
     // derived
-    completed, active, progress, projectProgress, nextDeadline, deadlineDays, deadlineLabel, deadlineProgress,
+    completed, active, progress, projectProgress, myTasks, myTodos, myProjects, myProgress, myProjectProgress, isMember, nextDeadline, deadlineDays, deadlineLabel, deadlineProgress,
     weekLoad, todayTodos, openTodosToday, filterTasks,
   };
 

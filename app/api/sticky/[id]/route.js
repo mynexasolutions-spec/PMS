@@ -11,7 +11,14 @@ export async function PATCH(request, { params }) {
   if (auth.error) return auth.error;
 
   const id = await idFrom(params);
-  if (id === null || !getStickyNote(id)) return fail("Sticky note not found.", 404);
+  if (id === null) return fail("Invalid sticky note id.");
+  const note = getStickyNote(id);
+  if (!note) return fail("Sticky note not found.", 404);
+
+  const isManager = auth.user.role === "admin" || auth.user.role === "manager";
+  if (!isManager && note.userId !== auth.user.id) {
+    return fail("You can only edit your own sticky notes.", 403);
+  }
 
   const body = await readJson(request);
   if (!body) return fail("Invalid request.");
@@ -32,5 +39,13 @@ export async function DELETE(request, { params }) {
 
   const id = await idFrom(params);
   if (id === null) return fail("Invalid sticky note id.");
+  const note = getStickyNote(id);
+  if (!note) return fail("Sticky note not found.", 404);
+
+  const isManager = auth.user.role === "admin" || auth.user.role === "manager";
+  if (!isManager && note.userId !== auth.user.id) {
+    return fail("You can only delete your own sticky notes.", 403);
+  }
+
   return deleteStickyNote(id) ? noContent() : fail("Sticky note not found.", 404);
 }

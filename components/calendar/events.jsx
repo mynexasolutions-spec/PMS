@@ -66,17 +66,17 @@ export const toneOf = (event) => TONES[event.priority === "high" && !event.done 
 
 export const byTime = (a, b) => (a.time ?? "99:99").localeCompare(b.time ?? "99:99") || a.title.localeCompare(b.title);
 
-/** Compact coloured pill used inside month cells. Long titles wrap instead of being cut off. */
+/** Compact coloured pill used inside calendar views with safe truncation. */
 export function EventPill({ event }) {
   const tone = toneOf(event);
   return (
     <Link
       href={event.href}
       title={`${formatClock(event.time)} · ${event.title}`}
-      className={`flex items-start gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium leading-tight transition hover:brightness-95 ${tone.bg} ${tone.text} ${event.done ? "line-through opacity-60" : ""}`}
+      className={`flex items-center gap-1.5 overflow-hidden rounded-md px-2 py-1 text-[11.5px] font-medium leading-tight transition hover:brightness-95 ${tone.bg} ${tone.text} ${event.done ? "line-through opacity-60" : ""}`}
     >
-      <i className="mt-[3px] h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: tone.dot }} />
-      <span className="min-w-0">{event.title}</span>
+      <i className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: tone.dot }} />
+      <span className="min-w-0 truncate">{event.title}</span>
     </Link>
   );
 }
@@ -98,8 +98,7 @@ export function EventCard({ event, showDate = false }) {
       <p className={`mt-1 text-[14.5px] font-medium leading-snug ${event.done ? "text-ink/50 line-through" : ""}`}>{event.title}</p>
       {(event.projectName || event.key) && (
         <p className="mt-0.5 text-[12.5px] text-muted">
-          {event.key ? `${event.key} · ` : ""}
-          {event.projectName}
+          {event.projectName} {event.key ? `· ${event.key}` : ""}
         </p>
       )}
     </Link>

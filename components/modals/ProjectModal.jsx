@@ -9,9 +9,10 @@ import ProjectColorPicker, { DEFAULT_PROJECT_COLOR, rememberProjectColor } from 
 const MAX_NAME = 50;
 
 export default function ProjectModal() {
-  const { setProjectModalOpen, createProject, goToProject } = useApp();
+  const { setProjectModalOpen, createProject, goToProject, users } = useApp();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [assigneeId, setAssigneeId] = useState("");
   const [color, setColor] = useState(DEFAULT_PROJECT_COLOR);
   const [saving, setSaving] = useState(false);
   const close = () => setProjectModalOpen(false);
@@ -19,7 +20,7 @@ export default function ProjectModal() {
   async function submit(event) {
     event.preventDefault();
     setSaving(true);
-    const project = await createProject(name, color, description);
+    const project = await createProject(name, color, description, assigneeId ? Number(assigneeId) : null);
     setSaving(false);
     if (!project) return;
     rememberProjectColor(color);
@@ -68,6 +69,25 @@ export default function ProjectModal() {
           placeholder="e.g. E-commerce website with modern UI"
           className="mt-2 h-[48px] w-full rounded-xl border border-line bg-white px-4 text-[15px] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
         />
+
+        <label htmlFor="project-assignee" className="mt-5 block text-[15px] font-bold">
+          Assign team member <span className="font-normal text-muted">(optional)</span>
+        </label>
+        <select
+          id="project-assignee"
+          value={assigneeId}
+          onChange={(event) => setAssigneeId(event.target.value)}
+          className="mt-2 h-[48px] w-full rounded-xl border border-line bg-white px-4 text-[15px] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+        >
+          <option value="">Unassigned</option>
+          {users
+            .filter((u) => u.active)
+            .map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name} ({u.role})
+              </option>
+            ))}
+        </select>
 
         <p className="mb-3 mt-5 text-[15px] font-bold">Project color</p>
         <ProjectColorPicker value={color} onChange={setColor} />

@@ -84,15 +84,15 @@ export default function Greeting({ title, subtitle, showWave = true, showQuote =
   return (
     <section className="relative -mt-4 min-h-[136px] pt-[22px]">
       <Landscape theme={theme} />
-      <div className="relative">
+      <div className="relative max-w-[620px]">
         <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-ink/80">{longDate(todayDate)}</p>
-        <h1 className="mt-1.5 text-[34px] font-extrabold leading-tight tracking-tight md:text-[38px]">
+        <h1 className="mt-1.5 text-[30px] font-extrabold leading-tight tracking-tight sm:text-[34px] md:text-[38px]">
           {title ?? `${greeting}, team`} {showWave && <span className="inline-block">{theme.emoji}</span>}
         </h1>
-        <p className="mt-0.5 text-[16px] text-muted">{subtitle ?? "Let's ship great work for every project today."}</p>
+        <p className="mt-0.5 text-[15px] sm:text-[16px] text-muted">{subtitle ?? "Let's ship great work for every project today."}</p>
       </div>
       {showQuote && (
-        <blockquote className={`relative mt-4 w-[190px] border-l-2 pl-3 text-[14px] italic leading-snug md:absolute md:right-3 md:top-[30px] md:mt-0 ${theme.quote}`}>
+        <blockquote className={`relative mt-4 w-[190px] border-l-2 pl-3 text-[14px] italic leading-snug hidden lg:block lg:absolute lg:right-3 lg:top-[30px] lg:mt-0 ${theme.quote}`}>
           “A little progress each day adds up to big results.”
         </blockquote>
       )}

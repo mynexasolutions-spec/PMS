@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
+import Avatar from "@/components/ui/Avatar";
 import Dropdown from "@/components/ui/Dropdown";
 import { useCloseOnOutsideClick } from "@/components/ui/useCloseOnOutsideClick";
 import { PROJECT_STAGES } from "@/lib/constants";
@@ -81,20 +82,29 @@ function useProjectStats() {
 
 function SummaryCard({ tint, tile, icon, label, value, foot }) {
   return (
-    <div className="relative flex h-[104px] items-center gap-4 overflow-hidden rounded-2xl border border-line px-5 shadow-card" style={{ background: tint }}>
-      <div className="grid h-[56px] w-[56px] shrink-0 place-items-center rounded-2xl shadow-[0_6px_14px_-4px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.8)]" style={{ background: tile }}>
-        {icon}
+    <div
+      className="relative flex flex-col justify-between rounded-2xl border border-line p-5 shadow-card transition-all hover:shadow-md"
+      style={{ background: tint }}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div
+          className="grid h-12 w-12 shrink-0 place-items-center rounded-xl shadow-[0_4px_12px_-2px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.8)]"
+          style={{ background: tile }}
+        >
+          {icon}
+        </div>
+        {foot && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-white/85 px-2.5 py-1 text-[11.5px] font-semibold text-brand-700 shadow-sm border border-brand-200/60 backdrop-blur-xs">
+            <ArrowUp size={11} strokeWidth={2.4} className="shrink-0 text-brand-600" />
+            {foot}
+          </span>
+        )}
       </div>
-      <div className="min-w-0 whitespace-nowrap">
-        <p className="text-[14.5px] text-ink/80">{label}</p>
-        <p className="text-[32px] font-bold leading-tight tracking-tight">{value}</p>
+
+      <div className="mt-4">
+        <p className="text-[30px] font-extrabold leading-none tracking-tight text-ink">{value}</p>
+        <p className="mt-1.5 text-[14px] font-medium text-ink/70">{label}</p>
       </div>
-      {foot && (
-        <span className="ml-auto self-end pb-4 text-[13px] text-muted">
-          <ArrowUp size={13} className="mr-1 inline text-brand-600" />
-          {foot}
-        </span>
-      )}
     </div>
   );
 }
@@ -103,7 +113,7 @@ function Ring({ percent }) {
   const r = 14;
   const c = 2 * Math.PI * r;
   return (
-    <svg viewBox="0 0 36 36" className="h-[34px] w-[34px] -rotate-90" aria-hidden="true">
+    <svg viewBox="0 0 36 36" className="h-[30px] w-[30px] -rotate-90" aria-hidden="true">
       <circle cx="18" cy="18" r={r} fill="none" stroke="#f9d9a8" strokeWidth="5" />
       <circle cx="18" cy="18" r={r} fill="none" stroke="#e8860c" strokeWidth="5" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - percent / 100)} />
     </svg>
@@ -169,7 +179,9 @@ function NextDue({ stat }) {
 }
 
 function ProjectCard({ stat }) {
+  const { users } = useApp();
   const { project, total, done, active, todo, percent } = stat;
+  const assignee = users.find((u) => u.id === project.assigneeId);
   const tiles = [
     ["To do", todo, "bg-[#fde9e9] text-[#d63a3a]"],
     ["In progress", active, "bg-[#e4efff] text-[#2b5fd6]"],
@@ -192,6 +204,12 @@ function ProjectCard({ stat }) {
             </Link>
           </h2>
           <p className="mt-1 text-[14px] leading-snug text-ink/65">{project.description || "No description yet"}</p>
+          {assignee && (
+            <div className="mt-2 flex items-center gap-1.5 text-[12.5px] text-muted">
+              <Avatar user={assignee} size={18} />
+              <span>Assigned: <span className="font-semibold text-ink/80">{assignee.name}</span></span>
+            </div>
+          )}
         </div>
         <CardMenu project={project} className="-mr-1.5 -mt-1" />
       </div>
@@ -224,7 +242,9 @@ function ProjectCard({ stat }) {
 }
 
 function ProjectRow({ stat }) {
+  const { users } = useApp();
   const { project, total, done, active, todo, percent } = stat;
+  const assignee = users.find((u) => u.id === project.assigneeId);
   return (
     <article className="relative flex flex-wrap items-center gap-x-5 gap-y-3 rounded-xl border border-line bg-white px-4 py-3.5 transition hover:bg-[#f7fbf8]">
       <ProjectTile project={project} size={44} />
@@ -236,6 +256,12 @@ function ProjectRow({ stat }) {
           <StageChip stage={project.stage} />
         </h2>
         <p className="mt-0.5 text-[13.5px] text-ink/65">{project.description || "No description yet"}</p>
+        {assignee && (
+          <div className="mt-1 flex items-center gap-1.5 text-[12px] text-muted">
+            <Avatar user={assignee} size={16} />
+            <span>Assigned: <span className="font-semibold text-ink/80">{assignee.name}</span></span>
+          </div>
+        )}
       </div>
 
       <div className="flex w-[210px] items-center gap-3">
@@ -261,9 +287,13 @@ function ProjectRow({ stat }) {
 }
 
 export default function ProjectsView() {
-  const { projects, tasks, completed, progress, now, todayDate, setProjectModalOpen, currentUser } = useApp();
+  const { projects, tasks, completed, progress, now, todayDate, setProjectModalOpen, currentUser, isMember } = useApp();
   const canCreate = can.manageProjects(currentUser); // only managers and admins create projects
   const stats = useProjectStats();
+  const userStats = useMemo(() => {
+    if (!isMember) return stats;
+    return stats.filter((stat) => stat.project.assigneeId === currentUser?.id);
+  }, [isMember, stats, currentUser?.id]);
   const [search, setSearch] = useState("");
   const [stage, setStage] = useState("all");
   const [status, setStatus] = useState("all");
@@ -300,7 +330,7 @@ export default function ProjectsView() {
 
   const needle = search.trim().toLowerCase();
   const stageRank = (project) => PROJECT_STAGES.findIndex((item) => item.id === project.stage);
-  const visible = stats
+  const visible = userStats
     .filter(({ project, done, active, todo, overdue }) => {
       if (needle && !`${project.name} ${project.description ?? ""}`.toLowerCase().includes(needle)) return false;
       if (stage !== "all" && project.stage !== stage) return false;
@@ -328,6 +358,10 @@ export default function ProjectsView() {
   const newProjects = now ? projects.filter((project) => { const d = parseDb(project.createdAt); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(); }).length : null;
   const newTasks = now ? tasks.filter((task) => parseDb(task.createdAt).getTime() >= weekAgo).length : null;
   const doneThisWeek = now ? tasks.filter((task) => task.status === "done" && parseDb(task.updatedAt).getTime() >= weekAgo).length : null;
+  const totalProjectsVal = isMember ? userStats.length : projects.length;
+  const totalTasksVal = isMember ? userStats.reduce((sum, s) => sum + s.total, 0) : tasks.length;
+  const totalCompletedVal = isMember ? userStats.reduce((sum, s) => sum + s.done, 0) : completed;
+  const overallProgressVal = isMember ? (totalTasksVal ? Math.round((totalCompletedVal / totalTasksVal) * 100) : 0) : progress;
 
   return (
     <div className="space-y-5 px-5 pb-8 pt-6 md:px-[34px]">
@@ -335,7 +369,7 @@ export default function ProjectsView() {
         <div>
           <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-ink/70">{longDate(todayDate, true)}</p>
           <h1 className="mt-2 text-[44px] font-extrabold leading-none tracking-tight text-brand-900 md:text-[50px]">Projects</h1>
-          <p className="mt-3 text-[16px] text-muted">Every project your team is working on, with the stage it has reached.</p>
+          <p className="mt-3 text-[16px] text-muted">{isMember ? "Projects assigned to you, with their current progress and stage." : "Every project your team is working on, with the stage it has reached."}</p>
         </div>
         {canCreate && (
           <button className="btn-primary h-[52px] px-6 text-[16px]" onClick={() => setProjectModalOpen(true)}>
@@ -348,33 +382,33 @@ export default function ProjectsView() {
         <SummaryCard
           tint="linear-gradient(135deg,#f6fcf7,#e7f6eb)"
           tile="linear-gradient(145deg,#d8f2de,#b5e4c1)"
-          icon={<FolderKanban size={28} strokeWidth={1.7} className="text-[#1f7a42]" />}
+          icon={<FolderKanban size={24} strokeWidth={1.7} className="text-[#1f7a42]" />}
           label="Total Projects"
-          value={projects.length}
+          value={totalProjectsVal}
           foot={newProjects === null ? null : `+${newProjects} this month`}
         />
         <SummaryCard
           tint="linear-gradient(135deg,#f6f9ff,#e9f1ff)"
           tile="linear-gradient(145deg,#dfe9ff,#c3d4ff)"
-          icon={<ListChecks size={28} strokeWidth={1.7} className="text-[#3558d6]" />}
+          icon={<ListChecks size={24} strokeWidth={1.7} className="text-[#3558d6]" />}
           label="Total Tasks"
-          value={tasks.length}
+          value={totalTasksVal}
           foot={newTasks === null ? null : `+${newTasks} this week`}
         />
         <SummaryCard
           tint="linear-gradient(135deg,#faf6ff,#f1e9fd)"
           tile="linear-gradient(145deg,#eadcfb,#d8c3f6)"
-          icon={<ShieldCheck size={28} strokeWidth={1.7} className="text-[#7c3aed]" />}
+          icon={<ShieldCheck size={24} strokeWidth={1.7} className="text-[#7c3aed]" />}
           label="Completed"
-          value={completed}
+          value={totalCompletedVal}
           foot={doneThisWeek === null ? null : `+${doneThisWeek} this week`}
         />
         <SummaryCard
           tint="linear-gradient(135deg,#fffaf2,#fdf0dc)"
           tile="linear-gradient(145deg,#ffedc9,#fcd596)"
-          icon={<Ring percent={progress} />}
+          icon={<Ring percent={overallProgressVal} />}
           label="Overall Progress"
-          value={`${progress}%`}
+          value={`${overallProgressVal}%`}
         />
       </section>
 

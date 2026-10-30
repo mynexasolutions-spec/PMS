@@ -8,7 +8,7 @@ import { longDate } from "@/lib/datetime";
 import { todoColumns } from "./columns";
 
 export default function NewTodoModal({ initialStatus, date, onClose }) {
-  const { projects, addTodo, users, currentUser } = useApp();
+  const { projects, addTodo, users, currentUser, isMember, myProjects } = useApp();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     title: "",
@@ -41,7 +41,7 @@ export default function NewTodoModal({ initialStatus, date, onClose }) {
             Project
             <select value={form.projectId ?? ""} onChange={(e) => set({ projectId: e.target.value ? Number(e.target.value) : null })}>
               <option value="">No project</option>
-              {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+              {(isMember ? myProjects : projects).map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
             </select>
           </label>
           <label className="field">
@@ -58,13 +58,24 @@ export default function NewTodoModal({ initialStatus, date, onClose }) {
           </label>
           <label className="field">
             Assign to
-            <select value={form.assigneeId ?? ""} onChange={(e) => set({ assigneeId: e.target.value ? Number(e.target.value) : null })}>
+            <select
+              disabled={isMember}
+              value={form.assigneeId ?? ""}
+              onChange={(e) => set({ assigneeId: e.target.value ? Number(e.target.value) : null })}
+            >
+              {isMember ? (
+                <option value={currentUser.id}>{currentUser.name} (me)</option>
+              ) : (
+                <>
+
               {users
                 .filter((user) => user.active)
                 .map((user) => (
                   <option key={user.id} value={user.id}>{user.id === currentUser.id ? `${user.name} (me)` : user.name}</option>
                 ))}
-              <option value="">Unassigned</option>
+                  <option value="">Unassigned</option>
+                </>
+              )}
             </select>
           </label>
           <label className="field">

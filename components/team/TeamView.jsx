@@ -20,7 +20,7 @@ const roleChip = {
 const permissionRows = [
   ["Create, assign and update tasks; comment; plan the day", true, true, true],
   ["Create projects and move them between stages", true, true, false],
-  ["Open a project's .env files and account logins", true, true, false],
+  ["Open, upload and edit .env files & credentials", true, true, "assigned"],
   ["Delete tasks created by someone else", true, true, false],
   ["Add people, change roles, reset passwords", true, false, false],
 ];
@@ -192,10 +192,12 @@ export default function TeamView() {
               <p className="mt-0.5 break-all text-[13.5px] text-muted">{member.email}</p>
             </div>
             <span className={`rounded-full px-3 py-1 text-[12.5px] font-semibold ${roleChip[member.role]}`}>{roleLabel[member.role]}</span>
-            <div className="flex gap-1.5 text-[12.5px] font-semibold">
-              <span className="rounded-md bg-[#e4efff] px-2 py-1 text-[#2b5fd6]">{openTasks(member.id)} open tasks</span>
-              <span className="rounded-md bg-[#fdf0c4] px-2 py-1 text-[#8a6508]">{todayTodos(member.id)} to-dos today</span>
-            </div>
+            {(!currentUser || currentUser.role !== "member" || member.id === currentUser.id) && (
+              <div className="flex gap-1.5 text-[12.5px] font-semibold">
+                <span className="rounded-md bg-[#e4efff] px-2 py-1 text-[#2b5fd6]">{openTasks(member.id)} open tasks</span>
+                <span className="rounded-md bg-[#fdf0c4] px-2 py-1 text-[#8a6508]">{todayTodos(member.id)} to-dos today</span>
+              </div>
+            )}
             <p className="hidden w-[190px] text-[13px] text-muted xl:block">{lastSeen(member.lastLoginAt)}</p>
             {admin ? <MemberMenu member={member} onReset={setResetting} /> : <span className="w-7" />}
           </div>
@@ -229,7 +231,15 @@ export default function TeamView() {
                   <td className="px-4 py-3">{action}</td>
                   {allowed.map((yes, index) => (
                     <td key={ROLES[index]} className="px-4 py-3 text-center">
-                      {yes ? <Check size={18} className="mx-auto text-brand-600" strokeWidth={3} /> : <Minus size={18} className="mx-auto text-ink/30" />}
+                      {yes === "assigned" ? (
+                        <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-brand-700 bg-[#e8f7ec] px-2 py-0.5 rounded-full" title="Only for projects assigned to this member">
+                          <Check size={13} strokeWidth={3} /> Assigned only
+                        </span>
+                      ) : yes ? (
+                        <Check size={18} className="mx-auto text-brand-600" strokeWidth={3} />
+                      ) : (
+                        <Minus size={18} className="mx-auto text-ink/30" />
+                      )}
                     </td>
                   ))}
                 </tr>

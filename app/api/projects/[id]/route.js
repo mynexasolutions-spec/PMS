@@ -1,5 +1,5 @@
 import { MANAGERS, authorize } from "@/lib/auth";
-import { getProject, updateProject } from "@/lib/db/repo";
+import { createNotification, getProject, updateProject } from "@/lib/db/repo";
 import { isStage } from "@/lib/constants";
 import { fail, idFrom, readJson } from "@/lib/http";
 
@@ -32,6 +32,7 @@ export async function PATCH(request, { params }) {
   if (auth.error) return auth.error;
 
   const id = await idFrom(params);
+  const previousProject = id !== null ? getProject(id) : null;
   if (id === null || !getProject(id)) return fail("Project not found.", 404);
 
   const body = await readJson(request);
@@ -57,6 +58,9 @@ export async function PATCH(request, { params }) {
     if (!/^#[0-9a-f]{6}$/i.test(body.color ?? "")) return fail("Invalid colour.");
     patch.color = body.color;
   }
+  if (body.assigneeId !== undefined) {
+    patch.assigneeId = body.assigneeId ? Number(body.assigneeId) : null;
+  }
   for (const [field, max] of Object.entries(DETAIL_FIELDS)) {
     if (body[field] === undefined) continue;
     const value = typeof body[field] === "string" ? body[field].trim() : null;
@@ -68,6 +72,18 @@ export async function PATCH(request, { params }) {
   try {
     const project = updateProject(id, patch);
     if (!project) return fail("No valid fields supplied.");
+    if (patch.assigneeId && patch.assigneeId !== previousProject?.assigneeId) {
+      try {
+        createNotification({
+          userId: patch.assigneeId,
+          title: "Project Assigned",
+          message: `${auth.user.name} assigned you to project "${project.name}"`,
+          link: `/projects/${project.id}`,
+        });
+      } catch (err) {
+        console.error("Failed to create notification:", err);
+      }
+    }
     return Response.json({ project });
   } catch (error) {
     if (error instanceof Error && error.message.includes("UNIQUE")) return fail("A project with that name already exists.", 409);

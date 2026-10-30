@@ -95,25 +95,35 @@ export default function CommentThread({ scope, refId, placeholder = "Write a com
         })}
       </ul>
 
-      <form onSubmit={post} className="mt-3.5 flex items-end gap-2.5">
-        <Avatar user={currentUser} size={compact ? 32 : 36} className="mb-1" />
-        <div className="min-w-0 flex-1">
-          <textarea
-            value={text}
-            maxLength={MAX}
-            rows={2}
-            onChange={(event) => setText(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) post(event);
-            }}
-            placeholder={placeholder}
-            className="block w-full resize-none rounded-xl border border-line bg-white px-3.5 py-2.5 text-[14.5px] outline-none placeholder:text-muted focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
-          />
-          <p className="mt-1 text-[12px] text-muted">Ctrl + Enter to post</p>
+      {/* Modern Full-Width Composer Box */}
+      <form onSubmit={post} className="mt-3.5 rounded-xl border border-line/80 bg-white p-2.5 shadow-xs transition-all focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-100">
+        <textarea
+          value={text}
+          maxLength={MAX}
+          rows={3}
+          onChange={(event) => setText(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) post(event);
+          }}
+          placeholder={placeholder}
+          className="block w-full resize-none bg-transparent text-[13.5px] outline-none placeholder:text-muted/80 leading-relaxed custom-scrollbar"
+        />
+
+        <div className="mt-2 flex items-center justify-between border-t border-line/60 pt-2">
+          <div className="flex items-center gap-2 text-[11.5px] text-muted">
+            <Avatar user={currentUser} size={20} />
+            <span>Ctrl + Enter</span>
+          </div>
+
+          <button
+            type="submit"
+            className="btn-primary !h-8 !px-3.5 !text-[12.5px] font-semibold gap-1.5 shadow-xs disabled:opacity-50"
+            disabled={busy || !text.trim()}
+            aria-label="Post comment"
+          >
+            <Send size={13} /> Post
+          </button>
         </div>
-        <button className="btn-primary mb-6 h-10 px-4" disabled={busy || !text.trim()} aria-label="Post comment">
-          <Send size={16} /> Post
-        </button>
       </form>
     </div>
   );

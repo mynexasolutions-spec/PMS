@@ -27,7 +27,7 @@ function HeaderArt() {
       viewBox="0 0 760 214"
       preserveAspectRatio="xMaxYMin slice"
       aria-hidden="true"
-      className="pointer-events-none absolute -right-[34px] -top-6 hidden h-[214px] w-[760px] md:block"
+      className="pointer-events-none absolute -right-[34px] -top-4 hidden h-[175px] w-auto max-w-[540px] xl:block opacity-90"
       style={{ maskImage: mask, WebkitMaskImage: mask }}
     >
       <defs>
@@ -199,7 +199,7 @@ export default function NotesView() {
 
   return (
     <div className="px-5 pb-8 md:px-[34px]">
-      <header className="relative min-h-[150px] pt-6">
+      <header className="relative min-h-[150px] overflow-hidden rounded-2xl pt-6">
         <HeaderArt />
         <div className="relative">
           <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-ink/70">{longDate(todayDate, true)}</p>
@@ -210,7 +210,7 @@ export default function NotesView() {
         </div>
       </header>
 
-      <div className="mt-3 grid items-start gap-5 xl:grid-cols-[minmax(0,440px)_minmax(0,1fr)]">
+      <div className="mt-4 grid items-start gap-5 xl:grid-cols-[minmax(0,440px)_minmax(0,1fr)]">
         <form onSubmit={submit} className={`panel p-5 ${expanded ? "xl:col-span-2" : ""}`}>
           <div className="flex items-center gap-3">
             <span className="grid h-[44px] w-[44px] place-items-center rounded-full bg-[#e3f5e8] text-brand-700">

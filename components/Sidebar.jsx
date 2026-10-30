@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { LayoutGrid, ShieldCheck, FolderKanban, Calendar, FileText, SquareCheckBig, StickyNote, Users } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
@@ -15,8 +16,8 @@ export default function Sidebar() {
   // Projects live on their own page (/projects) instead of being listed here, so the sidebar stays short.
   const nav = [
     { label: "Overview", icon: LayoutGrid, href: "/" },
-    { label: "All Tasks", icon: ShieldCheck, href: "/tasks", badge: app.tasks.length - app.completed },
-    { label: "Projects", icon: FolderKanban, href: "/projects", badge: app.projects.length },
+    { label: app.isMember ? "My Tasks" : "All Tasks", icon: ShieldCheck, href: "/tasks", badge: app.isMember ? app.myTasks.filter((t) => t.status !== "done").length : app.tasks.length - app.completed },
+    { label: "Projects", icon: FolderKanban, href: "/projects", badge: app.isMember ? app.myProjects.length : app.projects.length },
     { label: "Calendar", icon: Calendar, href: "/calendar" },
     { label: "Notes", icon: FileText, href: "/notes", badge: app.notes.length },
     { label: "Daily To-Do", icon: SquareCheckBig, href: "/daily-todo", badge: app.openTodosToday },
@@ -34,8 +35,15 @@ export default function Sidebar() {
         }`}
       >
         <Link href="/" className="flex items-center gap-3 px-1.5">
-          <div className="grid h-[42px] w-[42px] place-items-center rounded-[11px] bg-gradient-to-br from-[#0b1d14] to-[#1d5c36] text-[22px] font-bold text-white shadow-md ring-1 ring-black/10">
-            N
+          <div className="grid h-[42px] w-[42px] place-items-center rounded-[11px] bg-white shadow-sm ring-1 ring-black/10 p-1.5">
+            <Image
+              src="/logo.png"
+              alt="Nexa PMS Logo"
+              width={36}
+              height={36}
+              className="h-full w-full object-contain"
+              priority
+            />
           </div>
           <span className="text-[25px] font-bold tracking-tight">Nexa PMS</span>
         </Link>

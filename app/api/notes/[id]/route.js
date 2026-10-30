@@ -15,7 +15,14 @@ export async function PATCH(request, { params }) {
   if (auth.error) return auth.error;
 
   const id = await idFrom(params);
-  if (id === null || !getNote(id)) return fail("Note not found.", 404);
+  if (id === null) return fail("Invalid note id.");
+  const note = getNote(id);
+  if (!note) return fail("Note not found.", 404);
+
+  const isManager = auth.user.role === "admin" || auth.user.role === "manager";
+  if (!isManager && note.userId !== auth.user.id) {
+    return fail("You can only edit your own notes.", 403);
+  }
 
   const body = await readJson(request);
   if (!body) return fail("Invalid request.");
@@ -37,6 +44,13 @@ export async function DELETE(request, { params }) {
 
   const id = await idFrom(params);
   if (id === null) return fail("Invalid note id.");
+  const note = getNote(id);
+  if (!note) return fail("Note not found.", 404);
+
+  const isManager = auth.user.role === "admin" || auth.user.role === "manager";
+  if (!isManager && note.userId !== auth.user.id) {
+    return fail("You can only delete your own notes.", 403);
+  }
 
   const files = getNoteFiles(id); // read before the rows cascade away
   if (!deleteNote(id)) return fail("Note not found.", 404);

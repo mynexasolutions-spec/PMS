@@ -53,7 +53,7 @@ function Chip({ active, onClick, Icon, label, tone }) {
 }
 
 export default function CalendarView() {
-  const { tasks, todos, projects, now, todayDate, filterTasks, openIssueModal } = useApp();
+  const { tasks, todos, projects, now, todayDate, filterTasks, openIssueModal, isMember, myTasks, myTodos, myProjects } = useApp();
   const [picked, setPicked] = useState(null);
   const [view, setView] = useState("month");
   const [projectId, setProjectId] = useState("all");
@@ -63,7 +63,10 @@ export default function CalendarView() {
   useCloseOnOutsideClick(scheduleOpen, () => setScheduleOpen(false));
 
   const date = picked ?? todayDate;
-  const events = buildEvents({ tasks: filterTasks(tasks), todos }).filter(
+  const calendarTasks = isMember ? myTasks : tasks;
+  const calendarTodos = isMember ? myTodos : todos;
+  const calendarProjects = isMember ? myProjects : projects;
+  const events = buildEvents({ tasks: filterTasks(calendarTasks), todos: calendarTodos }).filter(
     (event) => kinds[event.kind] && (projectId === "all" || event.projectId === projectId) && (!highOnly || event.priority === "high"),
   );
 
@@ -87,7 +90,7 @@ export default function CalendarView() {
 
   const title =
     view === "month" ? monthTitle.format(parseLocalDate(date)) : view === "week" ? weekRange(date) : view === "day" ? longDate(date, true) : "Upcoming";
-  const projectOptions = [{ value: "all", label: "All projects" }, ...projects.map((project) => ({ value: project.id, label: project.name }))];
+  const projectOptions = [{ value: "all", label: "All projects" }, ...calendarProjects.map((project) => ({ value: project.id, label: project.name }))];
   const navBtn = "grid h-[34px] w-[34px] place-items-center rounded-lg hover:bg-[#eef6f0]";
 
   return (

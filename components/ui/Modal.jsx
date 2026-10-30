@@ -1,23 +1,29 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 const widths = { narrow: "max-w-[460px]", default: "max-w-[580px]", wide: "max-w-[640px]" };
 
 export default function Modal({ eyebrow, title, subtitle, icon, onClose, children, size = "default" }) {
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
+    setMounted(true);
     const onKey = (event) => event.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-ink/40 p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ink/40 p-4 sm:p-6 backdrop-blur-[2px] animate-in fade-in duration-150"
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
     >
-      <div className={`w-full rounded-3xl bg-white p-6 shadow-2xl ${widths[size]}`}>
+      <div className={`my-auto w-full rounded-3xl bg-white p-6 shadow-2xl ${widths[size]} animate-in zoom-in-95 duration-150`}>
         <div className="mb-5 flex items-start gap-4">
           {icon && <div className="grid h-[60px] w-[60px] shrink-0 place-items-center rounded-2xl bg-[#e8f7ec] text-brand-600">{icon}</div>}
           <div className="min-w-0 flex-1">
@@ -31,6 +37,7 @@ export default function Modal({ eyebrow, title, subtitle, icon, onClose, childre
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

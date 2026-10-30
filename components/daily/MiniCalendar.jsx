@@ -8,7 +8,7 @@ const monthTitle = new Intl.DateTimeFormat("en-GB", { month: "long", year: "nume
 const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 /** Month grid (Monday first, neighbouring months greyed): click any day to open it. */
-export default function MiniCalendar({ date, todayDate, onSelect }) {
+export default function MiniCalendar({ date, todayDate, onSelect, bare = false }) {
   const [viewMonth, setViewMonth] = useState(date.slice(0, 7));
   const [lastDate, setLastDate] = useState(date);
   // Follow the selected date when it moves to another month (e.g. via the date picker).
@@ -24,35 +24,37 @@ export default function MiniCalendar({ date, todayDate, onSelect }) {
   const cells = Array.from({ length: weeks * 7 }, (_, index) => toLocalDate(new Date(first.getFullYear(), first.getMonth(), 1 - lead + index)));
 
   const shiftMonth = (delta) => setViewMonth(toLocalDate(new Date(first.getFullYear(), first.getMonth() + delta, 1)).slice(0, 7));
-  const arrow = "grid h-[30px] w-[30px] place-items-center rounded-md hover:bg-[#f0f6f2]";
+  const arrow = "grid h-[28px] w-[28px] place-items-center rounded-md hover:bg-[#f0f6f2] text-ink/75";
 
-  return (
-    <section className="panel rounded-xl px-5 py-4">
+  const content = (
+    <div>
       <div className="flex items-center">
-        <h3 className="text-[19px] font-bold tracking-tight">{monthTitle.format(first)}</h3>
+        <h3 className="text-[16px] font-bold tracking-tight text-ink">{monthTitle.format(first)}</h3>
         <button className={`${arrow} ml-auto`} onClick={() => shiftMonth(-1)} aria-label="Previous month">
-          <ChevronLeft size={18} />
+          <ChevronLeft size={16} />
         </button>
         <button className={arrow} onClick={() => shiftMonth(1)} aria-label="Next month">
-          <ChevronRight size={18} />
+          <ChevronRight size={16} />
         </button>
       </div>
 
-      <div className="mt-3 grid grid-cols-7 text-center text-[12.5px] text-muted">
+      <div className="mt-2.5 grid grid-cols-7 text-center text-[12px] font-medium text-muted">
         {weekdays.map((day) => (
-          <span key={day} className="py-1">{day}</span>
+          <span key={day} className="py-1">
+            {day}
+          </span>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-y-1 text-center text-[14px]">
+      <div className="grid grid-cols-7 gap-y-1 text-center text-[13.5px]">
         {cells.map((cell) => {
           const inMonth = cell.startsWith(viewMonth);
           return (
             <button
               key={cell}
               onClick={() => onSelect(cell)}
-              className={`mx-auto grid h-[34px] w-[34px] place-items-center rounded-full transition ${
+              className={`mx-auto grid h-[32px] w-[32px] place-items-center rounded-full transition ${
                 cell === date
-                  ? "bg-brand-700 font-semibold text-white shadow-md"
+                  ? "bg-brand-700 font-semibold text-white shadow-xs"
                   : cell === todayDate
                     ? "font-semibold text-brand-700 ring-2 ring-brand-300"
                     : inMonth
@@ -65,6 +67,9 @@ export default function MiniCalendar({ date, todayDate, onSelect }) {
           );
         })}
       </div>
-    </section>
+    </div>
   );
+
+  if (bare) return content;
+  return <section className="panel rounded-xl px-5 py-4">{content}</section>;
 }

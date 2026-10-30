@@ -9,11 +9,20 @@ export const dynamic = "force-dynamic";
 const MAX_TITLE = 100;
 const MAX_CONTENT = 2000;
 
+import { getProjects } from "@/lib/db/repo";
+
 export async function GET(request) {
   const auth = await authorize(request);
   if (auth.error) return auth.error;
 
-  return Response.json({ notes: getNotes() });
+  const notes = getNotes();
+  if (auth.user.role === "member") {
+    const myProjectIds = new Set(getProjects().filter((p) => p.assigneeId === auth.user.id).map((p) => p.id));
+    const filtered = notes.filter((n) => n.userId === auth.user.id || (n.projectId && myProjectIds.has(n.projectId)) || (n.userId == null && n.projectId == null));
+    return Response.json({ notes: filtered });
+  }
+
+  return Response.json({ notes });
 }
 
 export async function POST(request) {
@@ -31,7 +40,7 @@ export async function POST(request) {
   if (body.projectId != null && !Number.isInteger(body.projectId)) return fail("Invalid project.");
 
   try {
-    return Response.json({ note: createNote({ title, content, tag: body.tag ?? null, projectId: body.projectId ?? null }) }, { status: 201 });
+    return Response.json({ note: createNote({ title, content, tag: body.tag ?? null, projectId: body.projectId ?? null, userId: auth.user.id }) }, { status: 201 });
   } catch (error) {
     console.error(error);
     return fail("Unable to save the note.", 500);

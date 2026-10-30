@@ -38,7 +38,7 @@ export default function TodoBoard({ title, date, todos, bare = false }) {
   }
 
   return (
-    <section className={bare ? "p-2" : "panel p-5"}>
+    <section className={`flex flex-col ${bare ? "p-2" : "panel p-5"}`}>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
         <CalendarCheck className="text-brand-700" size={32} strokeWidth={1.7} />
         <div className="leading-tight">
@@ -58,14 +58,14 @@ export default function TodoBoard({ title, date, todos, bare = false }) {
         </div>
       </div>
 
-      <div className="mt-[18px] rounded-xl border border-line">
+      <div className="mt-[18px] flex flex-1 flex-col overflow-hidden rounded-xl border border-line">
         <div className="hidden grid-cols-[1fr_112px_132px_56px] rounded-t-xl bg-[#f6f9f7] px-4 py-[11px] text-[12px] font-medium uppercase tracking-wider text-ink/65 sm:grid">
           <span>Task</span>
           <span>Priority</span>
           <span>Time</span>
           <span className="text-center">Actions</span>
         </div>
-        <ul>
+        <ul className="max-h-[300px] overflow-y-auto custom-scrollbar">
           {todos.map((todo) => (
             <li
               key={todo.id}
