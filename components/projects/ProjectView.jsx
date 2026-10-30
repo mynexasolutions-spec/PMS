@@ -127,7 +127,7 @@ export default function ProjectView({ projectId, initialTab = "tasks" }) {
         )}
       </section>
 
-      <div role="tablist" aria-label="Project sections" className="flex gap-1 overflow-x-auto border-b border-line">
+      <div role="tablist" aria-label="Project sections" className="flex gap-1 overflow-x-auto overflow-y-hidden no-scrollbar border-b border-line">
         {TABS.map(({ id, label, icon: Icon, secret }) => {
           const active = tab === id;
           return (

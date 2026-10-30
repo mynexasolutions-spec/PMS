@@ -172,6 +172,28 @@ export function AppProvider({ initial, children }) {
     return true;
   }
 
+  async function deleteProject(id) {
+    const previous = projects;
+    setProjects((current) => current.filter((project) => project.id !== id));
+    setTasks((current) => current.filter((task) => task.projectId !== id));
+    const { ok, data } = await request(`/api/projects/${id}`, "DELETE");
+    if (!ok) {
+      setProjects(previous);
+      notify(data?.error ?? "The project could not be deleted.");
+      return false;
+    }
+    notify("Project deleted.");
+    return true;
+  }
+
+  async function toggleBlacklistProject(project) {
+    const nextBlacklisted = !project.isBlacklisted;
+    const ok = await updateProject(project.id, { isBlacklisted: nextBlacklisted });
+    if (ok) {
+      notify(nextBlacklisted ? `"${project.name}" marked as blacklisted.` : `"${project.name}" restored to active.`);
+    }
+  }
+
   // ---------- team (accounts) ----------
 
   async function signOut() {
@@ -473,7 +495,7 @@ export function AppProvider({ initial, children }) {
     issueModal, openIssueModal: (parent = null, projectId = null, dueAt = null) => setIssueModal({ parent, projectId, dueAt }), closeIssueModal: () => setIssueModal(null),
     projectModalOpen, setProjectModalOpen, stickyModalOpen, setStickyModalOpen,
     // actions
-    updateTask, createIssue, deleteTask, createProject, updateProject, createNote, updateNote, deleteNote, removeAttachment,
+    updateTask, createIssue, deleteTask, createProject, updateProject, deleteProject, toggleBlacklistProject, createNote, updateNote, deleteNote, removeAttachment,
     patchTodo, addTodo, deleteTodo, postponeTodo, carryOverTodos,
     addFocus, toggleFocus, deleteFocus, createSticky, toggleSticky, deleteSticky,
     goToProject: (project) => router.push(`/projects/${project.id}`),

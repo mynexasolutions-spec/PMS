@@ -1,7 +1,7 @@
 import { MANAGERS, authorize } from "@/lib/auth";
-import { createNotification, getProject, updateProject } from "@/lib/db/repo";
+import { createNotification, deleteProject, getProject, updateProject } from "@/lib/db/repo";
 import { isStage } from "@/lib/constants";
-import { fail, idFrom, readJson } from "@/lib/http";
+import { fail, idFrom, noContent, readJson } from "@/lib/http";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -61,6 +61,9 @@ export async function PATCH(request, { params }) {
   if (body.assigneeId !== undefined) {
     patch.assigneeId = body.assigneeId ? Number(body.assigneeId) : null;
   }
+  if (body.isBlacklisted !== undefined) {
+    patch.isBlacklisted = body.isBlacklisted ? 1 : 0;
+  }
   for (const [field, max] of Object.entries(DETAIL_FIELDS)) {
     if (body[field] === undefined) continue;
     const value = typeof body[field] === "string" ? body[field].trim() : null;
@@ -90,4 +93,14 @@ export async function PATCH(request, { params }) {
     console.error(error);
     return fail("Unable to update project.", 500);
   }
+}
+
+export async function DELETE(request, { params }) {
+  const auth = await authorize(request, MANAGERS);
+  if (auth.error) return auth.error;
+
+  const id = await idFrom(params);
+  if (id === null || !getProject(id)) return fail("Project not found.", 404);
+
+  return deleteProject(id) ? noContent() : fail("Project could not be deleted.", 500);
 }

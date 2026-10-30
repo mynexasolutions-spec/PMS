@@ -210,8 +210,8 @@ export default function NotesView() {
         </div>
       </header>
 
-      <div className="mt-4 grid items-start gap-5 xl:grid-cols-[minmax(0,440px)_minmax(0,1fr)]">
-        <form onSubmit={submit} className={`panel p-5 ${expanded ? "xl:col-span-2" : ""}`}>
+      <div className={`mt-4 grid items-start gap-5 ${expanded ? "grid-cols-1" : "xl:grid-cols-[minmax(0,440px)_minmax(0,1fr)]"}`}>
+        <form onSubmit={submit} className="panel p-5">
           <div className="flex items-center gap-3">
             <span className="grid h-[44px] w-[44px] place-items-center rounded-full bg-[#e3f5e8] text-brand-700">
               <FileText size={22} />
@@ -396,7 +396,7 @@ export default function NotesView() {
                   </button>
                 </div>
               ) : (
-                <div className={`grid gap-4 ${view === "grid" ? "md:grid-cols-2" : "grid-cols-1"}`}>
+                <div className={`grid gap-4 ${view === "grid" ? (expanded ? "sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4" : "md:grid-cols-2") : "grid-cols-1"}`}>
                   {shown.map((note) => (
                     <NoteCard key={note.id} note={note} onEdit={startEdit} />
                   ))}
@@ -412,7 +412,7 @@ export default function NotesView() {
               <h2 className="text-[18px] font-bold tracking-tight">Quick templates</h2>
               <TemplateMenu onPick={applyTemplate} />
             </div>
-            <div className="mt-3.5 grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
+            <div className={`mt-3.5 grid gap-3 sm:grid-cols-2 ${expanded ? "lg:grid-cols-4" : "2xl:grid-cols-4"}`}>
               {TEMPLATES.map((template) => (
                 <div key={template.id} className="flex flex-col rounded-xl border border-line bg-white p-3.5 shadow-[0_1px_3px_rgba(16,60,35,0.06)]">
                   <div className="flex items-start gap-3">

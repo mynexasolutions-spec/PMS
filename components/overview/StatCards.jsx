@@ -17,22 +17,29 @@ function Spark({ color }) {
 
 function Card({ icon: Icon, tile, iconColor, spark, label, value, foot }) {
   return (
-    <div className="panel flex h-[100px] sm:h-[105px] w-[280px] shrink-0 snap-start sm:w-auto items-center justify-between gap-3 px-4 sm:px-5">
-      <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
+    <div className="panel flex flex-col justify-between w-[250px] shrink-0 snap-start sm:w-auto p-4 sm:p-5 transition hover:shadow-md">
+      <div className="flex items-center justify-between">
         <div
-          className="grid h-[52px] w-[52px] sm:h-[60px] sm:w-[60px] shrink-0 place-items-center rounded-2xl shadow-[0_6px_14px_-4px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.8)]"
+          className="grid h-11 w-11 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-xl shadow-[0_4px_12px_-2px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.8)]"
           style={{ background: tile, color: iconColor }}
         >
-          <Icon size={28} strokeWidth={1.7} className="sm:h-[30px] sm:w-[30px]" />
+          <Icon size={22} strokeWidth={1.8} className="sm:h-6 sm:w-6" />
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] sm:text-[14.5px] font-medium text-ink/85">{label}</p>
-          <p className="truncate text-[20px] sm:text-[26px] 2xl:text-[28px] font-bold leading-tight tracking-tight">{value}</p>
-        </div>
-      </div>
-      <div className="flex shrink-0 flex-col items-end justify-between self-stretch py-2">
         <Spark color={spark} />
-        <span className="whitespace-nowrap text-[11.5px] sm:text-[12.5px] text-muted">{foot}</span>
+      </div>
+
+      <div className="mt-3.5 sm:mt-4">
+        <p className="text-[24px] sm:text-[28px] font-extrabold leading-tight tracking-tight text-ink">
+          {value}
+        </p>
+        <p className="mt-1 text-[13.5px] sm:text-[14px] font-semibold text-ink/80">
+          {label}
+        </p>
+        {foot && (
+          <p className="mt-0.5 text-[12px] text-muted">
+            {foot}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -49,7 +56,7 @@ export default function StatCards() {
 
   return (
     <section
-      className="flex gap-3 overflow-x-auto pb-1 pt-0.5 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:gap-[14px] sm:grid-cols-2 2xl:grid-cols-4"
+      className="flex gap-3 overflow-x-auto pb-1 pt-0.5 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:gap-[14px] sm:grid-cols-2 xl:grid-cols-4"
       aria-label="Company summary"
     >
       <Card

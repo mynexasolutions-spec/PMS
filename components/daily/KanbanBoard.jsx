@@ -125,12 +125,12 @@ export default function KanbanBoard({ todos, onAdd }) {
                 over === column.id ? "border-brand-400 bg-[#e8f6ec]" : "border-line/70 bg-[#f8faf9]"
               }`}
             >
-              <div className={`flex min-h-[46px] items-center gap-2 rounded-lg px-2.5 py-1.5 ${column.tint}`}>
+              <div className={`flex h-[44px] items-center gap-1.5 rounded-lg px-2 sm:px-2.5 ${column.tint}`}>
                 <span className="grid w-5 shrink-0 place-items-center">
                   <ColumnIcon id={column.id} />
                 </span>
-                <h3 className="min-w-0 text-[14px] font-bold leading-tight tracking-tight text-ink">{column.label}</h3>
-                <b className="grid h-5 min-w-[20px] shrink-0 place-items-center rounded-full bg-white/90 px-1 text-[11.5px] font-semibold text-ink/75">
+                <h3 className="min-w-0 whitespace-nowrap text-[13px] sm:text-[13.5px] font-bold tracking-tight text-ink">{column.label}</h3>
+                <b className="grid h-5 min-w-[20px] shrink-0 place-items-center rounded-full bg-white/90 px-1 text-[11px] font-semibold text-ink/75">
                   {items.length}
                 </b>
                 <button

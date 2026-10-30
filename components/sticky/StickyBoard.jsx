@@ -115,7 +115,7 @@ export default function StickyBoard({ compact = false, className = "", bare = fa
         )}
       </div>
 
-      <div className={`grid gap-2.5 ${compact ? "mt-3 max-h-[380px] grid-cols-1 overflow-y-auto custom-scrollbar p-1 sm:grid-cols-2" : "mt-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4"}`}>
+      <div className={`grid gap-2.5 ${compact ? "mt-3 max-h-[380px] grid-cols-1 overflow-y-auto custom-scrollbar p-1" : "mt-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4"}`}>
         {notes.map((note) => (
           <Note
             key={note.id}

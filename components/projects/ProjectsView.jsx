@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowUp,
+  Ban,
   Calendar,
   Check,
   Ellipsis,
@@ -14,8 +15,11 @@ import {
   List,
   ListChecks,
   Plus,
+  RotateCcw,
   Search,
+  ShieldAlert,
   ShieldCheck,
+  Trash2,
   TriangleAlert,
   X,
 } from "lucide-react";
@@ -121,7 +125,8 @@ function Ring({ percent }) {
 }
 
 function CardMenu({ project, className = "" }) {
-  const { openIssueModal } = useApp();
+  const { openIssueModal, toggleBlacklistProject, deleteProject, currentUser } = useApp();
+  const canManage = can.manageProjects(currentUser);
   const [open, setOpen] = useState(false);
   useCloseOnOutsideClick(open, () => setOpen(false));
 
@@ -139,13 +144,52 @@ function CardMenu({ project, className = "" }) {
         <Ellipsis size={20} />
       </button>
       {open && (
-        <div className="menu-popover">
+        <div className="menu-popover min-w-[210px]" onClick={(e) => e.stopPropagation()}>
           <Link href={`/projects/${project.id}`} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[14.5px] font-medium hover:bg-[#eef6f0]">
             <FolderKanban size={16} className="text-ink/55" /> Open project
           </Link>
-          <button onClick={() => openIssueModal(null, project.id)}>
-            <Plus size={16} /> Create task here
-          </button>
+          {!project.isBlacklisted && (
+            <button
+              onClick={() => {
+                setOpen(false);
+                openIssueModal(null, project.id);
+              }}
+            >
+              <Plus size={16} /> Create task here
+            </button>
+          )}
+          {canManage && (
+            <>
+              <hr />
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  toggleBlacklistProject(project);
+                }}
+              >
+                {project.isBlacklisted ? (
+                  <>
+                    <RotateCcw size={16} className="text-brand-600" /> Restore to active
+                  </>
+                ) : (
+                  <>
+                    <Ban size={16} className="text-amber-600" /> Mark as blacklisted
+                  </>
+                )}
+              </button>
+              <button
+                className="danger"
+                onClick={() => {
+                  setOpen(false);
+                  if (window.confirm(`Are you sure you want to delete "${project.name}"? This will permanently delete the project and all its tasks.`)) {
+                    deleteProject(project.id);
+                  }
+                }}
+              >
+                <Trash2 size={16} /> Delete project
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -197,12 +241,19 @@ function ProjectCard({ stat }) {
       <div className="flex items-start gap-3.5">
         <ProjectTile project={project} />
         <div className="min-w-0 flex-1">
-          <h2 className="text-[19px] font-bold leading-tight tracking-tight">
-            {/* The whole card is clickable through this link; the ··· menu sits above it. */}
-            <Link href={`/projects/${project.id}`} className="after:absolute after:inset-0 after:rounded-2xl">
-              {project.name}
-            </Link>
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-[19px] font-bold leading-tight tracking-tight">
+              {/* The whole card is clickable through this link; the ··· menu sits above it. */}
+              <Link href={`/projects/${project.id}`} className="after:absolute after:inset-0 after:rounded-2xl">
+                {project.name}
+              </Link>
+            </h2>
+            {project.isBlacklisted && (
+              <span className="relative z-10 rounded-full bg-red-100 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-red-700">
+                Blacklisted
+              </span>
+            )}
+          </div>
           <p className="mt-1 text-[14px] leading-snug text-ink/65">{project.description || "No description yet"}</p>
           {assignee && (
             <div className="mt-2 flex items-center gap-1.5 text-[12.5px] text-muted">
@@ -254,6 +305,11 @@ function ProjectRow({ stat }) {
             {project.name}
           </Link>
           <StageChip stage={project.stage} />
+          {project.isBlacklisted && (
+            <span className="relative z-10 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-red-700">
+              Blacklisted
+            </span>
+          )}
         </h2>
         <p className="mt-0.5 text-[13.5px] text-ink/65">{project.description || "No description yet"}</p>
         {assignee && (
@@ -295,6 +351,7 @@ export default function ProjectsView() {
     return stats.filter((stat) => stat.project.assigneeId === currentUser?.id);
   }, [isMember, stats, currentUser?.id]);
   const [search, setSearch] = useState("");
+  const [projectTab, setProjectTab] = useState("active");
   const [stage, setStage] = useState("all");
   const [status, setStatus] = useState("all");
   const [sort, setSort] = useState("recent");
@@ -302,6 +359,9 @@ export default function ProjectsView() {
   const [tipsOpen, setTipsOpen] = useState(true);
   const [moreOpen, setMoreOpen] = useState(false);
   useCloseOnOutsideClick(moreOpen, () => setMoreOpen(false));
+
+  const activeCount = userStats.filter((s) => !s.project.isBlacklisted).length;
+  const blacklistedCount = userStats.filter((s) => s.project.isBlacklisted).length;
 
   useEffect(() => {
     try {
@@ -332,6 +392,8 @@ export default function ProjectsView() {
   const stageRank = (project) => PROJECT_STAGES.findIndex((item) => item.id === project.stage);
   const visible = userStats
     .filter(({ project, done, active, todo, overdue }) => {
+      if (projectTab === "active" && project.isBlacklisted) return false;
+      if (projectTab === "blacklisted" && !project.isBlacklisted) return false;
       if (needle && !`${project.name} ${project.description ?? ""}`.toLowerCase().includes(needle)) return false;
       if (stage !== "all" && project.stage !== stage) return false;
       if (status === "todo" && todo === 0) return false;
@@ -412,6 +474,48 @@ export default function ProjectsView() {
         />
       </section>
 
+      {/* Active / Blacklisted Tabs */}
+      <div className="flex items-center gap-1.5 rounded-xl border border-line bg-white p-1.5 shadow-[0_1px_3px_rgba(16,60,35,0.05)] w-fit">
+        <button
+          type="button"
+          onClick={() => setProjectTab("active")}
+          className={`flex items-center gap-2 rounded-lg px-4 py-2 text-[14px] font-semibold transition ${
+            projectTab === "active"
+              ? "bg-brand-700 text-white shadow-xs"
+              : "text-ink/70 hover:text-ink hover:bg-[#f2f6f3]"
+          }`}
+        >
+          <FolderKanban size={16} />
+          <span>Active</span>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[11.5px] font-bold ${
+              projectTab === "active" ? "bg-white/20 text-white" : "bg-black/5 text-ink/70"
+            }`}
+          >
+            {activeCount}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setProjectTab("blacklisted")}
+          className={`flex items-center gap-2 rounded-lg px-4 py-2 text-[14px] font-semibold transition ${
+            projectTab === "blacklisted"
+              ? "bg-red-600 text-white shadow-xs"
+              : "text-ink/70 hover:text-red-700 hover:bg-red-50/60"
+          }`}
+        >
+          <Ban size={16} />
+          <span>Blacklisted</span>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[11.5px] font-bold ${
+              projectTab === "blacklisted" ? "bg-white/20 text-white" : "bg-black/5 text-ink/70"
+            }`}
+          >
+            {blacklistedCount}
+          </span>
+        </button>
+      </div>
+
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex h-[44px] min-w-[220px] flex-1 items-center gap-2.5 rounded-xl border border-line bg-white px-4 shadow-[0_1px_3px_rgba(16,60,35,0.05)]">
           <Search size={19} className="shrink-0 text-ink/70" />
@@ -473,12 +577,18 @@ export default function ProjectsView() {
       <div className={view === "grid" ? "grid gap-[17px] md:grid-cols-2 xl:grid-cols-3" : "space-y-3"}>
         {visible.map((stat) => (view === "grid" ? <ProjectCard key={stat.project.id} stat={stat} /> : <ProjectRow key={stat.project.id} stat={stat} />))}
         {!visible.length && (
-          <div className="empty-view col-span-full">{filtering ? "No project matches these filters." : "No projects yet. Create your first one."}</div>
+          <div className="empty-view col-span-full">
+            {filtering
+              ? "No project matches these filters."
+              : projectTab === "blacklisted"
+                ? "No blacklisted projects."
+                : "No projects yet. Create your first one."}
+          </div>
         )}
       </div>
 
       <div className="grid gap-[17px] md:grid-cols-2 xl:grid-cols-3">
-        {canCreate && (
+        {canCreate && projectTab === "active" && (
           <button
             onClick={() => setProjectModalOpen(true)}
             className="flex min-h-[250px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#cfe3d5] bg-white/50 p-6 text-center transition hover:border-brand-300 hover:bg-[#f2faf4]"
