@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Calendar,
   CheckCircle2,
@@ -16,6 +17,7 @@ import {
   Minus,
   Pencil,
   Plus,
+  Search,
   Sparkles,
   Target,
   Trash2,
@@ -75,10 +77,560 @@ const CODING_PROJECT_TEMPLATE = {
 };
 
 const STATUS_CONFIG = {
-  not_started: { label: "Not started", bg: "bg-gray-100 text-gray-700 border-gray-200" },
-  in_progress: { label: "In progress", bg: "bg-blue-50 text-blue-700 border-blue-200" },
-  done: { label: "Done", bg: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  not_started: {
+    label: "Not started",
+    badge: "bg-slate-100 text-slate-800 border-slate-300 hover:bg-slate-200/80 hover:border-slate-400",
+    dot: "bg-slate-500",
+    pill: "bg-slate-100 text-slate-800",
+  },
+  in_progress: {
+    label: "In progress",
+    badge: "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100/80 hover:border-amber-400",
+    dot: "bg-amber-500 animate-pulse",
+    pill: "bg-amber-50 text-amber-900",
+  },
+  done: {
+    label: "Done",
+    badge: "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100/80 hover:border-emerald-400 font-bold",
+    dot: "bg-emerald-600",
+    pill: "bg-emerald-50 text-emerald-900",
+  },
 };
+
+function formatTaskDate(dateStr) {
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr || "";
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const d = new Date(year, month - 1, day);
+  return d.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
+}
+
+// FLOATING PORTAL: Renders popups directly into document.body to prevent ANY clipping from tables or overflow containers!
+function FloatingPortal({ open, anchorRef, children, popupWidth = 260, popupHeight = 300, align = "left" }) {
+  const [coords, setCoords] = useState(null);
+
+  useEffect(() => {
+    if (!open || !anchorRef.current) {
+      setCoords(null);
+      return;
+    }
+
+    function compute() {
+      if (!anchorRef.current) return;
+      const rect = anchorRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+
+      // Decide whether to open above or below based on available screen space
+      const openAbove = spaceBelow < popupHeight + 10 && spaceAbove > spaceBelow;
+      const top = openAbove
+        ? Math.max(10, rect.top - popupHeight - 6)
+        : Math.min(window.innerHeight - popupHeight - 10, rect.bottom + 6);
+
+      let left;
+      if (align === "right") {
+        left = rect.right - popupWidth;
+      } else {
+        left = rect.left;
+      }
+
+      // Constrain inside viewport horizontally
+      left = Math.max(12, Math.min(window.innerWidth - popupWidth - 12, left));
+
+      setCoords({ top, left });
+    }
+
+    compute();
+
+    window.addEventListener("scroll", compute, true);
+    window.addEventListener("resize", compute);
+    return () => {
+      window.removeEventListener("scroll", compute, true);
+      window.removeEventListener("resize", compute);
+    };
+  }, [open, anchorRef, popupWidth, popupHeight, align]);
+
+  if (!open || !coords || typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      style={{
+        position: "fixed",
+        top: `${coords.top}px`,
+        left: `${coords.left}px`,
+        zIndex: 9999,
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {children}
+    </div>,
+    document.body
+  );
+}
+
+// 1. 100% CUSTOM STATUS DROPDOWN (Rendered via Portal, zero clipping!)
+function CustomStatusDropdown({ status, onChange, disabled }) {
+  const [open, setOpen] = useState(false);
+  const buttonRef = useRef(null);
+  const popupRef = useRef(null);
+
+  const current = STATUS_CONFIG[status] || STATUS_CONFIG.not_started;
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClickOutside(e) {
+      if (
+        buttonRef.current &&
+        !buttonRef.current.contains(e.target) &&
+        popupRef.current &&
+        !popupRef.current.contains(e.target)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  const options = [
+    {
+      value: "not_started",
+      label: "Not started",
+      dot: "bg-slate-400",
+      pill: "bg-slate-100 text-slate-800",
+    },
+    {
+      value: "in_progress",
+      label: "In progress",
+      dot: "bg-amber-500 animate-pulse",
+      pill: "bg-amber-50 text-amber-900",
+    },
+    {
+      value: "done",
+      label: "Done",
+      dot: "bg-emerald-600",
+      pill: "bg-emerald-50 text-emerald-900",
+    },
+  ];
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen(!open)}
+        className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[12px] font-bold shadow-2xs transition ${current.badge}`}
+      >
+        <span className={`h-2 w-2 rounded-full ${current.dot}`} />
+        <span className="whitespace-nowrap">{current.label}</span>
+        <ChevronDown size={12} className={`opacity-60 ml-0.5 transition-transform duration-150 ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      <FloatingPortal open={open} anchorRef={buttonRef} popupWidth={176} popupHeight={150} align="right">
+        <div
+          ref={popupRef}
+          className="w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-100"
+        >
+          <div className="px-2 py-1 text-[10.5px] font-extrabold uppercase tracking-wider text-slate-400">
+            Select Status
+          </div>
+          {options.map((opt) => {
+            const isSelected = opt.value === status;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  onChange(opt.value);
+                  setOpen(false);
+                }}
+                className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-[12.5px] font-semibold transition ${
+                  isSelected
+                    ? `${opt.pill} font-bold`
+                    : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`h-2 w-2 rounded-full ${opt.dot}`} />
+                  <span>{opt.label}</span>
+                </div>
+                {isSelected && <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      </FloatingPortal>
+    </>
+  );
+}
+
+// 2. 100% CUSTOM CALENDAR DATE PICKER (Rendered via Portal, zero clipping!)
+function CustomDatePicker({ value, onChange, disabled }) {
+  const [open, setOpen] = useState(false);
+  const buttonRef = useRef(null);
+  const popupRef = useRef(null);
+
+  // Parse existing date or default to November 2026
+  const parsed = useMemo(() => {
+    if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const [y, m, d] = value.split("-").map(Number);
+      return { year: y, month: m - 1, day: d };
+    }
+    return { year: 2026, month: 10, day: null }; // Nov 2026
+  }, [value]);
+
+  const [viewYear, setViewYear] = useState(parsed.year);
+  const [viewMonth, setViewMonth] = useState(parsed.month);
+
+  useEffect(() => {
+    if (open) {
+      setViewYear(parsed.year);
+      setViewMonth(parsed.month);
+    }
+  }, [open, parsed.year, parsed.month]);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClickOutside(e) {
+      if (
+        buttonRef.current &&
+        !buttonRef.current.contains(e.target) &&
+        popupRef.current &&
+        !popupRef.current.contains(e.target)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  // Days in month calculation
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay(); // 0 = Sun
+
+  const monthLabel = new Date(viewYear, viewMonth, 1).toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+
+  const displayLabel = value && /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? formatTaskDate(value)
+    : "Set deadline";
+
+  const hasDate = Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
+
+  function handleSelectDay(day) {
+    const yStr = String(viewYear);
+    const mStr = String(viewMonth + 1).padStart(2, "0");
+    const dStr = String(day).padStart(2, "0");
+    onChange(`${yStr}-${mStr}-${dStr}`);
+    setOpen(false);
+  }
+
+  function handlePrevMonth(e) {
+    e.stopPropagation();
+    if (viewMonth === 0) {
+      setViewMonth(11);
+      setViewYear((y) => y - 1);
+    } else {
+      setViewMonth((m) => m - 1);
+    }
+  }
+
+  function handleNextMonth(e) {
+    e.stopPropagation();
+    if (viewMonth === 11) {
+      setViewMonth(0);
+      setViewYear((y) => y + 1);
+    } else {
+      setViewMonth((m) => m + 1);
+    }
+  }
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen(!open)}
+        className={`group inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[12px] font-semibold transition shadow-2xs ${
+          hasDate
+            ? "border-slate-300 bg-white text-slate-800 hover:border-emerald-600 hover:bg-emerald-50/40"
+            : "border-dashed border-slate-300 bg-slate-50/70 text-slate-500 hover:border-slate-400 hover:text-slate-800"
+        }`}
+        title="Click to select deadline date"
+      >
+        <Calendar
+          size={13}
+          className={hasDate ? "text-emerald-700 group-hover:scale-110 transition" : "text-slate-400"}
+        />
+        <span className="whitespace-nowrap">{displayLabel}</span>
+      </button>
+
+      <FloatingPortal open={open} anchorRef={buttonRef} popupWidth={256} popupHeight={290} align="left">
+        <div
+          ref={popupRef}
+          className="w-64 rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-100"
+        >
+          {/* Header Month / Year & Chevrons */}
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <button
+              type="button"
+              onClick={handlePrevMonth}
+              className="grid h-7 w-7 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition"
+              title="Previous month"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span className="text-[13px] font-extrabold text-slate-900">{monthLabel}</span>
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              className="grid h-7 w-7 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition"
+              title="Next month"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
+          {/* Weekday headers */}
+          <div className="grid grid-cols-7 pt-2 text-center text-[10.5px] font-bold uppercase tracking-wider text-slate-400">
+            <span>Su</span>
+            <span>Mo</span>
+            <span>Tu</span>
+            <span>We</span>
+            <span>Th</span>
+            <span>Fr</span>
+            <span>Sa</span>
+          </div>
+
+          {/* Days Grid */}
+          <div className="grid grid-cols-7 gap-1 pt-1.5">
+            {/* Blank offset days */}
+            {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+              <span key={`blank-${i}`} className="h-7 w-7" />
+            ))}
+
+            {/* Month days */}
+            {Array.from({ length: daysInMonth }).map((_, i) => {
+              const day = i + 1;
+              const isSelected =
+                parsed.year === viewYear &&
+                parsed.month === viewMonth &&
+                parsed.day === day;
+
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  onClick={() => handleSelectDay(day)}
+                  className={`h-7 w-7 rounded-lg text-[12px] font-bold transition flex items-center justify-center ${
+                    isSelected
+                      ? "bg-emerald-600 text-white shadow-xs font-extrabold"
+                      : "text-slate-700 hover:bg-emerald-50 hover:text-emerald-800"
+                  }`}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Footer Quick Actions */}
+          <div className="mt-2.5 flex items-center justify-between border-t border-slate-100 pt-2 text-[11px] font-bold">
+            <button
+              type="button"
+              onClick={() => {
+                onChange("");
+                setOpen(false);
+              }}
+              className="text-slate-400 hover:text-red-600 transition"
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const now = new Date();
+                const y = now.getFullYear();
+                const m = String(now.getMonth() + 1).padStart(2, "0");
+                const d = String(now.getDate()).padStart(2, "0");
+                onChange(`${y}-${m}-${d}`);
+                setOpen(false);
+              }}
+              className="text-emerald-700 hover:text-emerald-800 hover:underline"
+            >
+              Today
+            </button>
+          </div>
+        </div>
+      </FloatingPortal>
+    </>
+  );
+}
+
+// 3. 100% CUSTOM MONTH & YEAR PICKER (Rendered via Portal, zero clipping!)
+function CustomMonthPicker({ currentMonth, onSelectMonth, savedMonths = [] }) {
+  const [open, setOpen] = useState(false);
+  const buttonRef = useRef(null);
+  const popupRef = useRef(null);
+
+  const [yearStr, monthStr] = (currentMonth || "2026-11").split("-");
+  const selectedYear = parseInt(yearStr, 10) || 2026;
+  const selectedMonthNum = parseInt(monthStr, 10) || 11; // 1-12
+
+  const [viewYear, setViewYear] = useState(selectedYear);
+
+  useEffect(() => {
+    if (open) {
+      setViewYear(selectedYear);
+    }
+  }, [open, selectedYear]);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClickOutside(e) {
+      if (
+        buttonRef.current &&
+        !buttonRef.current.contains(e.target) &&
+        popupRef.current &&
+        !popupRef.current.contains(e.target)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  const MONTHS = [
+    { num: 1, short: "Jan", full: "January" },
+    { num: 2, short: "Feb", full: "February" },
+    { num: 3, short: "Mar", full: "March" },
+    { num: 4, short: "Apr", full: "April" },
+    { num: 5, short: "May", full: "May" },
+    { num: 6, short: "Jun", full: "June" },
+    { num: 7, short: "Jul", full: "July" },
+    { num: 8, short: "Aug", full: "August" },
+    { num: 9, short: "Sep", full: "September" },
+    { num: 10, short: "Oct", full: "October" },
+    { num: 11, short: "Nov", full: "November" },
+    { num: 12, short: "Dec", full: "December" },
+  ];
+
+  function handleChooseMonth(monthNum) {
+    const formatted = `${viewYear}-${String(monthNum).padStart(2, "0")}`;
+    onSelectMonth(formatted);
+    setOpen(false);
+  }
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-1.5 text-left shadow-2xs hover:border-emerald-600 hover:bg-white transition group"
+        title="Click to switch month & year"
+      >
+        <Calendar size={16} className="text-emerald-700 shrink-0 group-hover:scale-110 transition" />
+        <span className="text-[16px] font-extrabold tracking-tight text-slate-950">
+          {formatMonthName(currentMonth)}
+        </span>
+        <ChevronDown size={14} className={`text-slate-500 transition-transform duration-150 ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      <FloatingPortal open={open} anchorRef={buttonRef} popupWidth={288} popupHeight={265} align="left">
+        <div
+          ref={popupRef}
+          className="w-72 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl ring-1 ring-black/5 animate-in fade-in zoom-in-95 duration-100"
+        >
+          {/* Year Navigator */}
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <button
+              type="button"
+              onClick={() => setViewYear((y) => y - 1)}
+              className="grid h-8 w-8 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-950 transition"
+              title="Previous Year"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <span className="text-[16px] font-black text-slate-900">{viewYear}</span>
+            <button
+              type="button"
+              onClick={() => setViewYear((y) => y + 1)}
+              className="grid h-8 w-8 place-items-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-950 transition"
+              title="Next Year"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+
+          {/* 12 Months Grid */}
+          <div className="grid grid-cols-3 gap-2 pt-3">
+            {MONTHS.map((m) => {
+              const monthKey = `${viewYear}-${String(m.num).padStart(2, "0")}`;
+              const isSelected = viewYear === selectedYear && m.num === selectedMonthNum;
+              const hasSavedPlan = savedMonths.includes(monthKey);
+
+              return (
+                <button
+                  key={m.num}
+                  type="button"
+                  onClick={() => handleChooseMonth(m.num)}
+                  className={`relative flex flex-col items-center justify-center rounded-xl py-2.5 text-[13px] font-bold transition ${
+                    isSelected
+                      ? "bg-emerald-700 text-white shadow-xs font-black"
+                      : "text-slate-700 hover:bg-slate-100 hover:text-slate-950"
+                  }`}
+                >
+                  <span>{m.short}</span>
+                  {hasSavedPlan && (
+                    <span
+                      className={`mt-0.5 h-1.5 w-1.5 rounded-full ${
+                        isSelected ? "bg-white" : "bg-emerald-600"
+                      }`}
+                      title="Has saved plan"
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Footer Quick Shortcut */}
+          <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5 text-[12px] font-bold">
+            <button
+              type="button"
+              onClick={() => {
+                onSelectMonth("2026-11");
+                setOpen(false);
+              }}
+              className="text-slate-500 hover:text-slate-900 transition"
+            >
+              Go to Nov 2026
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const now = new Date();
+                const y = now.getFullYear();
+                const m = String(now.getMonth() + 1).padStart(2, "0");
+                onSelectMonth(`${y}-${m}`);
+                setOpen(false);
+              }}
+              className="text-emerald-700 hover:text-emerald-800 hover:underline"
+            >
+              Current Month
+            </button>
+          </div>
+        </div>
+      </FloatingPortal>
+    </>
+  );
+}
 
 function shiftMonth(monthStr, delta) {
   if (!monthStr || !/^\d{4}-\d{2}$/.test(monthStr)) monthStr = "2026-11";
@@ -549,35 +1101,28 @@ export default function ActionPlanTab({ project, canManage }) {
   return (
     <div className="space-y-6">
       {/* 1. TOP MONTH & YEAR NAVIGATION BAR */}
-      <div className="panel flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between shadow-xs">
+      <div className="panel flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between shadow-2xs border border-slate-200 bg-white">
         {/* Left: Previous / Current Month / Next Navigator */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
             type="button"
             onClick={() => setCurrentMonth(shiftMonth(currentMonth, -1))}
-            className="icon-btn h-9 w-9 text-ink/75 hover:bg-[#f6faf7] hover:text-brand-800"
+            className="grid h-9 w-9 place-items-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-950 shadow-2xs transition"
             title="Previous month"
           >
             <ChevronLeft size={18} />
           </button>
 
-          <div className="flex items-center gap-2">
-            <span className="text-[17px] font-extrabold tracking-tight text-ink min-w-[145px]">
-              {formatMonthName(currentMonth)}
-            </span>
-            <input
-              type="month"
-              value={currentMonth}
-              onChange={(e) => e.target.value && setCurrentMonth(e.target.value)}
-              className="cursor-pointer rounded-lg border border-line bg-white px-2 py-1 text-[12px] font-semibold text-muted hover:border-brand-500 hover:text-brand-700 transition"
-              title="Pick custom month & year"
-            />
-          </div>
+          <CustomMonthPicker
+            currentMonth={currentMonth}
+            onSelectMonth={setCurrentMonth}
+            savedMonths={plans.map((p) => p.monthYear)}
+          />
 
           <button
             type="button"
             onClick={() => setCurrentMonth(shiftMonth(currentMonth, 1))}
-            className="icon-btn h-9 w-9 text-ink/75 hover:bg-[#f6faf7] hover:text-brand-800"
+            className="grid h-9 w-9 place-items-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-950 shadow-2xs transition"
             title="Next month"
           >
             <ChevronRight size={18} />
@@ -587,7 +1132,7 @@ export default function ActionPlanTab({ project, canManage }) {
             <button
               type="button"
               onClick={() => setCurrentMonth("2026-11")}
-              className="rounded-lg border border-line bg-white px-2.5 py-1 text-[11.5px] font-semibold text-muted hover:bg-gray-50 transition"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-950 shadow-2xs transition"
             >
               Go to Nov 2026
             </button>
@@ -597,7 +1142,7 @@ export default function ActionPlanTab({ project, canManage }) {
         {/* Middle: Badges for All Months that have saved plans */}
         {plans.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 overflow-x-auto no-scrollbar">
-            <span className="text-[12px] font-semibold uppercase tracking-wider text-muted mr-1">Saved:</span>
+            <span className="text-[12px] font-extrabold uppercase tracking-wider text-slate-600 mr-1">Saved:</span>
             {plans.map((p) => {
               const isSelected = p.monthYear === currentMonth;
               return (
@@ -605,10 +1150,10 @@ export default function ActionPlanTab({ project, canManage }) {
                   key={p.id}
                   type="button"
                   onClick={() => setCurrentMonth(p.monthYear)}
-                  className={`rounded-lg px-2.5 py-1 text-[12px] font-bold transition ${
+                  className={`rounded-lg px-3 py-1 text-[12px] font-bold transition shadow-2xs ${
                     isSelected
-                      ? "bg-brand-700 text-white shadow-xs"
-                      : "border border-line bg-[#fafcfb] text-ink/70 hover:bg-[#f4f8f5] hover:text-ink"
+                      ? "bg-emerald-700 text-white shadow-xs"
+                      : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-950"
                   }`}
                 >
                   {formatMonthName(p.monthYear)}
@@ -625,7 +1170,7 @@ export default function ActionPlanTab({ project, canManage }) {
               <button
                 type="button"
                 onClick={() => openCreatePlanModal(currentMonth)}
-                className="btn-primary btn-compact"
+                className="btn-primary btn-compact shadow-2xs"
               >
                 <Plus size={15} /> Create {formatMonthName(currentMonth)} Plan
               </button>
@@ -633,7 +1178,7 @@ export default function ActionPlanTab({ project, canManage }) {
               <button
                 type="button"
                 onClick={() => openCreatePlanModal()}
-                className="btn-secondary btn-compact"
+                className="btn-secondary btn-compact shadow-2xs"
               >
                 <Plus size={14} /> New Month
               </button>
@@ -644,12 +1189,12 @@ export default function ActionPlanTab({ project, canManage }) {
 
       {/* 2. IF NO PLAN EXISTS FOR THE SELECTED MONTH */}
       {!activePlan ? (
-        <div className="panel p-10 text-center">
-          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[#f4fbf6] text-brand-700">
+        <div className="panel p-10 text-center border border-slate-200 bg-white shadow-2xs">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-200/60">
             <Calendar size={28} />
           </div>
-          <h3 className="mt-4 text-[20px] font-bold text-ink">No Action Plan for {formatMonthName(currentMonth)}</h3>
-          <p className="mx-auto mt-1.5 max-w-md text-[14px] text-muted leading-relaxed">
+          <h3 className="mt-4 text-[20px] font-extrabold text-slate-950">No Action Plan for {formatMonthName(currentMonth)}</h3>
+          <p className="mx-auto mt-1.5 max-w-md text-[14px] text-slate-700 leading-relaxed font-medium">
             There is no targets roadmap set for {formatMonthName(currentMonth)} yet. Pick a template below to start this month with clean sections and KPIs.
           </p>
 
@@ -658,21 +1203,21 @@ export default function ActionPlanTab({ project, canManage }) {
               <button
                 type="button"
                 onClick={() => openCreatePlanModal(currentMonth, "coding")}
-                className="btn-primary bg-[#1f4a8a] hover:bg-[#16386b]"
+                className="btn-primary bg-[#1f4a8a] hover:bg-[#16386b] shadow-2xs"
               >
                 <Code2 size={16} /> Coding Roadmap (Clean Sections)
               </button>
               <button
                 type="button"
                 onClick={() => openCreatePlanModal(currentMonth, "nexa")}
-                className="btn-primary"
+                className="btn-primary shadow-2xs"
               >
                 <Sparkles size={16} /> Nexa Agency Template
               </button>
               <button
                 type="button"
                 onClick={() => openCreatePlanModal(currentMonth, "blank")}
-                className="btn-secondary"
+                className="btn-secondary shadow-2xs"
               >
                 <Plus size={16} /> Blank Plan
               </button>
@@ -683,27 +1228,30 @@ export default function ActionPlanTab({ project, canManage }) {
         /* 3. ACTIVE PLAN VIEW FOR CURRENT MONTH */
         <>
           {/* Plan Info Banner */}
-          <div className="panel flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="panel flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between border border-slate-200 bg-white shadow-2xs">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#e8f7ec] px-2.5 py-1 text-[13px] font-bold text-brand-800">
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 text-[13px] font-bold text-emerald-800">
                   <Target size={14} />
                   {formatMonthName(activePlan.monthYear)}
                 </span>
                 {activePlan.prepDeadline && (
-                  <span className="rounded-lg border border-line bg-[#fafcfb] px-2.5 py-1 text-[12px] font-medium text-muted">
-                    Prep: {activePlan.prepDeadline}
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[12px] font-bold text-slate-700">
+                    <Clock size={12} className="text-slate-500" />
+                    Prep: {formatTaskDate(activePlan.prepDeadline)}
                   </span>
                 )}
                 {activePlan.execStart && (
-                  <span className="rounded-lg border border-line bg-[#fafcfb] px-2.5 py-1 text-[12px] font-medium text-muted">
-                    Starts: {activePlan.execStart}
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[12px] font-bold text-slate-700">
+                    <Calendar size={12} className="text-slate-500" />
+                    Starts: {formatTaskDate(activePlan.execStart)}
                   </span>
                 )}
               </div>
-              <h2 className="mt-2 text-[21px] font-bold tracking-tight text-ink">{activePlan.title}</h2>
-              <p className="mt-0.5 text-[13.5px] text-muted">
-                {stats.doneTasks} of {stats.totalTasks} action items completed ({stats.progress}%)
+              <h2 className="mt-2.5 text-[22px] font-extrabold tracking-tight text-slate-950">{activePlan.title}</h2>
+              <p className="mt-1 text-[13.5px] font-medium text-slate-700">
+                <span className="font-bold text-slate-900">{stats.doneTasks} of {stats.totalTasks}</span> action items completed (
+                <span className="font-bold text-emerald-700">{stats.progress}%</span>)
               </p>
             </div>
 
@@ -712,7 +1260,7 @@ export default function ActionPlanTab({ project, canManage }) {
                 <button
                   type="button"
                   onClick={handleDeletePlan}
-                  className="icon-btn text-red-600 hover:bg-red-50 hover:text-red-700"
+                  className="icon-btn text-red-600 hover:bg-red-50 hover:text-red-700 border border-red-200"
                   title="Delete this month's plan"
                 >
                   <Trash2 size={16} />
@@ -725,9 +1273,9 @@ export default function ActionPlanTab({ project, canManage }) {
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <TrendingUp size={18} className="text-brand-700" />
-                <h3 className="text-[17px] font-bold tracking-tight">Monthly Target Summary (KPIs)</h3>
-                <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-[12px] font-semibold text-brand-800">
+                <TrendingUp size={18} className="text-emerald-700" />
+                <h3 className="text-[17px] font-extrabold tracking-tight text-slate-900">Monthly Target Summary (KPIs)</h3>
+                <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[12px] font-bold text-emerald-800 border border-emerald-200/80">
                   {activePlan.kpis.length} Targets
                 </span>
               </div>
@@ -735,7 +1283,7 @@ export default function ActionPlanTab({ project, canManage }) {
                 <button
                   type="button"
                   onClick={handleOpenAddKpi}
-                  className="btn-secondary btn-compact"
+                  className="btn-secondary btn-compact shadow-2xs"
                 >
                   <Plus size={14} /> Add Target KPI
                 </button>
@@ -743,7 +1291,7 @@ export default function ActionPlanTab({ project, canManage }) {
             </div>
 
             {activePlan.kpis.length === 0 ? (
-              <div className="panel p-6 text-center text-[13.5px] text-muted">
+              <div className="panel p-6 text-center text-[13.5px] text-slate-600 font-medium border border-slate-200 bg-white">
                 No KPI targets added yet. Click &quot;Add Target KPI&quot; to define quantitative monthly goals.
               </div>
             ) : (
@@ -752,16 +1300,16 @@ export default function ActionPlanTab({ project, canManage }) {
                   const numericTarget = parseInt(kpi.target, 10);
                   const progressPct = !isNaN(numericTarget) && numericTarget > 0 ? Math.min(100, Math.round((kpi.current / numericTarget) * 100)) : 0;
                   return (
-                    <div key={kpi.id} className="panel relative flex flex-col justify-between p-4 transition hover:shadow-md">
+                    <div key={kpi.id} className="panel relative flex flex-col justify-between p-4 transition hover:shadow-md border border-slate-200 bg-white shadow-2xs">
                       <div>
                         <div className="flex items-start justify-between gap-2">
-                          <p className="text-[13px] font-semibold text-ink/75 leading-snug">{kpi.label}</p>
+                          <p className="text-[13.5px] font-bold text-slate-800 leading-snug">{kpi.label}</p>
                           {canManage && (
                             <div className="flex items-center gap-0.5">
                               <button
                                 type="button"
                                 onClick={() => handleOpenEditKpi(kpi)}
-                                className="dots-btn text-ink/40 hover:text-brand-700"
+                                className="dots-btn text-slate-400 hover:text-emerald-700 hover:bg-emerald-50"
                                 title="Edit target metric"
                               >
                                 <Pencil size={12} />
@@ -769,7 +1317,7 @@ export default function ActionPlanTab({ project, canManage }) {
                               <button
                                 type="button"
                                 onClick={() => handleDeleteKpi(kpi.id)}
-                                className="dots-btn text-ink/40 hover:text-red-600"
+                                className="dots-btn text-slate-400 hover:text-red-600 hover:bg-red-50"
                                 title="Remove target"
                               >
                                 <Trash2 size={13} />
@@ -778,16 +1326,16 @@ export default function ActionPlanTab({ project, canManage }) {
                           )}
                         </div>
                         <div className="mt-3 flex items-baseline gap-2">
-                          <span className="text-[26px] font-extrabold leading-none text-ink">{kpi.current}</span>
-                          <span className="text-[15px] font-medium text-muted">/ {kpi.target}</span>
-                          {kpi.unit && <span className="text-[12px] text-muted">({kpi.unit})</span>}
+                          <span className="text-[28px] font-black leading-none text-slate-950">{kpi.current}</span>
+                          <span className="text-[15px] font-bold text-slate-600">/ {kpi.target}</span>
+                          {kpi.unit && <span className="text-[12.5px] font-semibold text-slate-600">({kpi.unit})</span>}
                         </div>
                       </div>
 
                       <div className="mt-4 space-y-2">
-                        <div className="h-2 w-full overflow-hidden rounded-full bg-line">
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
                           <div
-                            className="h-full rounded-full bg-brand-600 transition-all duration-300"
+                            className="h-full rounded-full bg-emerald-600 transition-all duration-300"
                             style={{ width: `${progressPct}%` }}
                           />
                         </div>
@@ -796,7 +1344,7 @@ export default function ActionPlanTab({ project, canManage }) {
                             <button
                               type="button"
                               onClick={() => adjustKpi(kpi.id, -1)}
-                              className="grid h-7 w-7 place-items-center rounded-md border border-line bg-white text-ink/70 hover:bg-[#f6faf7]"
+                              className="grid h-7 w-7 place-items-center rounded-md border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 shadow-2xs"
                               title="Decrease progress"
                             >
                               <Minus size={13} />
@@ -804,7 +1352,7 @@ export default function ActionPlanTab({ project, canManage }) {
                             <button
                               type="button"
                               onClick={() => adjustKpi(kpi.id, 1)}
-                              className="grid h-7 w-7 place-items-center rounded-md border border-line bg-brand-50 font-bold text-brand-700 hover:bg-brand-100"
+                              className="grid h-7 w-7 place-items-center rounded-md border border-emerald-300 bg-emerald-50 font-bold text-emerald-800 hover:bg-emerald-100 shadow-2xs"
                               title="Increase progress"
                             >
                               <Plus size={13} />
@@ -823,36 +1371,39 @@ export default function ActionPlanTab({ project, canManage }) {
           <section className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
-                <Layers size={18} className="text-brand-700" />
-                <h3 className="text-[17px] font-bold tracking-tight">Action Plan & Milestones</h3>
-                <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-[12px] font-semibold text-brand-800">
+                <Layers size={18} className="text-emerald-700" />
+                <h3 className="text-[17px] font-extrabold tracking-tight text-slate-900">Action Plan & Milestones</h3>
+                <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[12px] font-bold text-emerald-800 border border-emerald-200/80">
                   {activePlan.sections.length} Sections
                 </span>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Search tasks..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="h-9 w-44 rounded-lg border border-line bg-white px-3 text-[13px] outline-none focus:border-brand-500"
-                />
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search tasks..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="h-9 w-48 rounded-lg border border-slate-300 bg-white pl-8 pr-3 text-[13px] font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 shadow-2xs"
+                  />
+                </div>
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="h-9 rounded-lg border border-line bg-white px-2.5 text-[13px] font-medium text-ink shadow-xs"
+                  className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-[13px] font-bold text-slate-800 shadow-2xs hover:border-slate-400 cursor-pointer outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                 >
                   <option value="all">All statuses</option>
-                  <option value="not_started">Not started</option>
-                  <option value="in_progress">In progress</option>
-                  <option value="done">Done</option>
+                  <option value="not_started">⚪ Not started</option>
+                  <option value="in_progress">🟡 In progress</option>
+                  <option value="done">🟢 Done</option>
                 </select>
                 {canManage && (
                   <button
                     type="button"
                     onClick={handleOpenAddSection}
-                    className="btn-primary btn-compact"
+                    className="btn-primary btn-compact shadow-2xs"
                   >
                     <Plus size={15} /> Add Section
                   </button>
@@ -861,7 +1412,7 @@ export default function ActionPlanTab({ project, canManage }) {
             </div>
 
             {activePlan.sections.length === 0 ? (
-              <div className="panel p-8 text-center text-muted">
+              <div className="panel p-8 text-center text-slate-600 font-medium border border-slate-200 bg-white">
                 No sections created yet. Click &quot;Add Section&quot; to organize your action plan into functional pillars.
               </div>
             ) : (
@@ -880,12 +1431,12 @@ export default function ActionPlanTab({ project, canManage }) {
                   const doneCount = section.tasks.filter((t) => t.status === "done").length;
 
                   return (
-                    <div key={section.id} className="panel overflow-hidden border border-line shadow-card">
+                    <div key={section.id} className="panel border border-slate-200 shadow-2xs bg-white">
                       {/* Section Bar */}
-                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-[#fafcfb] px-4 py-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/80 px-4 py-3 rounded-t-2xl">
                         <div className="flex items-center gap-2.5">
-                          <h4 className="text-[15px] font-bold text-ink">{section.name}</h4>
-                          <span className="rounded-md bg-white px-2 py-0.5 text-[11.5px] font-semibold text-muted border border-line">
+                          <h4 className="text-[16px] font-extrabold text-slate-900 tracking-tight">{section.name}</h4>
+                          <span className="rounded-md bg-white px-2.5 py-0.5 text-[12px] font-bold text-slate-700 border border-slate-200 shadow-2xs">
                             {doneCount} / {section.tasks.length} done
                           </span>
                         </div>
@@ -896,14 +1447,14 @@ export default function ActionPlanTab({ project, canManage }) {
                               <button
                                 type="button"
                                 onClick={() => handleOpenAddTask(section.id)}
-                                className="btn-secondary btn-compact text-[12.5px] h-8 px-2.5"
+                                className="btn-secondary btn-compact text-[12.5px] h-8 px-2.5 shadow-2xs"
                               >
                                 <Plus size={13} /> Add Task
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleOpenEditSection(section)}
-                                className="dots-btn text-ink/40 hover:text-brand-700"
+                                className="dots-btn text-slate-400 hover:text-emerald-700 hover:bg-emerald-50"
                                 title="Rename section"
                               >
                                 <Pencil size={12} />
@@ -911,7 +1462,7 @@ export default function ActionPlanTab({ project, canManage }) {
                               <button
                                 type="button"
                                 onClick={() => handleDeleteSection(section.id)}
-                                className="dots-btn text-ink/40 hover:text-red-600"
+                                className="dots-btn text-slate-400 hover:text-red-600 hover:bg-red-50"
                                 title="Delete section"
                               >
                                 <Trash2 size={14} />
@@ -924,87 +1475,91 @@ export default function ActionPlanTab({ project, canManage }) {
                       {/* Tasks Table */}
                       <div className="overflow-x-auto">
                         {section.tasks.length === 0 ? (
-                          <div className="p-5 text-center text-[13.5px] text-muted bg-[#fdfefd]">
+                          <div className="p-5 text-center text-[13.5px] text-slate-600 font-medium bg-[#fdfefd]">
                             No tasks in this section yet.
                             {canManage && (
                               <button
                                 type="button"
                                 onClick={() => handleOpenAddTask(section.id)}
-                                className="ml-2 font-semibold text-brand-700 hover:underline inline-flex items-center gap-1"
+                                className="ml-2 font-bold text-emerald-700 hover:underline inline-flex items-center gap-1"
                               >
                                 <Plus size={13} /> Add first task
                               </button>
                             )}
                           </div>
                         ) : matchingTasks.length === 0 ? (
-                          <div className="p-4 text-center text-[13px] text-muted">
+                          <div className="p-4 text-center text-[13px] text-slate-600 font-medium">
                             No tasks match your filter.
                           </div>
                         ) : (
                           <table className="w-full text-left text-[13.5px]">
                             <thead>
-                              <tr className="border-b border-line bg-[#fbfdfb] text-[12px] font-bold uppercase tracking-wider text-ink/60">
-                                <th className="px-4 py-2.5 w-16">ID</th>
-                                <th className="px-4 py-2.5">Task</th>
-                                <th className="px-4 py-2.5">Subtask / Expected Output</th>
-                                <th className="px-4 py-2.5 w-44">Deadline</th>
-                                <th className="px-4 py-2.5 w-36">Status</th>
-                                {canManage && <th className="px-4 py-2.5 w-20 text-right"></th>}
+                              <tr className="border-b-2 border-slate-200 bg-slate-100/95 text-[12px] font-extrabold uppercase tracking-wider text-slate-800">
+                                <th className="px-4 py-3 w-16">ID</th>
+                                <th className="px-4 py-3">Task</th>
+                                <th className="px-4 py-3">Subtask / Expected Output</th>
+                                <th className="px-4 py-3 w-44">Deadline</th>
+                                <th className="px-4 py-3 w-40">Status</th>
+                                {canManage && <th className="px-4 py-3 w-20 text-right"></th>}
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-line">
-                              {matchingTasks.map((task) => {
-                                const conf = STATUS_CONFIG[task.status] || STATUS_CONFIG.not_started;
+                            <tbody className="divide-y divide-slate-200">
+                              {matchingTasks.map((task, taskIdx) => {
+                                const isNearBottom = matchingTasks.length > 1 && taskIdx >= matchingTasks.length - 2;
                                 return (
-                                  <tr key={task.id} className="transition hover:bg-[#f6faf7]/60">
-                                    <td className="px-4 py-3 font-semibold text-brand-800">{task.id}</td>
-                                    <td className="px-4 py-3 font-medium text-ink">{task.task}</td>
-                                    <td className="px-4 py-3 text-muted">{task.subtask || "—"}</td>
+                                  <tr key={task.id} className="transition hover:bg-slate-50/80">
+                                    <td className="px-4 py-3 font-semibold">
+                                      <span className="inline-block rounded-md bg-emerald-50 px-2 py-0.5 text-[12px] font-extrabold text-emerald-800 border border-emerald-200/90">
+                                        {task.id}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 font-bold text-slate-950 text-[14px] leading-snug">
+                                      {task.task}
+                                    </td>
+                                    <td className="px-4 py-3 font-medium text-slate-700 text-[13px] leading-relaxed">
+                                      {task.subtask || "—"}
+                                    </td>
                                     <td className="px-4 py-3">
-                                      <input
-                                        type="date"
-                                        value={task.deadline && /^\d{4}-\d{2}-\d{2}$/.test(task.deadline) ? task.deadline : ""}
-                                        onChange={(e) => handleTaskDeadlineChange(section.id, task.id, e.target.value)}
-                                        className="h-8 rounded-lg border border-line bg-white px-2 text-[12px] font-medium text-ink outline-none transition focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
-                                        title="Click to select deadline date"
+                                      <CustomDatePicker
+                                        value={task.deadline}
+                                        disabled={!canManage}
+                                        isNearBottom={isNearBottom}
+                                        onChange={(val) => handleTaskDeadlineChange(section.id, task.id, val)}
                                       />
                                     </td>
                                     <td className="px-4 py-3">
-                                      <select
-                                        value={task.status}
-                                        onChange={(e) => handleTaskStatusChange(section.id, task.id, e.target.value)}
-                                        className={`rounded-lg border px-2.5 py-1 text-[12.5px] font-semibold cursor-pointer outline-none transition ${conf.bg}`}
-                                      >
-                                        <option value="not_started">Not started</option>
-                                        <option value="in_progress">In progress</option>
-                                        <option value="done">Done</option>
-                                      </select>
+                                      <CustomStatusDropdown
+                                        status={task.status}
+                                        disabled={false}
+                                        isNearBottom={isNearBottom}
+                                        onChange={(val) => handleTaskStatusChange(section.id, task.id, val)}
+                                      />
                                     </td>
-                                    {canManage && (
-                                      <td className="px-4 py-3 text-right">
-                                        <div className="flex items-center justify-end gap-1">
-                                          <button
-                                            type="button"
-                                            onClick={() => handleOpenEditTask(section.id, task)}
-                                            className="dots-btn inline-grid text-ink/40 hover:text-brand-700"
-                                            title="Edit task"
-                                          >
-                                            <Pencil size={12} />
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={() => handleDeleteTask(section.id, task.id)}
-                                            className="dots-btn inline-grid text-ink/40 hover:text-red-600"
-                                            title="Delete task"
-                                          >
-                                            <Trash2 size={13} />
-                                          </button>
-                                        </div>
-                                      </td>
-                                    )}
-                                  </tr>
-                                );
-                              })}
+                                  {canManage && (
+                                    <td className="px-4 py-3 text-right">
+                                      <div className="flex items-center justify-end gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleOpenEditTask(section.id, task)}
+                                          className="dots-btn inline-grid text-slate-400 hover:text-emerald-700 hover:bg-emerald-50"
+                                          title="Edit task"
+                                        >
+                                          <Pencil size={12} />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteTask(section.id, task.id)}
+                                          className="dots-btn inline-grid text-slate-400 hover:text-red-600 hover:bg-red-50"
+                                          title="Delete task"
+                                        >
+                                          <Trash2 size={13} />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  )}
+                                </tr>
+                              );
+                            })}
                             </tbody>
                           </table>
                         )}
