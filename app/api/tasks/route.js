@@ -41,6 +41,9 @@ export async function POST(request) {
       assigneeId: body.assigneeId ?? null,
       createdBy: auth.user.id,
       dueAt: typeof body.dueAt === "string" ? body.dueAt : null,
+      estimateHours: Number(body.estimateHours) >= 0 ? Number(body.estimateHours) : 0,
+      loggedHours: Number(body.loggedHours) >= 0 ? Number(body.loggedHours) : 0,
+      blockerReason: typeof body.blockerReason === "string" ? body.blockerReason.trim() : null,
     });
     if (body.assigneeId) {
       try {

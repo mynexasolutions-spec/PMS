@@ -10,6 +10,7 @@ export const dynamic = "force-dynamic";
 
 const isInt = (value) => value === null || Number.isInteger(value);
 const isText = (value) => value === null || typeof value === "string";
+const isNum = (value) => value === null || (typeof value === "number" && !isNaN(value) && value >= 0);
 
 export async function PATCH(request, { params }) {
   const auth = await authorize(request);
@@ -30,7 +31,6 @@ export async function PATCH(request, { params }) {
   if (!isManager && body.assigneeId !== undefined && body.assigneeId !== auth.user.id) {
     return fail("Team members cannot reassign tasks to other users.", 403);
   }
-  if (!body) return fail("Invalid request.");
   if (body.title !== undefined && !(typeof body.title === "string" && body.title.trim())) return fail("A title is required.");
   if (body.type !== undefined && !TASK_TYPES.includes(body.type)) return fail("Invalid task type.");
   if (body.status !== undefined && !TASK_STATUSES.includes(body.status)) return fail("Invalid status.");
@@ -39,23 +39,26 @@ export async function PATCH(request, { params }) {
   if (body.parentId !== undefined && !isInt(body.parentId)) return fail("Invalid parent task.");
   if (body.position !== undefined && !Number.isInteger(body.position)) return fail("Invalid position.");
   if (body.dueAt !== undefined && !isText(body.dueAt)) return fail("Invalid due date.");
+  if (body.estimateHours !== undefined && !isNum(body.estimateHours)) return fail("Invalid estimated hours.");
+  if (body.loggedHours !== undefined && !isNum(body.loggedHours)) return fail("Invalid logged hours.");
+  if (body.blockerReason !== undefined && !isText(body.blockerReason)) return fail("Invalid blocker reason.");
   if (body.assigneeId != null && !(Number.isInteger(body.assigneeId) && getUser(body.assigneeId)?.active)) return fail("Choose an active team member to assign this to.");
 
   const task = updateTask(id, body);
   if (!task) return fail("No valid fields supplied.");
   if (body.assigneeId && Number(body.assigneeId) !== existingTask.assigneeId) {
-      try {
-        createNotification({
-          userId: Number(body.assigneeId),
-          title: "Task Assigned",
-          message: `${auth.user.name} assigned you to task "${task.issueKey}: ${task.title}"`,
-          link: `/projects/${task.projectId}`,
-        });
-      } catch (err) {
-        console.error("Failed to create notification:", err);
-      }
+    try {
+      createNotification({
+        userId: Number(body.assigneeId),
+        title: "Task Assigned",
+        message: `${auth.user.name} assigned you to task "${task.issueKey}: ${task.title}"`,
+        link: `/projects/${task.projectId}`,
+      });
+    } catch (err) {
+      console.error("Failed to create notification:", err);
     }
-    return Response.json({ task });
+  }
+  return Response.json({ task });
 }
 
 export async function DELETE(request, { params }) {

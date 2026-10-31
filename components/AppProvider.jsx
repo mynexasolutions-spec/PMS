@@ -42,6 +42,7 @@ export function AppProvider({ initial, children }) {
   const [now, setNow] = useState(null);
   const [todayDate, setTodayDate] = useState(initial.today);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const [issueModal, setIssueModal] = useState(null); // { parent } while open
   const [projectModalOpen, setProjectModalOpen] = useState(false);
@@ -491,8 +492,8 @@ export function AppProvider({ initial, children }) {
     tasks, projects, notes, todos, sticky, focusItems, users, commentCounts, currentUser, notifications, unreadNotificationsCount, markNotificationAsRead, markAllNotificationsAsRead, refreshNotifications,
     signOut, addUser, editUser, setCommentCount,
     // ui state
-    query, setQuery, toast, notify, now, todayDate, sidebarOpen, setSidebarOpen,
-    issueModal, openIssueModal: (parent = null, projectId = null, dueAt = null) => setIssueModal({ parent, projectId, dueAt }), closeIssueModal: () => setIssueModal(null),
+    query, setQuery, toast, notify, now, todayDate, sidebarOpen, setSidebarOpen, sidebarCollapsed, setSidebarCollapsed, toggleSidebarCollapsed: () => setSidebarCollapsed((v) => !v),
+    issueModal, openIssueModal: (parent = null, projectId = null, dueAt = null, task = null, initialStatus = null) => setIssueModal({ parent, projectId, dueAt, task, initialStatus }), closeIssueModal: () => setIssueModal(null),
     projectModalOpen, setProjectModalOpen, stickyModalOpen, setStickyModalOpen,
     // actions
     updateTask, createIssue, deleteTask, createProject, updateProject, deleteProject, toggleBlacklistProject, createNote, updateNote, deleteNote, removeAttachment,
