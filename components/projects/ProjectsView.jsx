@@ -61,7 +61,8 @@ function useProjectStats() {
 
   return useMemo(() => {
     const floor = now ? startOfDay(now).getTime() : 0;
-    return projects.map((project) => {
+    const normalProjects = projects.filter((p) => !p.isVaultOnly);
+    return normalProjects.map((project) => {
       const own = tasks.filter((task) => task.projectId === project.id);
       const done = own.filter((task) => task.status === "done").length;
       const active = own.filter((task) => task.status === "progress").length;
@@ -126,7 +127,10 @@ function Ring({ percent }) {
 
 function CardMenu({ project, className = "" }) {
   const { openIssueModal, toggleBlacklistProject, deleteProject, currentUser } = useApp();
-  const canManage = can.manageProjects(currentUser);
+  const canManage =
+    project?.isProjectAdmin ||
+    project?.createdBy === currentUser?.id ||
+    (project?.members || []).some((m) => m.userId === currentUser?.id && m.role === "admin");
   const [open, setOpen] = useState(false);
   useCloseOnOutsideClick(open, () => setOpen(false));
 
@@ -223,9 +227,7 @@ function NextDue({ stat }) {
 }
 
 function ProjectCard({ stat }) {
-  const { users } = useApp();
   const { project, total, done, active, todo, percent } = stat;
-  const assignee = users.find((u) => u.id === project.assigneeId);
   const tiles = [
     ["To do", todo, "bg-[#fde9e9] text-[#d63a3a]"],
     ["In progress", active, "bg-[#e4efff] text-[#2b5fd6]"],
@@ -255,12 +257,6 @@ function ProjectCard({ stat }) {
             )}
           </div>
           <p className="mt-1 text-[14px] leading-snug text-ink/65">{project.description || "No description yet"}</p>
-          {assignee && (
-            <div className="mt-2 flex items-center gap-1.5 text-[12.5px] text-muted">
-              <Avatar user={assignee} size={18} />
-              <span>Assigned: <span className="font-semibold text-ink/80">{assignee.name}</span></span>
-            </div>
-          )}
         </div>
         <CardMenu project={project} className="-mr-1.5 -mt-1" />
       </div>
@@ -293,9 +289,7 @@ function ProjectCard({ stat }) {
 }
 
 function ProjectRow({ stat }) {
-  const { users } = useApp();
   const { project, total, done, active, todo, percent } = stat;
-  const assignee = users.find((u) => u.id === project.assigneeId);
   return (
     <article className="relative flex flex-wrap items-center gap-x-5 gap-y-3 rounded-xl border border-line bg-white px-4 py-3.5 transition hover:bg-[#f7fbf8]">
       <ProjectTile project={project} size={44} />
@@ -312,12 +306,6 @@ function ProjectRow({ stat }) {
           )}
         </h2>
         <p className="mt-0.5 text-[13.5px] text-ink/65">{project.description || "No description yet"}</p>
-        {assignee && (
-          <div className="mt-1 flex items-center gap-1.5 text-[12px] text-muted">
-            <Avatar user={assignee} size={16} />
-            <span>Assigned: <span className="font-semibold text-ink/80">{assignee.name}</span></span>
-          </div>
-        )}
       </div>
 
       <div className="flex w-[210px] items-center gap-3">
@@ -343,13 +331,10 @@ function ProjectRow({ stat }) {
 }
 
 export default function ProjectsView() {
-  const { projects, tasks, completed, progress, now, todayDate, setProjectModalOpen, currentUser, isMember } = useApp();
-  const canCreate = can.manageProjects(currentUser); // only managers and admins create projects
+  const { projects, tasks, completed, progress, now, todayDate, setProjectModalOpen, currentUser } = useApp();
+  const canCreate = Boolean(currentUser?.id); // any registered account can create projects
   const stats = useProjectStats();
-  const userStats = useMemo(() => {
-    if (!isMember) return stats;
-    return stats.filter((stat) => stat.project.assigneeId === currentUser?.id);
-  }, [isMember, stats, currentUser?.id]);
+  const userStats = stats;
   const [search, setSearch] = useState("");
   const [projectTab, setProjectTab] = useState("active");
   const [stage, setStage] = useState("all");
@@ -417,13 +402,14 @@ export default function ProjectsView() {
 
   // Real, derived "recent" numbers (nothing is estimated).
   const weekAgo = now ? now.getTime() - 7 * 86_400_000 : 0;
-  const newProjects = now ? projects.filter((project) => { const d = parseDb(project.createdAt); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(); }).length : null;
+  const normalProjects = projects.filter((project) => !project.isVaultOnly);
+  const newProjects = now ? normalProjects.filter((project) => { const d = parseDb(project.createdAt); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth(); }).length : null;
   const newTasks = now ? tasks.filter((task) => parseDb(task.createdAt).getTime() >= weekAgo).length : null;
   const doneThisWeek = now ? tasks.filter((task) => task.status === "done" && parseDb(task.updatedAt).getTime() >= weekAgo).length : null;
-  const totalProjectsVal = isMember ? userStats.length : projects.length;
-  const totalTasksVal = isMember ? userStats.reduce((sum, s) => sum + s.total, 0) : tasks.length;
-  const totalCompletedVal = isMember ? userStats.reduce((sum, s) => sum + s.done, 0) : completed;
-  const overallProgressVal = isMember ? (totalTasksVal ? Math.round((totalCompletedVal / totalTasksVal) * 100) : 0) : progress;
+  const totalProjectsVal = normalProjects.length;
+  const totalTasksVal = tasks.length;
+  const totalCompletedVal = completed;
+  const overallProgressVal = progress;
 
   return (
     <div className="space-y-5 px-5 pb-8 pt-6 md:px-[34px]">
@@ -431,7 +417,7 @@ export default function ProjectsView() {
         <div>
           <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-ink/70">{longDate(todayDate, true)}</p>
           <h1 className="mt-2 text-[44px] font-extrabold leading-none tracking-tight text-brand-900 md:text-[50px]">Projects</h1>
-          <p className="mt-3 text-[16px] text-muted">{isMember ? "Projects assigned to you, with their current progress and stage." : "Every project your team is working on, with the stage it has reached."}</p>
+          <p className="mt-3 text-[16px] text-muted">All projects you have created or joined as a team member.</p>
         </div>
         {canCreate && (
           <button className="btn-primary h-[52px] px-6 text-[16px]" onClick={() => setProjectModalOpen(true)}>

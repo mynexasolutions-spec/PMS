@@ -1,5 +1,5 @@
 import { authorize } from "@/lib/auth";
-import { createNotification, createTask, getTasks } from "@/lib/db/repo";
+import { createNotification, createTask, getProjects, getTasks } from "@/lib/db/repo";
 import { getUser } from "@/lib/db/users";
 import { PRIORITIES, TASK_STATUSES, TASK_TYPES } from "@/lib/constants";
 import { fail, readJson } from "@/lib/http";
@@ -10,7 +10,16 @@ export const dynamic = "force-dynamic";
 export async function GET(request) {
   const auth = await authorize(request);
   if (auth.error) return auth.error;
-  return Response.json({ tasks: getTasks() });
+
+  const allProjects = getProjects();
+  const myProjectIds = new Set(
+    allProjects
+      .filter((p) => (p.members || []).some((m) => m.userId === auth.user.id) || p.createdBy === auth.user.id)
+      .map((p) => p.id),
+  );
+
+  const tasks = getTasks().filter((t) => myProjectIds.has(t.projectId));
+  return Response.json({ tasks });
 }
 
 export async function POST(request) {

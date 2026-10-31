@@ -178,8 +178,11 @@ export default function MonthGrid({ date, todayDate, events, onSelect, onOpenDay
               <div
                 key={cell}
                 onClick={() => {
-                  onSelect(cell);
-                  if (list.length > 0) setPopoverDate(cell);
+                  if (onSelect) {
+                    onSelect(cell);
+                  } else if (list.length > 0) {
+                    setPopoverDate(cell);
+                  }
                 }}
                 className={`group relative flex min-h-[96px] cursor-pointer flex-col justify-between border-r border-t border-line p-2 transition last:border-r-0 [&:nth-child(7n)]:border-r-0 ${
                   isSelected

@@ -1,7 +1,7 @@
-import IssuesView from "@/components/issues/IssuesView";
+import ActionCenterView from "@/components/actions/ActionCenterView";
 
-export const metadata = { title: "All tasks – Nexa PMS" };
+export const metadata = { title: "Action Center – Nexa PMS" };
 
 export default function Page() {
-  return <IssuesView />;
+  return <ActionCenterView />;
 }

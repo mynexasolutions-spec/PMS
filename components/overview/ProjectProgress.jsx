@@ -37,33 +37,41 @@ function Ring({ percent }) {
 
 function PhaseBadge({ n, done, current }) {
   const tone = done ? "bg-brand-700 text-white" : current ? "bg-[#cdeed4] text-brand-800" : "bg-[#eceeed] text-ink/80";
-  return <span className={`grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full text-[15px] font-bold ${tone}`}>{done ? <Check size={16} strokeWidth={3} /> : n}</span>;
+  return (
+    <span className={`grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full text-[15px] font-bold ${tone}`}>
+      {done ? <Check size={16} strokeWidth={3} /> : n}
+    </span>
+  );
 }
 
 export default function ProjectProgress() {
-  const { progress, projectProgress, myProgress, myProjectProgress, isMember } = useApp();
+  const { projectProgress } = useApp();
 
-  const displayProgress = isMember ? myProgress : progress;
-  const list = isMember ? myProjectProgress : projectProgress;
-  const eyebrowText = isMember ? "My assigned projects" : "All projects";
+  // Filter to user's active projects (excluding vault-only containers)
+  const list = projectProgress.filter(({ project }) => !project.isVaultOnly);
+
+  // Overall completion percent across user's projects
+  const totalTasks = list.reduce((sum, item) => sum + item.total, 0);
+  const doneTasks = list.reduce((sum, item) => sum + item.done, 0);
+  const displayProgress = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
 
   return (
     <section className="panel p-5 h-full flex flex-col justify-between">
       <div className="flex items-center gap-3.5">
         <div>
-          <p className="eyebrow">{eyebrowText}</p>
+          <p className="eyebrow">My Projects</p>
           <h2 className="text-[21px] font-bold tracking-tight">Project progress</h2>
         </div>
-        <Link href="/tasks" className="ml-auto inline-flex items-center gap-1.5 text-[14px] font-medium text-brand-700 hover:underline">
-          All tasks <ArrowRight size={15} />
+        <Link href="/projects" className="ml-auto inline-flex items-center gap-1.5 text-[14px] font-medium text-brand-700 hover:underline">
+          View all <ArrowRight size={15} />
         </Link>
       </div>
 
       {list.length === 0 ? (
         <div className="my-auto flex flex-col items-center justify-center rounded-2xl border border-dashed border-line bg-[#fafcfb] py-10 text-center">
-          <p className="text-[16px] font-bold text-ink">No projects assigned yet</p>
+          <p className="text-[16px] font-bold text-ink">No projects yet</p>
           <p className="mt-1 max-w-[360px] text-[13.5px] text-muted">
-            Once an admin or manager assigns a project to you, its progress graph and details will appear here.
+            You are not part of any project teams yet. Create a project or get invited by an admin to track progress here.
           </p>
         </div>
       ) : (
@@ -80,13 +88,23 @@ export default function ProjectProgress() {
                   <PhaseBadge n={index + 1} done={complete} current={current} />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <p className="text-[15px] font-semibold leading-tight">{project.name}</p>
+                      <Link
+                        href={`/projects/${project.id}`}
+                        className="text-[15px] font-semibold leading-tight hover:text-brand-700 hover:underline transition"
+                      >
+                        {project.name}
+                      </Link>
                       <StageChip stage={project.stage} />
                     </div>
-                    <p className="mt-0.5 text-[13px] text-muted">{done} of {total} tasks done</p>
+                    <p className="mt-0.5 text-[13px] text-muted">
+                      {done} of {total} tasks done
+                    </p>
                     {current && (
                       <div className="mt-1.5 h-[6px] rounded-full bg-[#e8ecea]">
-                        <div className="h-full rounded-full bg-gradient-to-r from-[#3cb865] to-[#1f8a4c]" style={{ width: `${percent}%` }} />
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-[#3cb865] to-[#1f8a4c]"
+                          style={{ width: `${percent}%` }}
+                        />
                       </div>
                     )}
                   </div>

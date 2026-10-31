@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Modal from "@/components/ui/Modal";
 import { useApp } from "@/components/AppProvider";
-import { PRIORITIES, TASK_STATUSES, TASK_TYPES, TASK_STATUS_LABELS, priorityLabel } from "@/lib/constants";
-import { AlertCircle, Clock } from "lucide-react";
+import { PRIORITIES, TASK_STATUSES, TASK_STATUS_LABELS, priorityLabel } from "@/lib/constants";
+import { AlertCircle } from "lucide-react";
 
 function CompactSelect({ label, value, onChange, children, className = "" }) {
   return (
@@ -39,34 +39,43 @@ export default function IssueModal() {
   const editingTask = issueModal.task;
   const [saving, setSaving] = useState(false);
 
+  // Resolved projectId: either from editing task, parent, modal trigger, or current active project
+  const resolvedProjectId =
+    editingTask?.projectId ??
+    parent?.projectId ??
+    issueModal.projectId ??
+    (isMember ? myProjects[0]?.id : projects[0]?.id) ??
+    projects[0]?.id ??
+    null;
+
   const [form, setForm] = useState({
     title: editingTask?.title ?? "",
-    type: editingTask?.type ?? (parent ? "Subtask" : "Task"),
+    type: editingTask?.type ?? "Task",
     status: editingTask?.status ?? issueModal?.initialStatus ?? "todo",
     priority: editingTask?.priority ?? "medium",
-    projectId:
-      editingTask?.projectId ??
-      parent?.projectId ??
-      issueModal.projectId ??
-      (isMember ? myProjects[0]?.id : projects[0]?.id) ??
-      null,
+    projectId: resolvedProjectId,
     parentId: editingTask?.parentId ?? parent?.id ?? null,
-    assigneeId: editingTask ? editingTask.assigneeId : currentUser.id,
-    dueAt: editingTask?.dueAt ? editingTask.dueAt.slice(0, 16) : (issueModal.dueAt ?? ""),
-    estimateHours: editingTask?.estimateHours ?? 0,
-    loggedHours: editingTask?.loggedHours ?? 0,
+    assigneeId: editingTask?.assigneeId ?? null, // Default to Unassigned
     blockerReason: editingTask?.blockerReason ?? "",
   });
 
   const set = (patch) => setForm((current) => ({ ...current, ...patch }));
+
+  // Filter available parent tasks to the same project
+  const projectTasks = tasks.filter(
+    (t) => t.projectId === form.projectId && (!editingTask || t.id !== editingTask.id),
+  );
 
   async function submit(event) {
     event.preventDefault();
     setSaving(true);
     const payload = {
       ...form,
-      estimateHours: Number(form.estimateHours) >= 0 ? Number(form.estimateHours) : 0,
-      loggedHours: Number(form.loggedHours) >= 0 ? Number(form.loggedHours) : 0,
+      projectId: Number(form.projectId),
+      type: form.type || "Task",
+      estimateHours: 0,
+      loggedHours: 0,
+      dueAt: null,
       blockerReason:
         form.status === "blocked"
           ? form.blockerReason?.trim() || "Blocked by external dependency"
@@ -106,14 +115,8 @@ export default function IssueModal() {
           />
         </label>
 
-        {/* Row 2: Type, Status, Priority (3 Columns) */}
+        {/* Row 2: Status, Priority, Assign to (3 Columns) */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-          <CompactSelect label="Task type" value={form.type} onChange={(type) => set({ type })}>
-            {TASK_TYPES.map((type) => (
-              <option key={type}>{type}</option>
-            ))}
-          </CompactSelect>
-
           <CompactSelect label="Status" value={form.status} onChange={(status) => set({ status })}>
             {TASK_STATUSES.map((status) => (
               <option key={status} value={status}>
@@ -128,6 +131,21 @@ export default function IssueModal() {
                 {priorityLabel[priority]}
               </option>
             ))}
+          </CompactSelect>
+
+          <CompactSelect
+            label="Assign to"
+            value={form.assigneeId ?? ""}
+            onChange={(value) => set({ assigneeId: value ? Number(value) : null })}
+          >
+            <option value="">Unassigned</option>
+            {users
+              .filter((user) => user.active)
+              .map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.name} {user.id === currentUser?.id ? "(me)" : ""}
+                </option>
+              ))}
           </CompactSelect>
         </div>
 
@@ -146,99 +164,20 @@ export default function IssueModal() {
           </div>
         )}
 
-        {/* Row 3: Project, Assign to, Due date (3 Columns) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-          <CompactSelect
-            label="Project"
-            value={form.projectId ?? ""}
-            onChange={(value) => set({ projectId: Number(value) })}
-          >
-            {(isMember ? myProjects : projects).map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}
-              </option>
-            ))}
-          </CompactSelect>
-
-          <CompactSelect
-            label="Assign to"
-            value={form.assigneeId ?? ""}
-            onChange={(value) => set({ assigneeId: value ? Number(value) : null })}
-          >
-            {isMember ? (
-              <option value={currentUser.id}>{currentUser.name} (me)</option>
-            ) : (
-              <>
-                {users
-                  .filter((user) => user.active)
-                  .map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.id === currentUser.id ? `${user.name} (me)` : user.name}
-                    </option>
-                  ))}
-                <option value="">Unassigned</option>
-              </>
-            )}
-          </CompactSelect>
-
-          <label className="field text-[12.5px] font-semibold text-ink/75">
-            <span>Due date</span>
-            <input
-              type="datetime-local"
-              className="!py-1.5 !text-[13px]"
-              value={form.dueAt}
-              onChange={(e) => set({ dueAt: e.target.value })}
-            />
-          </label>
-        </div>
-
-        {/* Row 4: Parent task (2 cols) + Est Hours (1 col) + Logged Hours (1 col) */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+        {/* Row 3: Parent task */}
+        <div>
           <CompactSelect
             label="Parent task"
-            className="sm:col-span-2"
             value={form.parentId ?? ""}
             onChange={(value) => set({ parentId: value ? Number(value) : null })}
           >
             <option value="">No parent — top level</option>
-            {(isMember ? myTasks : tasks)
-              .filter((task) => !editingTask || task.id !== editingTask.id)
-              .map((task) => (
-                <option key={task.id} value={task.id}>
-                  {task.issueKey} · {task.title}
-                </option>
-              ))}
+            {projectTasks.map((task) => (
+              <option key={task.id} value={task.id}>
+                {task.issueKey} · {task.title}
+              </option>
+            ))}
           </CompactSelect>
-
-          <label className="field text-[12.5px] font-semibold text-ink/75">
-            <span className="flex items-center gap-1">
-              <Clock size={12} className="text-brand-700" /> Est. hours
-            </span>
-            <input
-              type="number"
-              min="0"
-              step="0.5"
-              className="!py-1.5 !text-[13.5px]"
-              placeholder="e.g. 4.0"
-              value={form.estimateHours || ""}
-              onChange={(e) => set({ estimateHours: parseFloat(e.target.value) || 0 })}
-            />
-          </label>
-
-          <label className="field text-[12.5px] font-semibold text-ink/75">
-            <span className="flex items-center gap-1">
-              <Clock size={12} className="text-blue-600" /> Logged hrs
-            </span>
-            <input
-              type="number"
-              min="0"
-              step="0.5"
-              className="!py-1.5 !text-[13.5px]"
-              placeholder="e.g. 2.5"
-              value={form.loggedHours || ""}
-              onChange={(e) => set({ loggedHours: parseFloat(e.target.value) || 0 })}
-            />
-          </label>
         </div>
 
         {/* Actions Footer */}

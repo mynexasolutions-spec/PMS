@@ -47,10 +47,10 @@ function Card({ icon: Icon, tile, iconColor, spark, label, value, foot }) {
 
 export default function StatCards() {
   const { tasks, projects, completed, progress, active, deadlineDays, deadlineLabel, nextDeadline, isMember, myTasks, myProjects } = useApp();
-  const currentTasks = isMember ? myTasks : tasks;
-  const currentProjects = isMember ? myProjects : projects;
-  const doneCount = isMember ? currentTasks.filter((t) => t.status === "done").length : completed;
-  const activeCount = isMember ? currentTasks.filter((t) => t.status === "progress").length : active;
+  const currentTasks = myTasks;
+  const currentProjects = myProjects;
+  const doneCount = currentTasks.filter((t) => t.status === "done").length;
+  const activeCount = currentTasks.filter((t) => t.status === "progress").length;
   const progressPct = currentTasks.length ? Math.round((doneCount / currentTasks.length) * 100) : 0;
   const activeProjects = currentProjects.filter((project) => project.stage !== "complete").length;
 
@@ -84,7 +84,7 @@ export default function StatCards() {
         spark="#f6b04a"
         label="Active tasks"
         value={String(activeCount)}
-        foot={isMember ? "Assigned to you" : "Across all projects"}
+        foot="Assigned to you"
       />
       <Card
         icon={CalendarDays}

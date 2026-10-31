@@ -5,6 +5,9 @@ export const KINDS = {
   task: { label: "Task", tone: "green" },
   todo: { label: "To-do", tone: "blue" },
   milestone: { label: "Milestone", tone: "purple" },
+  meeting: { label: "Meeting", tone: "blue" },
+  release: { label: "Release", tone: "purple" },
+  deadline: { label: "Deadline", tone: "red" },
 };
 
 export const TONES = {
@@ -62,7 +65,11 @@ export function buildEvents({ tasks, todos }) {
 }
 
 /** Open high-priority work is red whatever it is; everything else takes its kind's colour. */
-export const toneOf = (event) => TONES[event.priority === "high" && !event.done ? "red" : KINDS[event.kind].tone];
+export const toneOf = (event) => {
+  if (event.priority === "high" && !event.done) return TONES.red;
+  const toneKey = KINDS[event.kind]?.tone ?? "green";
+  return TONES[toneKey] ?? TONES.green;
+};
 
 export const byTime = (a, b) => (a.time ?? "99:99").localeCompare(b.time ?? "99:99") || a.title.localeCompare(b.title);
 
@@ -92,7 +99,7 @@ export function EventCard({ event, showDate = false }) {
     >
       <div className="flex flex-wrap items-center gap-x-2 text-[12px] text-muted">
         <span className="font-medium text-ink/70">{formatClock(event.time)}</span>
-        <span className={`rounded px-1.5 py-px font-semibold ${tone.bg} ${tone.text}`}>{KINDS[event.kind].label}</span>
+        <span className={`rounded px-1.5 py-px font-semibold ${tone.bg} ${tone.text}`}>{KINDS[event.kind]?.label ?? "Event"}</span>
         {showDate && <span>{event.date}</span>}
       </div>
       <p className={`mt-1 text-[14.5px] font-medium leading-snug ${event.done ? "text-ink/50 line-through" : ""}`}>{event.title}</p>

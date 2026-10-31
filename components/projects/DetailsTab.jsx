@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, ExternalLink, FlaskConical, GitBranch, Globe, Layers, Pencil, Server, StickyNote, UserCheck } from "lucide-react";
-import Avatar from "@/components/ui/Avatar";
+import { Building2, ExternalLink, FlaskConical, GitBranch, Globe, Layers, Pencil, Server, StickyNote } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
 import CopyButton from "@/components/ui/CopyButton";
 
@@ -41,7 +40,7 @@ function LinkValue({ url }) {
 }
 
 function DetailsForm({ project, onDone }) {
-  const { updateProject, users } = useApp();
+  const { updateProject } = useApp();
   const [form, setForm] = useState({
     name: project.name,
     description: project.description ?? "",
@@ -52,7 +51,6 @@ function DetailsForm({ project, onDone }) {
     stagingUrl: project.stagingUrl ?? "",
     liveUrl: project.liveUrl ?? "",
     notes: project.notes ?? "",
-    assigneeId: project.assigneeId ?? "",
   });
   const [busy, setBusy] = useState(false);
   const set = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.value }));
@@ -75,15 +73,6 @@ function DetailsForm({ project, onDone }) {
         <label className="field">
           Client
           <input maxLength={80} placeholder="Who is this project for?" value={form.clientName} onChange={set("clientName")} />
-        </label>
-        <label className="field md:col-span-2">
-          Assigned team member
-          <select value={form.assigneeId} onChange={(e) => setForm((c) => ({ ...c, assigneeId: e.target.value ? Number(e.target.value) : null }))}>
-            <option value="">Unassigned</option>
-            {users.filter((u) => u.active).map((u) => (
-              <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
-            ))}
-          </select>
         </label>
         <label className="field md:col-span-2">
           Short description
@@ -127,11 +116,9 @@ function DetailsForm({ project, onDone }) {
   );
 }
 
-/** What the team should know about a project. Everyone reads it; managers edit it. */
+/** What the team should know about a project. Everyone reads it; Project Admins edit it. */
 export default function DetailsTab({ project, canEdit }) {
-  const { users } = useApp();
   const [editing, setEditing] = useState(false);
-  const assignedUser = users.find((u) => u.id === project.assigneeId);
 
   if (editing) return <DetailsForm project={project} onDone={() => setEditing(false)} />;
 
@@ -149,22 +136,11 @@ export default function DetailsTab({ project, canEdit }) {
             <Pencil size={15} /> Edit details
           </button>
         ) : (
-          <p className="ml-auto text-[13px] text-muted">Only managers can edit these details.</p>
+          <p className="ml-auto text-[13px] text-muted">Only Project Admins can edit these details.</p>
         )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Row icon={UserCheck} label="Assigned to">
-          {assignedUser ? (
-            <div className="flex items-center gap-2">
-              <Avatar user={assignedUser} size={24} />
-              <span className="font-semibold text-ink">{assignedUser.name}</span>
-              <span className="text-[12.5px] text-muted">({assignedUser.role})</span>
-            </div>
-          ) : (
-            <Empty />
-          )}
-        </Row>
         <Row icon={Building2} label="Client">
           {project.clientName || <Empty />}
         </Row>

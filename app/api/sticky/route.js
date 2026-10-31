@@ -1,5 +1,5 @@
 import { authorize } from "@/lib/auth";
-import { createStickyNote, getStickyNotes } from "@/lib/db/repo";
+import { createStickyNote, getStickyNotes, isProjectMember } from "@/lib/db/repo";
 import { isStickyColor, STICKY_CATEGORIES } from "@/lib/constants";
 import { fail, readJson } from "@/lib/http";
 
@@ -10,12 +10,19 @@ export async function GET(request) {
   const auth = await authorize(request);
   if (auth.error) return auth.error;
 
-  const notes = getStickyNotes();
-  if (auth.user.role === "member") {
-    const filtered = notes.filter((n) => n.userId === auth.user.id || n.userId == null);
-    return Response.json({ notes: filtered });
+  const url = new URL(request.url);
+  const projectIdParam = url.searchParams.get("projectId");
+  const projectId = projectIdParam ? Number(projectIdParam) : null;
+
+  if (projectId) {
+    const isMember = isProjectMember(projectId, auth.user.id);
+    if (!isMember) return fail("Forbidden: You are not a member of this project.", 403);
+    const notes = getStickyNotes(projectId);
+    return Response.json({ notes });
   }
 
+  // Personal sticky notes
+  const notes = getStickyNotes().filter((n) => n.userId === auth.user.id);
   return Response.json({ notes });
 }
 
@@ -31,5 +38,15 @@ export async function POST(request) {
   if (body.category != null && !STICKY_CATEGORIES.includes(body.category)) return fail("Invalid category.");
 
   const color = isStickyColor(body.color) ? body.color : "yellow";
-  return Response.json({ note: createStickyNote(content, color, body.category ?? null, auth.user.id) }, { status: 201 });
+  const projectId = body?.projectId ? Number(body.projectId) : null;
+
+  if (projectId) {
+    const isMember = isProjectMember(projectId, auth.user.id);
+    if (!isMember) return fail("Forbidden: You are not a member of this project.", 403);
+    const note = createStickyNote(content, color, body.category ?? null, auth.user.id, projectId);
+    return Response.json({ note }, { status: 201 });
+  }
+
+  const note = createStickyNote(content, color, body.category ?? null, auth.user.id, null);
+  return Response.json({ note }, { status: 201 });
 }

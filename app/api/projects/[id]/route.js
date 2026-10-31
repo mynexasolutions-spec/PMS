@@ -1,5 +1,5 @@
-import { MANAGERS, authorize } from "@/lib/auth";
-import { createNotification, deleteProject, getProject, updateProject } from "@/lib/db/repo";
+import { authorize } from "@/lib/auth";
+import { createNotification, deleteProject, getProject, isProjectAdmin, updateProject } from "@/lib/db/repo";
 import { isStage } from "@/lib/constants";
 import { fail, idFrom, noContent, readJson } from "@/lib/http";
 
@@ -26,14 +26,18 @@ const isWebUrl = (value) => {
   }
 };
 
-/** Managers and admins update a project's stage, name, description, colour and details. */
+/** Project Admins update a project's stage, name, description, colour and details. */
 export async function PATCH(request, { params }) {
-  const auth = await authorize(request, MANAGERS);
+  const auth = await authorize(request);
   if (auth.error) return auth.error;
 
   const id = await idFrom(params);
   const previousProject = id !== null ? getProject(id) : null;
-  if (id === null || !getProject(id)) return fail("Project not found.", 404);
+  if (!previousProject) return fail("Project not found.", 404);
+
+  if (!isProjectAdmin(id, auth.user.id)) {
+    return fail("Only a Project Admin can modify project details.", 403);
+  }
 
   const body = await readJson(request);
   if (!body) return fail("Invalid request.");
@@ -96,11 +100,16 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  const auth = await authorize(request, MANAGERS);
+  const auth = await authorize(request);
   if (auth.error) return auth.error;
 
   const id = await idFrom(params);
-  if (id === null || !getProject(id)) return fail("Project not found.", 404);
+  const project = id !== null ? getProject(id) : null;
+  if (!project) return fail("Project not found.", 404);
+
+  if (!isProjectAdmin(id, auth.user.id)) {
+    return fail("Only a Project Admin can delete this project.", 403);
+  }
 
   return deleteProject(id) ? noContent() : fail("Project could not be deleted.", 500);
 }

@@ -63,9 +63,9 @@ export default function CalendarView() {
   useCloseOnOutsideClick(scheduleOpen, () => setScheduleOpen(false));
 
   const date = picked ?? todayDate;
-  const calendarTasks = isMember ? myTasks : tasks;
-  const calendarTodos = isMember ? myTodos : todos;
-  const calendarProjects = isMember ? myProjects : projects;
+  const calendarTasks = myTasks;
+  const calendarTodos = myTodos;
+  const calendarProjects = myProjects;
   const events = buildEvents({ tasks: filterTasks(calendarTasks), todos: calendarTodos }).filter(
     (event) => kinds[event.kind] && (projectId === "all" || event.projectId === projectId) && (!highOnly || event.priority === "high"),
   );
@@ -98,8 +98,8 @@ export default function CalendarView() {
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-ink/70">{longDate(todayDate, true)}</p>
-          <h1 className="mt-2 text-[44px] font-extrabold leading-none tracking-tight md:text-[50px]">Calendar</h1>
-          <p className="mt-3 text-[16px] text-muted">See upcoming project deadlines and meetings in one place.</p>
+          <h1 className="mt-2 text-[44px] font-extrabold leading-none tracking-tight md:text-[50px]">My <span className="text-brand-600">Calendar</span></h1>
+          <p className="mt-3 text-[16px] text-muted">See your scheduled tasks, to-dos, and project deadlines in one place.</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">

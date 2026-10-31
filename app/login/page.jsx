@@ -34,7 +34,7 @@ export default async function LoginPage() {
         <div className="mx-auto my-auto w-full max-w-[410px]">
           <LoginForm noAccounts={countUsers() === 0} demo={await demoAccounts()} />
         </div>
-        <p className="mt-10 text-center text-[12.5px] text-muted">© {new Date().getFullYear()} Nexa Solution · Need an account? Ask your admin.</p>
+        <p className="mt-10 text-center text-[12.5px] text-muted">© {new Date().getFullYear()} Nexa PMS · Modern Workspace</p>
       </div>
     </main>
   );

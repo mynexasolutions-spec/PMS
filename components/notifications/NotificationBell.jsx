@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, CheckCheck, FolderKanban, CheckSquare, Sparkles, Clock } from "lucide-react";
+import { Bell, Check, CheckCheck, FolderKanban, CheckSquare, Sparkles, Clock, UserPlus, X } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
 import { useCloseOnOutsideClick } from "@/components/ui/useCloseOnOutsideClick";
+import { request } from "@/lib/api";
 
 function timeAgo(dateString) {
   if (!dateString) return "";
@@ -23,8 +24,16 @@ function timeAgo(dateString) {
 
 export default function NotificationBell() {
   const router = useRouter();
-  const { notifications = [], unreadNotificationsCount = 0, markNotificationAsRead, markAllNotificationsAsRead } = useApp();
+  const {
+    notifications = [],
+    unreadNotificationsCount = 0,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+    refreshNotifications,
+    notify,
+  } = useApp();
   const [open, setOpen] = useState(false);
+  const [actionBusy, setActionBusy] = useState(null);
   useCloseOnOutsideClick(open, () => setOpen(false));
 
   function handleItemClick(notification) {
@@ -34,6 +43,38 @@ export default function NotificationBell() {
     setOpen(false);
     if (notification.link) {
       router.push(notification.link);
+    }
+  }
+
+  async function respondToInvite(notification, action, event) {
+    if (event) event.stopPropagation();
+    const projectId =
+      notification.metadata?.projectId || Number(notification.link?.replace("/projects/", "").split("?")[0]);
+    if (!projectId) return;
+
+    setActionBusy(notification.id);
+    const { ok, data } = await request("/api/invites/respond", "POST", {
+      notificationId: notification.id,
+      projectId,
+      action,
+    });
+    setActionBusy(null);
+
+    if (!ok) {
+      notify?.(data?.error ?? "Could not respond to invitation.");
+      return;
+    }
+
+    if (action === "accept") {
+      notify?.(`You joined "${data.projectName}"!`);
+      refreshNotifications?.();
+      router.refresh();
+      setOpen(false);
+      router.push(`/projects/${projectId}`);
+    } else {
+      notify?.("Invitation declined.");
+      refreshNotifications?.();
+      router.refresh();
     }
   }
 
@@ -84,22 +125,26 @@ export default function NotificationBell() {
           </div>
 
           {/* List */}
-          <div className="max-h-[360px] overflow-y-auto divide-y divide-line/60">
+          <div className="max-h-[380px] overflow-y-auto divide-y divide-line/60">
             {notifications && notifications.length > 0 ? (
               <>
                 {notifications.map((item) => {
+                  const isInvite = item.type === "project_invite" || item.title?.toLowerCase().includes("invitation");
                   const isProject = item.title?.toLowerCase().includes("project");
+
                   return (
                     <div
                       key={item.id}
-                      onClick={() => handleItemClick(item)}
-                      className={`flex cursor-pointer w-full text-left items-start gap-3 p-3.5 transition hover:bg-[#f2f8f4] ${
-                        !item.read ? "bg-[#f0f9f3]" : "bg-white"
-                      }`}
+                      onClick={() => !isInvite && handleItemClick(item)}
+                      className={`flex w-full text-left items-start gap-3 p-3.5 transition ${
+                        !isInvite ? "cursor-pointer hover:bg-[#f2f8f4]" : ""
+                      } ${!item.read ? "bg-[#f0f9f3]" : "bg-white"}`}
                     >
                       <div
                         className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl mt-0.5 ${
-                          isProject
+                          isInvite
+                            ? "bg-amber-100 text-amber-800 shadow-xs ring-1 ring-amber-300"
+                            : isProject
                             ? !item.read
                               ? "bg-[#d8f2df] text-brand-800 shadow-xs"
                               : "bg-[#eef5f0] text-brand-700/80"
@@ -108,7 +153,13 @@ export default function NotificationBell() {
                             : "bg-[#eef3fb] text-[#3363c4]/80"
                         }`}
                       >
-                        {isProject ? <FolderKanban size={17} /> : <CheckSquare size={17} />}
+                        {isInvite ? (
+                          <UserPlus size={17} />
+                        ) : isProject ? (
+                          <FolderKanban size={17} />
+                        ) : (
+                          <CheckSquare size={17} />
+                        )}
                       </div>
 
                       <div className="flex-1 min-w-0">
@@ -123,6 +174,28 @@ export default function NotificationBell() {
                         <p className={`mt-0.5 text-[12.5px] leading-snug line-clamp-2 ${!item.read ? "text-ink/85 font-medium" : "text-muted"}`}>
                           {item.message}
                         </p>
+
+                        {/* Interactive Accept / Decline Action Buttons for Invitations */}
+                        {isInvite && !item.read && (
+                          <div className="mt-2.5 flex items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={actionBusy === item.id}
+                              onClick={(e) => respondToInvite(item, "accept", e)}
+                              className="btn-primary h-7 px-3 text-[11.5px] inline-flex items-center gap-1 shadow-xs font-bold"
+                            >
+                              <Check size={13} strokeWidth={2.4} /> Accept
+                            </button>
+                            <button
+                              type="button"
+                              disabled={actionBusy === item.id}
+                              onClick={(e) => respondToInvite(item, "decline", e)}
+                              className="btn-secondary h-7 px-2.5 text-[11.5px] inline-flex items-center gap-1 text-ink/75 hover:text-red-700 hover:bg-red-50 hover:border-red-200"
+                            >
+                              <X size={13} /> Decline
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {!item.read && (
@@ -144,7 +217,7 @@ export default function NotificationBell() {
                 </div>
                 <p className="mt-3 text-[14px] font-bold text-ink">All caught up!</p>
                 <p className="mt-1 text-[12px] text-muted max-w-[240px] mx-auto">
-                  When a project or task is assigned to you, it will appear here.
+                  When you receive an invitation or update, it will appear here.
                 </p>
               </div>
             )}

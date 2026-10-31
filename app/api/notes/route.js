@@ -9,19 +9,11 @@ export const dynamic = "force-dynamic";
 const MAX_TITLE = 100;
 const MAX_CONTENT = 2000;
 
-import { getProjects } from "@/lib/db/repo";
-
 export async function GET(request) {
   const auth = await authorize(request);
   if (auth.error) return auth.error;
 
-  const notes = getNotes();
-  if (auth.user.role === "member") {
-    const myProjectIds = new Set(getProjects().filter((p) => p.assigneeId === auth.user.id).map((p) => p.id));
-    const filtered = notes.filter((n) => n.userId === auth.user.id || (n.projectId && myProjectIds.has(n.projectId)) || (n.userId == null && n.projectId == null));
-    return Response.json({ notes: filtered });
-  }
-
+  const notes = getNotes().filter((n) => n.userId === auth.user.id);
   return Response.json({ notes });
 }
 

@@ -204,9 +204,9 @@ export default function NotesView() {
         <div className="relative">
           <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-ink/70">{longDate(todayDate, true)}</p>
           <h1 className="mt-2 text-[44px] font-extrabold leading-none tracking-tight md:text-[50px]">
-            Team <span className="text-brand-600">notes</span>
+            My <span className="text-brand-600">notes</span>
           </h1>
-          <p className="mt-3 max-w-[560px] text-[16px] text-muted">Capture meeting notes, requirements, ideas and useful links.</p>
+          <p className="mt-3 max-w-[560px] text-[16px] text-muted">Your private workspace for meeting notes, ideas, requirements, and useful links.</p>
         </div>
       </header>
 

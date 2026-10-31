@@ -35,6 +35,7 @@ export function AppProvider({ initial, children }) {
   const [users, setUsers] = useState(initial.users);
   const [commentCounts, setCommentCounts] = useState(initial.commentCounts);
   const [notifications, setNotifications] = useState(initial.notifications ?? []);
+  const [actionRequests, setActionRequests] = useState(initial.actionRequests ?? []);
   const currentUser = initial.user;
 
   const [query, setQuery] = useState("");
@@ -392,31 +393,60 @@ export function AppProvider({ initial, children }) {
     notify("Sticky note removed.");
   }
 
+  // ---------- workspace action requests (Idea 2) ----------
+
+  async function createAction(input) {
+    const { ok, data } = await request("/api/actions", "POST", input);
+    if (!ok) {
+      notify(data?.error ?? "Could not create action request.");
+      return null;
+    }
+    setActionRequests((prev) => [data.action, ...prev]);
+    notify("Action request sent to teammate!");
+    return data.action;
+  }
+
+  async function updateAction(id, patch) {
+    const { ok, data } = await request(`/api/actions/${id}`, "PATCH", patch);
+    if (!ok) {
+      notify(data?.error ?? "Could not update action.");
+      return null;
+    }
+    setActionRequests((prev) => prev.map((a) => (a.id === id ? data.action : a)));
+    if (patch.status === "completed") {
+      notify("Action marked as completed! 🎉");
+    }
+    return data.action;
+  }
+
+  async function deleteAction(id) {
+    const { ok, data } = await request(`/api/actions/${id}`, "DELETE");
+    if (!ok) {
+      notify(data?.error ?? "Could not delete action.");
+      return false;
+    }
+    setActionRequests((prev) => prev.filter((a) => a.id !== id));
+    notify("Action request removed.");
+    return true;
+  }
+
   // ---------- derived numbers ----------
 
   const completed = tasks.filter((task) => task.status === "done").length;
   const active = tasks.filter((task) => task.status === "progress").length;
   const progress = tasks.length ? Math.round((completed / tasks.length) * 100) : 0;
 
-  const isMember = currentUser?.role === "member";
+  const isMember = false;
   const myTasks = useMemo(
-    () => (isMember ? tasks.filter((t) => t.assigneeId === currentUser?.id) : tasks),
-    [isMember, tasks, currentUser?.id],
+    () => tasks.filter((t) => t.assigneeId === currentUser?.id),
+    [tasks, currentUser?.id],
   );
   const myTodos = useMemo(
-    () => (isMember ? todos.filter((t) => t.assigneeId === currentUser?.id) : todos),
-    [isMember, todos, currentUser?.id],
+    () => todos.filter((t) => t.assigneeId === currentUser?.id || t.createdBy === currentUser?.id),
+    [todos, currentUser?.id],
   );
-  const myProjects = useMemo(
-    () => (isMember ? projects.filter((project) => project.assigneeId === currentUser?.id) : projects),
-    [isMember, projects, currentUser?.id],
-  );
-
-  const myProjectTasks = useMemo(() => {
-    if (!isMember) return tasks;
-    const myIds = new Set(myProjects.map((p) => p.id));
-    return tasks.filter((task) => myIds.has(task.projectId));
-  }, [isMember, tasks, myProjects]);
+  const myProjects = projects;
+  const myProjectTasks = tasks;
 
   const myCompleted = myProjectTasks.filter((task) => task.status === "done").length;
   const myProgress = myProjectTasks.length ? Math.round((myCompleted / myProjectTasks.length) * 100) : 0;
@@ -441,13 +471,13 @@ export function AppProvider({ initial, children }) {
     [projects, tasks],
   );
 
-  const deadlineTasks = isMember ? myTasks : tasks;
+  const deadlineTasks = myTasks;
   const nextDeadline = useMemo(() => {
     const floor = now ? startOfDay(now).getTime() : 0;
-    return tasks
+    return myTasks
       .filter((task) => task.status !== "done" && task.dueAt && new Date(task.dueAt).getTime() >= floor)
       .sort((a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime())[0];
-  }, [now, deadlineTasks]);
+  }, [now, myTasks]);
 
   const deadlineDays = nextDeadline && now ? daysBetween(now, new Date(nextDeadline.dueAt)) : null;
   const deadlineLabel =
@@ -461,7 +491,7 @@ export function AppProvider({ initial, children }) {
       const monday = startOfDay(now);
       monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
       todayIndex = daysBetween(monday, now);
-      for (const task of deadlineTasks) {
+      for (const task of myTasks) {
         if (task.status === "done" || !task.dueAt) continue;
         const offset = daysBetween(monday, new Date(task.dueAt));
         if (offset >= 0 && offset < 7) counts[offset] += 1;
@@ -470,15 +500,19 @@ export function AppProvider({ initial, children }) {
     const max = Math.max(...counts, 1);
     return {
       todayIndex,
+      counts,
       total: counts.reduce((sum, value) => sum + value, 0),
       heights: counts.map((count) => Math.max(8, Math.round((count / max) * 100))),
     };
-  }, [now, deadlineTasks]);
+  }, [now, myTasks]);
 
   const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
+  const myPendingActionsCount = actionRequests.filter(
+    (a) => a.assigneeId === currentUser?.id && a.status === "pending"
+  ).length;
   const todayTodos = todos.filter((todo) => todo.todoDate === todayDate);
   // The badge counts what is on *my* plate today.
-  const openTodosToday = todayTodos.filter((todo) => !todo.done && todo.assigneeId === currentUser.id).length;
+  const openTodosToday = todayTodos.filter((todo) => !todo.done && (todo.assigneeId === currentUser?.id || todo.createdBy === currentUser?.id)).length;
 
   /** Applies the top-bar search box to a task list. */
   function filterTasks(list) {
@@ -489,18 +523,20 @@ export function AppProvider({ initial, children }) {
 
   const value = {
     // data
-    tasks, projects, notes, todos, sticky, focusItems, users, commentCounts, currentUser, notifications, unreadNotificationsCount, markNotificationAsRead, markAllNotificationsAsRead, refreshNotifications,
+    tasks, projects, setProjects, notes, todos, sticky, focusItems, users, commentCounts, currentUser, notifications, unreadNotificationsCount, markNotificationAsRead, markAllNotificationsAsRead, refreshNotifications,
     signOut, addUser, editUser, setCommentCount,
     // ui state
     query, setQuery, toast, notify, now, todayDate, sidebarOpen, setSidebarOpen, sidebarCollapsed, setSidebarCollapsed, toggleSidebarCollapsed: () => setSidebarCollapsed((v) => !v),
     issueModal, openIssueModal: (parent = null, projectId = null, dueAt = null, task = null, initialStatus = null) => setIssueModal({ parent, projectId, dueAt, task, initialStatus }), closeIssueModal: () => setIssueModal(null),
     projectModalOpen, setProjectModalOpen, stickyModalOpen, setStickyModalOpen,
     // actions
+    createAction, updateAction, deleteAction,
     updateTask, createIssue, deleteTask, createProject, updateProject, deleteProject, toggleBlacklistProject, createNote, updateNote, deleteNote, removeAttachment,
     patchTodo, addTodo, deleteTodo, postponeTodo, carryOverTodos,
     addFocus, toggleFocus, deleteFocus, createSticky, toggleSticky, deleteSticky,
     goToProject: (project) => router.push(`/projects/${project.id}`),
     // derived
+    actionRequests, myPendingActionsCount,
     completed, active, progress, projectProgress, myTasks, myTodos, myProjects, myProgress, myProjectProgress, isMember, nextDeadline, deadlineDays, deadlineLabel, deadlineProgress,
     weekLoad, todayTodos, openTodosToday, filterTasks,
   };

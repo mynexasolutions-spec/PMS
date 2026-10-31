@@ -135,9 +135,9 @@ export default function StickyPage() {
       <header className="border-b border-line bg-white/50 px-5 pb-5 pt-7 md:px-[34px]">
         <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-ink/70">{longDate(todayDate, true)}</p>
         <h1 className="mt-2 text-[40px] font-extrabold leading-none tracking-tight md:text-[46px]">
-          Sticky <span className="text-brand-600">Notes</span>
+          My Sticky <span className="text-brand-600">Notes</span>
         </h1>
-        <p className="mt-3 text-[16px] text-muted">Quick reminders and blockers for the team.</p>
+        <p className="mt-3 text-[16px] text-muted">Your personal quick reminders, thoughts, and scratchpad.</p>
       </header>
 
       <div className="space-y-6 px-5 py-5 md:px-[34px]">

@@ -222,13 +222,13 @@ export default function DailyBoard() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold tracking-tight text-ink sm:text-2xl md:text-[28px]">
-                Task <span className="text-brand-700">Board</span>
+                My Daily <span className="text-brand-700">To-Do</span>
               </h1>
               <span className="inline-flex items-center rounded-md bg-[#edf7f0] px-2 py-0.5 text-[11px] sm:text-[12px] font-semibold text-brand-800 border border-brand-200/60">
-                Daily To-Do
+                Personal Planner
               </span>
             </div>
-            <p className="mt-0.5 text-[12px] sm:text-[13.5px] text-muted">Organize, track, and review today&apos;s work</p>
+            <p className="mt-0.5 text-[12px] sm:text-[13.5px] text-muted">Organize, track, and review your daily work</p>
           </div>
 
           <div className="flex items-center gap-2">

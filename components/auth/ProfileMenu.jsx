@@ -28,7 +28,7 @@ export default function ProfileMenu() {
         <Avatar user={currentUser} size={36} className="sm:!h-[44px] sm:!w-[44px]" />
         <span className="hidden leading-tight sm:block">
           <span className="block text-[15px] sm:text-[16px] font-semibold">{currentUser.name}</span>
-          <span className="block text-[12.5px] sm:text-[13px] text-muted">{roleLabel[currentUser.role]}</span>
+          <span className="block text-[12px] sm:text-[12.5px] text-muted truncate max-w-[150px]">{currentUser.email}</span>
         </span>
         <ChevronDown size={18} className="ml-1 hidden text-ink/70 sm:block" />
       </button>

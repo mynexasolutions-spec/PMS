@@ -37,9 +37,9 @@ function Locked({ copy }) {
       <span className="grid h-14 w-14 place-items-center rounded-2xl bg-[#f3f6f4] text-ink/55">
         <Lock size={26} />
       </span>
-      <h2 className="text-[19px] font-bold tracking-tight">{copy.title} are for managers</h2>
+      <h2 className="text-[19px] font-bold tracking-tight">{copy.title} are for team members</h2>
       <p className="max-w-[420px] text-[14.5px] text-muted">
-        Passwords and .env files are only visible to managers, admins, and the team member assigned to this project. If you need access, ask an admin or manager to assign you.
+        Passwords and .env configurations are accessible to all team members of this project. Ask a Project Admin to add you to the project team.
       </p>
     </section>
   );
@@ -478,7 +478,7 @@ function VaultList({ project, kind, copy }) {
           <h2 className="text-[19px] font-bold tracking-tight">{copy.title} for {project.name}</h2>
           <p className="mt-1 flex items-start gap-1.5 text-[13.5px] text-muted">
             <ShieldCheck size={16} className="mt-px shrink-0 text-brand-600" />
-            Stored encrypted. Only managers and admins can open them, and every time one is opened it is noted here.
+            Stored encrypted with AES-256. Accessible to all team members of this project.
           </p>
         </div>
         <button type="button" className="btn-primary ml-auto" onClick={() => setModal({ secret: null, initial: null })}>

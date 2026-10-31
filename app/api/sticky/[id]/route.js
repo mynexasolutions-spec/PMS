@@ -1,5 +1,5 @@
 import { authorize } from "@/lib/auth";
-import { deleteStickyNote, getStickyNote, updateStickyNote } from "@/lib/db/repo";
+import { deleteStickyNote, getStickyNote, isProjectAdmin, isProjectMember, updateStickyNote } from "@/lib/db/repo";
 import { isStickyColor, STICKY_CATEGORIES } from "@/lib/constants";
 import { fail, idFrom, noContent, readJson } from "@/lib/http";
 
@@ -16,8 +16,16 @@ export async function PATCH(request, { params }) {
   if (!note) return fail("Sticky note not found.", 404);
 
   const isManager = auth.user.role === "admin" || auth.user.role === "manager";
-  if (!isManager && note.userId !== auth.user.id) {
-    return fail("You can only edit your own sticky notes.", 403);
+
+  if (note.projectId) {
+    const isMember = isProjectMember(note.projectId, auth.user.id);
+    if (!isMember && !isManager) {
+      return fail("Forbidden: You are not a member of this project.", 403);
+    }
+  } else {
+    if (!isManager && note.userId !== auth.user.id) {
+      return fail("You can only edit your own sticky notes.", 403);
+    }
   }
 
   const body = await readJson(request);
@@ -43,8 +51,17 @@ export async function DELETE(request, { params }) {
   if (!note) return fail("Sticky note not found.", 404);
 
   const isManager = auth.user.role === "admin" || auth.user.role === "manager";
-  if (!isManager && note.userId !== auth.user.id) {
-    return fail("You can only delete your own sticky notes.", 403);
+
+  if (note.projectId) {
+    const isProjAdm = isProjectAdmin(note.projectId, auth.user.id);
+    const canDelete = isProjAdm || note.userId === auth.user.id || isManager;
+    if (!canDelete) {
+      return fail("Forbidden: Only the note creator or a Project Admin can delete this note.", 403);
+    }
+  } else {
+    if (!isManager && note.userId !== auth.user.id) {
+      return fail("You can only delete your own sticky notes.", 403);
+    }
   }
 
   return deleteStickyNote(id) ? noContent() : fail("Sticky note not found.", 404);

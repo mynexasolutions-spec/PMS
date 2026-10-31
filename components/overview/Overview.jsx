@@ -13,17 +13,24 @@ import IssueBoard from "@/components/issues/IssueBoard";
 const twoCols = "grid gap-[17px] xl:grid-cols-[minmax(0,1.58fr)_minmax(0,1fr)]";
 
 export default function Overview() {
-  const { tasks, todayTodos, todayDate, filterTasks, currentUser, isMember, myTasks } = useApp();
-  const visibleTasks = isMember ? myTasks : tasks;
+  const { tasks, todayTodos, todayDate, filterTasks, currentUser } = useApp();
+
+  // Personal todos for the logged-in user on today's board
+  const personalTodayTodos = todayTodos.filter(
+    (todo) => todo.assigneeId === currentUser?.id || todo.createdBy === currentUser?.id,
+  );
+
+  // Personal tasks assigned to the logged-in user
+  const personalTasks = tasks.filter((task) => task.assigneeId === currentUser?.id);
 
   return (
     <div className="space-y-[14px] px-3.5 pb-6 pt-3.5 sm:px-5 md:px-[30px]">
       <Greeting />
       <StatCards />
-      
-      {/* Row 1: Today's To-Do & Sticky Notes */}
+
+      {/* Row 1: Today's Personal To-Do & Sticky Notes */}
       <div className={twoCols}>
-        <TodoBoard title="Today's To-Do Board" date={todayDate} todos={todayTodos.filter((todo) => todo.assigneeId === currentUser.id)} />
+        <TodoBoard title="Personal To-Do Board" date={todayDate} todos={personalTodayTodos} />
         <StickyBoard compact />
       </div>
 
@@ -38,16 +45,12 @@ export default function Overview() {
         </div>
       </div>
 
-      {/* Row 3: Full-width Task Board */}
+      {/* Row 3: Personal Kanban Board */}
       <IssueBoard
-        tasks={filterTasks(visibleTasks)}
-        eyebrow={isMember ? "Assigned to me" : "All projects"}
-        title={isMember ? "My task board" : "Task board"}
-        subtitle={
-          isMember
-            ? `${visibleTasks.length} tasks assigned to you`
-            : `${tasks.length} tasks · ${tasks.filter((task) => task.parentId).length} sub-tasks linked to a parent`
-        }
+        tasks={filterTasks(personalTasks)}
+        eyebrow="Personal Workspace"
+        title="Personal Kanban Board"
+        subtitle={`${personalTasks.length} task${personalTasks.length === 1 ? "" : "s"} assigned to you across projects`}
       />
     </div>
   );

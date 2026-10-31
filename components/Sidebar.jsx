@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, ShieldCheck, FolderKanban, Calendar, FileText, SquareCheckBig, StickyNote, Users } from "lucide-react";
+import { LayoutGrid, ShieldCheck, FolderKanban, Calendar, FileText, SquareCheckBig, StickyNote, Users, KeyRound } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
 
 const sectionLabel = "px-3 text-[12px] font-semibold uppercase tracking-[0.16em] text-ink/70";
@@ -14,18 +14,58 @@ export default function Sidebar() {
   const pathname = usePathname();
   const collapsed = app.sidebarCollapsed;
 
-  // Projects live on their own page (/projects) instead of being listed here, so the sidebar stays short.
-  const nav = [
+  // Normal development projects (excluding vault-only credentials containers)
+  const normalProjectsCount = app.projects.filter((p) => !p.isVaultOnly).length;
+
+  const navWorkspace = [
     { label: "Overview", icon: LayoutGrid, href: "/" },
-    { label: app.isMember ? "My Tasks" : "All Tasks", icon: ShieldCheck, href: "/tasks", badge: app.isMember ? app.myTasks.filter((t) => t.status !== "done").length : app.tasks.length - app.completed },
-    { label: "Projects", icon: FolderKanban, href: "/projects", badge: app.isMember ? app.myProjects.length : app.projects.length },
-    { label: "Calendar", icon: Calendar, href: "/calendar" },
-    { label: "Notes", icon: FileText, href: "/notes", badge: app.notes.length },
-    { label: "Daily To-Do", icon: SquareCheckBig, href: "/daily-todo", badge: app.openTodosToday },
-    { label: "Team", icon: Users, href: "/team", badge: app.users.filter((user) => user.active).length },
-    { label: "Sticky Notes", icon: StickyNote, href: "/sticky-notes", solidWhenActive: true },
+    { label: "Action Center", icon: ShieldCheck, href: "/tasks", badge: app.myPendingActionsCount },
+    { label: "Projects", icon: FolderKanban, href: "/projects", badge: normalProjectsCount },
+    { label: "Credentials Storage", icon: KeyRound, href: "/credentials" },
+    { label: "Accounts", icon: Users, href: "/team", badge: app.users.filter((user) => user.active).length },
   ];
+
+  const navPersonal = [
+    { label: "My Calendar", icon: Calendar, href: "/calendar" },
+    { label: "My Notes", icon: FileText, href: "/notes", badge: app.notes.length },
+    { label: "My Daily To-Do", icon: SquareCheckBig, href: "/daily-todo", badge: app.openTodosToday },
+    { label: "My Sticky Notes", icon: StickyNote, href: "/sticky-notes", solidWhenActive: true },
+  ];
+
   const isActive = (href) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+
+  const renderItem = ({ label, icon: Icon, href, badge, solidWhenActive }) => {
+    const active = isActive(href);
+    return (
+      <Link
+        key={label}
+        href={href}
+        title={collapsed ? label : undefined}
+        className={`${rowBase} h-[42px] ${
+          collapsed ? "justify-center px-0" : "gap-3 px-3"
+        } ${
+          active
+            ? "bg-[#cdeed4] font-semibold text-ink before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:rounded-l-lg before:bg-brand-500"
+            : "text-ink/80 hover:bg-white/60"
+        }`}
+      >
+        <Icon size={20} strokeWidth={1.7} className="shrink-0" {...(active && solidWhenActive ? { fill: "#2e9e4f", stroke: "#14632f" } : {})} />
+        {!collapsed && (
+          <>
+            <span className="flex-1 truncate">{label}</span>
+            {badge !== undefined && (
+              <span className="grid h-[22px] min-w-[22px] place-items-center rounded-full bg-[#cdeed4] px-1.5 text-[12.5px] font-semibold text-brand-800">
+                {badge}
+              </span>
+            )}
+          </>
+        )}
+        {collapsed && badge !== undefined && badge > 0 && (
+          <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-brand-600" />
+        )}
+      </Link>
+    );
+  };
 
   return (
     <>
@@ -49,40 +89,18 @@ export default function Sidebar() {
           {!collapsed && <span className="text-[23px] font-bold tracking-tight truncate">Nexa PMS</span>}
         </Link>
 
-        {!collapsed && <p className={`mt-7 ${sectionLabel}`}>Workspace</p>}
-        <nav className={`${collapsed ? "mt-6" : "mt-2.5"} space-y-[4px]`}>
-          {nav.map(({ label, icon: Icon, href, badge, solidWhenActive }) => {
-            const active = isActive(href);
-            return (
-              <Link
-                key={label}
-                href={href}
-                title={collapsed ? label : undefined}
-                className={`${rowBase} h-[42px] ${
-                  collapsed ? "justify-center px-0" : "gap-3 px-3"
-                } ${
-                  active
-                    ? "bg-[#cdeed4] font-semibold text-ink before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:rounded-l-lg before:bg-brand-500"
-                    : "text-ink/80 hover:bg-white/60"
-                }`}
-              >
-                <Icon size={20} strokeWidth={1.7} className="shrink-0" {...(active && solidWhenActive ? { fill: "#2e9e4f", stroke: "#14632f" } : {})} />
-                {!collapsed && (
-                  <>
-                    <span className="flex-1 truncate">{label}</span>
-                    {badge !== undefined && (
-                      <span className="grid h-[22px] min-w-[22px] place-items-center rounded-full bg-[#cdeed4] px-1.5 text-[12.5px] font-semibold text-brand-800">
-                        {badge}
-                      </span>
-                    )}
-                  </>
-                )}
-                {collapsed && badge !== undefined && badge > 0 && (
-                  <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-brand-600" />
-                )}
-              </Link>
-            );
-          })}
+        {!collapsed && <p className={`mt-6 ${sectionLabel}`}>Workspace</p>}
+        <nav className={`${collapsed ? "mt-5" : "mt-2"} space-y-[4px]`}>
+          {navWorkspace.map(renderItem)}
+        </nav>
+
+        {!collapsed ? (
+          <p className={`mt-6 ${sectionLabel}`}>My Space</p>
+        ) : (
+          <div className="my-2.5 border-t border-brand-200/50" />
+        )}
+        <nav className={`${collapsed ? "mt-2" : "mt-2"} space-y-[4px]`}>
+          {navPersonal.map(renderItem)}
         </nav>
       </aside>
     </>
