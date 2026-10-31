@@ -2,17 +2,19 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, FileCode2, FlaskConical, GitBranch, Globe, Info, KeyRound, ListChecks, Lock } from "lucide-react";
+import { ArrowLeft, ExternalLink, FileCode2, FlaskConical, GitBranch, Globe, Info, KeyRound, ListChecks, Lock, Target } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
 import TasksPanel from "@/components/issues/TasksPanel";
 import Greeting from "@/components/overview/Greeting";
 import { StageStepper } from "@/components/projects/stages";
 import { can } from "@/lib/permissions";
+import ActionPlanTab from "./ActionPlanTab";
 import DetailsTab from "./DetailsTab";
 import VaultSection from "./VaultSection";
 
 const TABS = [
   { id: "tasks", label: "Tasks", icon: ListChecks },
+  { id: "plan", label: "Action Plan & Targets", icon: Target },
   { id: "details", label: "Details", icon: Info },
   { id: "env", label: "Environments", icon: FileCode2, secret: true },
   { id: "credentials", label: "Credentials", icon: KeyRound, secret: true },
@@ -151,6 +153,7 @@ export default function ProjectView({ projectId, initialTab = "tasks" }) {
 
       <div role="tabpanel">
         {tab === "tasks" && <TasksPanel projectId={project.id} title={project.name} />}
+        {tab === "plan" && <ActionPlanTab project={project} canManage={canManage} />}
         {tab === "details" && <DetailsTab project={project} canEdit={canManage} />}
         {tab === "env" && <VaultSection key="env" project={project} kind="env" canOpen={canVault} />}
         {tab === "credentials" && <VaultSection key="credential" project={project} kind="credential" canOpen={canVault} />}

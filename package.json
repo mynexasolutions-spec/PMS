@@ -6,7 +6,8 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "create-admin": "node scripts/create-admin.js"
+    "create-admin": "node scripts/create-admin.js",
+    "seed-plan": "node scripts/seed-nexa-plan.js"
   },
   "dependencies": {
 
