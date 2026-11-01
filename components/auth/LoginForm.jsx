@@ -2,7 +2,18 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Eye, EyeOff, Loader2, LockKeyhole, Mail, TriangleAlert, User } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  Loader2,
+  LockKeyhole,
+  Mail,
+  RefreshCw,
+  TriangleAlert,
+  User,
+} from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
 import { request } from "@/lib/api";
 
@@ -11,7 +22,7 @@ const box =
 const input = "min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-ink/40 disabled:opacity-60";
 
 /**
- * Sign-in and Sign-up form with account switcher.
+ * Sign-in and Sign-up form with account switcher and email verification support.
  */
 export default function LoginForm({ noAccounts, demo }) {
   const router = useRouter();
@@ -25,13 +36,25 @@ export default function LoginForm({ noAccounts, demo }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Email verification state
+  const [verificationSent, setVerificationSent] = useState(null); // { email, message }
+  const [unverifiedEmail, setUnverifiedEmail] = useState("");
+  const [resending, setResending] = useState(false);
+  const [resendNotice, setResendNotice] = useState("");
+
   async function handleSignIn(emailValue, passwordValue) {
     setBusy(true);
     setError("");
+    setUnverifiedEmail("");
+    setResendNotice("");
+
     const { ok, data } = await request("/api/auth/login", "POST", { email: emailValue, password: passwordValue });
     if (!ok) {
       setBusy(false);
       setError(data?.error ?? "Could not sign in. Please check your credentials.");
+      if (data?.unverified) {
+        setUnverifiedEmail(data.email || emailValue);
+      }
       requestAnimationFrame(() => passwordRef.current?.select());
       return;
     }
@@ -42,18 +65,49 @@ export default function LoginForm({ noAccounts, demo }) {
   async function handleSignUp(nameValue, emailValue, passwordValue) {
     setBusy(true);
     setError("");
+    setResendNotice("");
+
     const { ok, data } = await request("/api/auth/register", "POST", {
       name: nameValue,
       email: emailValue,
       password: passwordValue,
     });
+
+    setBusy(false);
+
     if (!ok) {
-      setBusy(false);
       setError(data?.error ?? "Could not create account. Please try again.");
       return;
     }
+
+    if (data?.pendingVerification) {
+      setVerificationSent({
+        email: data.email || emailValue,
+        message: data.message || "We have sent a verification link to your email address.",
+      });
+      return;
+    }
+
+    // Fallback if verification was bypassed
     router.replace("/");
     router.refresh();
+  }
+
+  async function handleResend(targetEmail) {
+    const toSend = targetEmail || email || unverifiedEmail;
+    if (!toSend) return;
+
+    setResending(true);
+    setResendNotice("");
+
+    const { ok, data } = await request("/api/auth/resend-verification", "POST", { email: toSend });
+    setResending(false);
+
+    if (ok) {
+      setResendNotice("Verification link resent! Please check your inbox.");
+    } else {
+      setResendNotice(data?.error || "Failed to resend link. Please try again.");
+    }
   }
 
   function submit(event) {
@@ -69,10 +123,58 @@ export default function LoginForm({ noAccounts, demo }) {
     setEmail(account.email);
     setPassword(demo.password);
     setMode("signin");
+    setVerificationSent(null);
     handleSignIn(account.email, demo.password);
   }
 
   const checkCaps = (event) => setCapsLock(Boolean(event.getModifierState?.("CapsLock")));
+
+  // If verification email was just sent after signup
+  if (verificationSent) {
+    return (
+      <div className="w-full">
+        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200">
+          <Mail size={24} />
+        </span>
+
+        <div className="mt-5">
+          <h1 className="text-[28px] font-extrabold leading-tight tracking-tight text-ink">Check your inbox</h1>
+          <p className="mt-2 text-[15px] leading-relaxed text-muted">
+            We sent a verification link to <strong className="font-semibold text-ink">{verificationSent.email}</strong>.
+          </p>
+          <p className="mt-1 text-[14px] leading-relaxed text-muted">
+            Please click the button inside the email to activate your account and start using Nexa PMS.
+          </p>
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-line bg-[#f8faf9] p-4 text-center">
+          <p className="text-[13px] text-ink/75">Didn’t receive the email? Check your spam folder or resend it.</p>
+          <button
+            type="button"
+            disabled={resending}
+            onClick={() => handleResend(verificationSent.email)}
+            className="mt-3 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-[13px] font-semibold text-brand-700 shadow-xs ring-1 ring-line hover:bg-gray-50 disabled:opacity-50"
+          >
+            {resending ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+            Resend verification email
+          </button>
+          {resendNotice && <p className="mt-2.5 text-[12.5px] font-medium text-brand-700">{resendNotice}</p>}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            setVerificationSent(null);
+            setMode("signin");
+            setError("");
+          }}
+          className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-line bg-white py-3 text-[14px] font-semibold text-ink shadow-xs hover:bg-gray-50"
+        >
+          Back to Sign In
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">
@@ -87,7 +189,7 @@ export default function LoginForm({ noAccounts, demo }) {
         <p className="mt-1.5 text-[15px] leading-relaxed text-muted">
           {mode === "signin"
             ? "Sign in to access your projects and workspace."
-            : "Register your account to start managing and collaborating on projects."}
+            : "Register your account. We will send a secure activation link to your email."}
         </p>
       </div>
 
@@ -98,6 +200,8 @@ export default function LoginForm({ noAccounts, demo }) {
           onClick={() => {
             setMode("signin");
             setError("");
+            setUnverifiedEmail("");
+            setResendNotice("");
           }}
           className={`flex-1 rounded-lg py-2 text-[14px] font-semibold transition ${
             mode === "signin" ? "bg-white text-ink shadow-xs" : "text-ink/65 hover:text-ink"
@@ -110,6 +214,8 @@ export default function LoginForm({ noAccounts, demo }) {
           onClick={() => {
             setMode("signup");
             setError("");
+            setUnverifiedEmail("");
+            setResendNotice("");
           }}
           className={`flex-1 rounded-lg py-2 text-[14px] font-semibold transition ${
             mode === "signup" ? "bg-white text-ink shadow-xs" : "text-ink/65 hover:text-ink"
@@ -201,20 +307,36 @@ export default function LoginForm({ noAccounts, demo }) {
         )}
 
         {error && (
-          <p role="alert" className="mt-4 flex gap-2 rounded-xl bg-[#fde4e4] px-4 py-3 text-[13.5px] font-medium leading-relaxed text-[#b42323]">
-            <TriangleAlert size={16} className="mt-0.5 shrink-0" />
-            {error}
-          </p>
+          <div role="alert" className="mt-4 rounded-xl bg-[#fde4e4] px-4 py-3 text-[13.5px] font-medium leading-relaxed text-[#b42323]">
+            <div className="flex gap-2">
+              <TriangleAlert size={16} className="mt-0.5 shrink-0" />
+              <div className="flex-1">{error}</div>
+            </div>
+            {unverifiedEmail && (
+              <div className="mt-2.5 border-t border-[#f5b8b8] pt-2">
+                <button
+                  type="button"
+                  disabled={resending}
+                  onClick={() => handleResend(unverifiedEmail)}
+                  className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-[#8a1818] underline hover:text-black disabled:opacity-50"
+                >
+                  {resending ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+                  Resend verification email to {unverifiedEmail}
+                </button>
+                {resendNotice && <p className="mt-1 text-[12px] font-medium text-brand-800">{resendNotice}</p>}
+              </div>
+            )}
+          </div>
         )}
 
         <button className="btn-primary mt-6 h-[50px] w-full rounded-xl text-[15px]" disabled={busy}>
           {busy ? (
             <>
-              <Loader2 size={18} className="animate-spin" /> {mode === "signin" ? "Signing in..." : "Creating account..."}
+              <Loader2 size={18} className="animate-spin" /> {mode === "signin" ? "Signing in..." : "Sending verification..."}
             </>
           ) : (
             <>
-              {mode === "signin" ? "Sign in" : "Create account"} <ArrowRight size={18} />
+              {mode === "signin" ? "Sign in" : "Create account & verify"} <ArrowRight size={18} />
             </>
           )}
         </button>
@@ -228,6 +350,8 @@ export default function LoginForm({ noAccounts, demo }) {
                 onClick={() => {
                   setMode("signup");
                   setError("");
+                  setUnverifiedEmail("");
+                  setResendNotice("");
                 }}
                 className="font-semibold text-brand-700 hover:underline"
               >
@@ -242,6 +366,8 @@ export default function LoginForm({ noAccounts, demo }) {
                 onClick={() => {
                   setMode("signin");
                   setError("");
+                  setUnverifiedEmail("");
+                  setResendNotice("");
                 }}
                 className="font-semibold text-brand-700 hover:underline"
               >

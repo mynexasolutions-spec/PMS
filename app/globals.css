@@ -41,6 +41,46 @@ body {
   }
 }
 
+@keyframes lockShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  20%, 60% {
+    transform: translateX(-10px);
+  }
+  40%, 80% {
+    transform: translateX(10px);
+  }
+}
+
+@keyframes scalePop {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.5;
+  }
+  60% {
+    transform: scale(1.22);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+
+
 @layer components {
   .panel {
     @apply rounded-2xl border border-line bg-white shadow-card;

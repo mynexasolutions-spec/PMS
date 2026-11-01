@@ -21,10 +21,23 @@ export async function POST(request) {
 
   const user = getUserForLogin(email);
   const valid = user ? await verifyPassword(password, user.passwordHash) : (await verifyDecoy(password), false);
-  // One message for "no such account", "wrong password" and "disabled", so it can't be used to probe for accounts.
-  if (!valid || user.active !== 1) {
+
+  if (!valid) {
     recordFailure(key);
     return fail("Wrong e-mail or password.", 401);
+  }
+
+  // Check if email has been verified
+  if (user.emailVerified === false) {
+    return fail("Your email address is not verified yet. Please check your inbox or resend the verification link.", 403, {
+      unverified: true,
+      email: user.email,
+    });
+  }
+
+  if (user.active !== 1) {
+    recordFailure(key);
+    return fail("This account has been deactivated. Please contact an administrator.", 403);
   }
 
   clearFailures(key);
