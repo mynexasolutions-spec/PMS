@@ -410,7 +410,6 @@ function SecretFormModal({ secretToEdit, allProjects, initialProjectId, onClose,
   }
 
   const vaultOnlyProjs = allProjects.filter((p) => p.isVaultOnly);
-  const normalProjs = allProjects.filter((p) => !p.isVaultOnly);
 
   return (
     <Modal
@@ -428,37 +427,30 @@ function SecretFormModal({ secretToEdit, allProjects, initialProjectId, onClose,
           {!secretToEdit && (
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="field">
-                Select Project
-                <select
-                  value={projectId}
-                  onChange={(e) => setProjectId(e.target.value)}
-                  required
-                >
-                  {vaultOnlyProjs.length > 0 && (
-                    <optgroup label="Vault-Only Projects">
-                      {vaultOnlyProjs.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} (Vault Only)
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                  {normalProjs.length > 0 && (
-                    <optgroup label="Workspace Projects">
-                      {normalProjs.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                </select>
+                Select Vault Project
+                {vaultOnlyProjs.length > 0 ? (
+                  <select
+                    value={projectId}
+                    onChange={(e) => setProjectId(e.target.value)}
+                    required
+                  >
+                    {vaultOnlyProjs.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="mt-1 rounded-xl border border-dashed border-amber-300 bg-amber-50/50 p-2.5 text-[12.5px] text-amber-900">
+                    No vault project found. Please create one first.
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={onOpenNewVaultProject}
                   className="mt-1 text-left text-[12px] font-semibold text-brand-700 hover:underline"
                 >
-                  + Create new vault-only project
+                  + Create new vault project
                 </button>
               </label>
 
@@ -589,7 +581,7 @@ export default function CredentialsView() {
     setLoading(true);
     const [secretsRes, projectsRes] = await Promise.all([
       request("/api/vault"),
-      request("/api/projects?includeVault=true"),
+      request("/api/projects?vaultOnly=true"),
     ]);
     setLoading(false);
 
@@ -676,7 +668,7 @@ export default function CredentialsView() {
             Project Credentials
           </h1>
           <p className="mt-2 text-[15.5px] text-muted max-w-2xl">
-            Store and manage .env configurations and login credentials for all your projects. Create standalone vault projects that never clutter your main task boards.
+            Global team storage for .env configurations and login credentials. Standalone vault projects accessible to all team members with the Master Security PIN.
           </p>
         </div>
 
@@ -839,27 +831,12 @@ export default function CredentialsView() {
               onChange={(e) => setSelectedProjectId(e.target.value)}
               className="h-[40px] rounded-xl border border-line bg-white px-3 text-[13.5px] font-medium outline-none text-ink/80 focus:border-brand-500"
             >
-              <option value="all">All Projects ({localProjects.length})</option>
-              {vaultOnlyProjects.length > 0 && (
-                <optgroup label="Vault-Only Projects">
-                  {vaultOnlyProjects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} (Vault Only)
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-              {localProjects.filter((p) => !p.isVaultOnly).length > 0 && (
-                <optgroup label="Workspace Projects">
-                  {localProjects
-                    .filter((p) => !p.isVaultOnly)
-                    .map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                </optgroup>
-              )}
+              <option value="all">All Vault Containers ({vaultOnlyProjects.length})</option>
+              {vaultOnlyProjects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
             </select>
 
             <div className="flex h-[40px] w-[220px] items-center gap-2 rounded-xl border border-line bg-white px-3 shadow-xs focus-within:border-brand-500">

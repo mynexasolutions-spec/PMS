@@ -12,9 +12,19 @@ export async function GET(request) {
 
   const url = new URL(request.url);
   const includeVault = url.searchParams.get("includeVault") === "true";
+  const vaultOnly = url.searchParams.get("vaultOnly") === "true";
 
   const all = getProjects();
-  const accessible = all.filter((p) => (p.members || []).some((m) => m.userId === auth.user.id && m.status !== "pending") || p.createdBy === auth.user.id);
+  if (vaultOnly) {
+    return Response.json({ projects: all.filter((p) => p.isVaultOnly) });
+  }
+
+  const accessible = all.filter(
+    (p) =>
+      p.isVaultOnly ||
+      (p.members || []).some((m) => m.userId === auth.user.id && m.status !== "pending") ||
+      p.createdBy === auth.user.id
+  );
   const projects = includeVault ? accessible : accessible.filter((p) => !p.isVaultOnly);
 
   return Response.json({ projects });
