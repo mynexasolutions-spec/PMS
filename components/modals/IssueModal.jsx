@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Modal from "@/components/ui/Modal";
 import { useApp } from "@/components/AppProvider";
 import { PRIORITIES, TASK_STATUSES, TASK_STATUS_LABELS, priorityLabel } from "@/lib/constants";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, X } from "lucide-react";
 
 function CompactSelect({ label, value, onChange, children, className = "" }) {
   return (
@@ -50,6 +50,7 @@ export default function IssueModal() {
 
   const [form, setForm] = useState({
     title: editingTask?.title ?? "",
+    category: editingTask?.category ?? "",
     type: editingTask?.type ?? "Task",
     status: editingTask?.status ?? issueModal?.initialStatus ?? "todo",
     priority: editingTask?.priority ?? "medium",
@@ -61,6 +62,22 @@ export default function IssueModal() {
 
   const set = (patch) => setForm((current) => ({ ...current, ...patch }));
 
+  // Get all unique categories across tasks
+  const availableCategories = useMemo(() => {
+    const set = new Set();
+    tasks.forEach((t) => {
+      if (t.category && typeof t.category === "string" && t.category.trim()) {
+        set.add(t.category.trim());
+      }
+    });
+    if (editingTask?.category && typeof editingTask.category === "string" && editingTask.category.trim()) {
+      set.add(editingTask.category.trim());
+    }
+    return Array.from(set).sort();
+  }, [tasks, editingTask]);
+
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+
   // Filter available parent tasks to the same project
   const projectTasks = tasks.filter(
     (t) => t.projectId === form.projectId && (!editingTask || t.id !== editingTask.id),
@@ -71,6 +88,7 @@ export default function IssueModal() {
     setSaving(true);
     const payload = {
       ...form,
+      category: form.category?.trim() || null,
       projectId: Number(form.projectId),
       type: form.type || "Task",
       estimateHours: 0,
@@ -164,20 +182,73 @@ export default function IssueModal() {
           </div>
         )}
 
-        {/* Row 3: Parent task */}
-        <div>
-          <CompactSelect
-            label="Parent task"
-            value={form.parentId ?? ""}
-            onChange={(value) => set({ parentId: value ? Number(value) : null })}
-          >
-            <option value="">No parent — top level</option>
-            {projectTasks.map((task) => (
-              <option key={task.id} value={task.id}>
-                {task.issueKey} · {task.title}
-              </option>
-            ))}
-          </CompactSelect>
+        {/* Row 3: Category & Parent task */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div>
+            <CompactSelect
+              label="Category"
+              value={isCustomCategory ? "__custom__" : (form.category || "")}
+              onChange={(value) => {
+                if (value === "__custom__") {
+                  setIsCustomCategory(true);
+                  if (availableCategories.includes(form.category)) {
+                    set({ category: "" });
+                  }
+                } else {
+                  setIsCustomCategory(false);
+                  set({ category: value });
+                }
+              }}
+            >
+              <option value="__custom__">+ Custom category</option>
+              <option value="">No category</option>
+              {availableCategories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </CompactSelect>
+
+            {isCustomCategory && (
+              <div className="mt-1.5 flex items-center gap-1.5">
+                <input
+                  type="text"
+                  autoFocus
+                  required
+                  className="flex-1 rounded-lg border border-line bg-white px-2.5 py-1 text-[13px] text-ink outline-hidden focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                  placeholder="Enter custom category name..."
+                  value={form.category}
+                  onChange={(e) => set({ category: e.target.value })}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCustomCategory(false);
+                    set({ category: "" });
+                  }}
+                  className="rounded-md p-1 text-ink/40 hover:text-ink/80 hover:bg-black/5"
+                  title="Cancel custom category"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <CompactSelect
+              label="Parent task"
+              value={form.parentId ?? ""}
+              onChange={(value) => set({ parentId: value ? Number(value) : null })}
+            >
+              <option value="">No parent — top level</option>
+              {projectTasks.map((task) => (
+                <option key={task.id} value={task.id}>
+                  {task.issueKey} · {task.title}
+                </option>
+              ))}
+            </CompactSelect>
+          </div>
         </div>
 
         {/* Actions Footer */}

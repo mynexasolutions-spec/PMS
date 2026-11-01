@@ -42,9 +42,15 @@ export async function PATCH(request, { params }) {
   if (body.estimateHours !== undefined && !isNum(body.estimateHours)) return fail("Invalid estimated hours.");
   if (body.loggedHours !== undefined && !isNum(body.loggedHours)) return fail("Invalid logged hours.");
   if (body.blockerReason !== undefined && !isText(body.blockerReason)) return fail("Invalid blocker reason.");
+  if (body.category !== undefined && !isText(body.category)) return fail("Invalid category.");
   if (body.assigneeId != null && !(Number.isInteger(body.assigneeId) && getUser(body.assigneeId)?.active)) return fail("Choose an active team member to assign this to.");
 
-  const task = updateTask(id, body);
+  const sanitizedBody = { ...body };
+  if (sanitizedBody.category !== undefined && typeof sanitizedBody.category === "string") {
+    sanitizedBody.category = sanitizedBody.category.trim() || null;
+  }
+
+  const task = updateTask(id, sanitizedBody);
   if (!task) return fail("No valid fields supplied.");
   if (body.assigneeId && Number(body.assigneeId) !== existingTask.assigneeId) {
     try {

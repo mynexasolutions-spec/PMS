@@ -365,23 +365,39 @@ export default function IssueBoard({ tasks, eyebrow, title, subtitle, projectId 
   const [viewMode, setViewMode] = useState("board"); // "board" | "table"
   const [over, setOver] = useState(null);
   const [filterMode, setFilterMode] = useState("all"); // 'all' | 'mine' | 'blocked' | 'high'
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [doneCollapsed, setDoneCollapsed] = useState(false);
 
   const targetProjectId = projectId || tasks[0]?.projectId || null;
 
-  // Quick Filters logic
+  // Extract unique categories for tasks in this board
+  const categories = useMemo(() => {
+    const set = new Set();
+    tasks.forEach((t) => {
+      if (t.category && typeof t.category === "string" && t.category.trim()) {
+        set.add(t.category.trim());
+      }
+    });
+    return Array.from(set).sort();
+  }, [tasks]);
+
+  // Quick Filters logic with Category Filter
   const filteredTasks = useMemo(() => {
+    let list = tasks;
+    if (categoryFilter !== "all") {
+      list = list.filter((t) => t.category === categoryFilter);
+    }
     switch (filterMode) {
       case "mine":
-        return tasks.filter((t) => t.assigneeId === currentUser?.id);
+        return list.filter((t) => t.assigneeId === currentUser?.id);
       case "blocked":
-        return tasks.filter((t) => t.status === "blocked" || Boolean(t.blockerReason));
+        return list.filter((t) => t.status === "blocked" || Boolean(t.blockerReason));
       case "high":
-        return tasks.filter((t) => t.priority === "high");
+        return list.filter((t) => t.priority === "high");
       default:
-        return tasks;
+        return list;
     }
-  }, [tasks, filterMode, currentUser?.id]);
+  }, [tasks, filterMode, categoryFilter, currentUser?.id]);
 
   const blockedCount = tasks.filter((t) => t.status === "blocked" || Boolean(t.blockerReason)).length;
   const myCount = tasks.filter((t) => t.assigneeId === currentUser?.id).length;
@@ -490,6 +506,38 @@ export default function IssueBoard({ tasks, eyebrow, title, subtitle, projectId 
             <Flame size={13} /> High priority ({highCount})
           </button>
         </div>
+
+        {/* Category Dropdown Filter */}
+        {categories.length > 0 && (
+          <div className="flex items-center gap-1.5 ml-auto sm:ml-0">
+            <span className="text-[12px] font-medium text-muted">Category:</span>
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="rounded-lg border border-line bg-white px-2.5 py-1 text-[12.5px] font-semibold text-ink shadow-2xs hover:border-slate-300 focus:outline-hidden max-w-[240px] truncate"
+            >
+              <option value="all">All Categories ({tasks.length})</option>
+              {categories.map((cat) => {
+                const count = tasks.filter((t) => t.category === cat).length;
+                return (
+                  <option key={cat} value={cat}>
+                    {cat} ({count})
+                  </option>
+                );
+              })}
+            </select>
+            {categoryFilter !== "all" && (
+              <button
+                type="button"
+                onClick={() => setCategoryFilter("all")}
+                className="text-[11.5px] font-semibold text-muted hover:text-ink underline ml-1"
+                title="Reset category filter"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* VIEW MODE 1: TABULAR VIEW */}

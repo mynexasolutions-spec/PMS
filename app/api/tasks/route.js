@@ -42,6 +42,7 @@ export async function POST(request) {
   try {
     const task = createTask({
       title,
+      category: typeof body.category === "string" ? body.category.trim() || null : null,
       type: body.type,
       status: body.status,
       priority: body.priority,
