@@ -1,6 +1,6 @@
 import { authorize } from "@/lib/auth";
 import { addProjectMember, createNotification, getProject, getProjectMembers, inviteProjectMember, isProjectAdmin, removeProjectMember, updateProjectMemberRole } from "@/lib/db/repo";
-import { getUser } from "@/lib/db/users";
+import { getUser, getUserByEmail } from "@/lib/db/users";
 import { fail, idFrom, readJson } from "@/lib/http";
 
 export const runtime = "nodejs";
@@ -30,11 +30,26 @@ export async function POST(request, { params }) {
   }
 
   const body = await readJson(request);
-  const userId = Number(body?.userId);
+  let userId = body?.userId ? Number(body.userId) : null;
+  const email = body?.email ? String(body.email).trim().toLowerCase() : "";
   const role = body?.role === "admin" ? "admin" : "member";
 
+  if (!userId && email) {
+    const targetUser = getUserByEmail(email);
+    if (!targetUser) {
+      return fail("No registered account found with this email.", 404);
+    }
+    userId = targetUser.id;
+  }
+
   if (!userId || !getUser(userId)) {
-    return fail("Please choose a valid user account.", 400);
+    return fail("Please choose a valid collaborator or enter a registered email.", 400);
+  }
+
+  // Check if user is already a member or pending invite
+  const currentMembers = getProjectMembers(projectId);
+  if (currentMembers.some((m) => m.userId === userId)) {
+    return fail("This user is already a member (or has a pending invitation) in this project.", 400);
   }
 
   const members = inviteProjectMember(projectId, userId, role);

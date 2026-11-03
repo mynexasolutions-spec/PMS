@@ -33,7 +33,7 @@ export async function PATCH(request, { params }) {
 
   const content = typeof body.content === "string" ? body.content.trim() : undefined;
   if (body.content !== undefined && !content) return fail("A sticky note needs some text.");
-  if (content && content.length > 500) return fail("Keep a sticky note under 500 characters.");
+  if (content && content.length > 2000) return fail("Keep a sticky note under 2000 characters.");
   if (body.color !== undefined && !isStickyColor(body.color)) return fail("Invalid colour.");
   if (body.pinned !== undefined && typeof body.pinned !== "boolean") return fail("Invalid pin value.");
   if (body.category != null && !STICKY_CATEGORIES.includes(body.category)) return fail("Invalid category.");

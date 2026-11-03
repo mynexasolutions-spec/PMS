@@ -33,7 +33,7 @@ export async function POST(request) {
   const body = await readJson(request);
   const content = typeof body?.content === "string" ? body.content.trim() : "";
   if (!content) return fail("A sticky note needs some text.");
-  if (content.length > 500) return fail("Keep a sticky note under 500 characters.");
+  if (content.length > 2000) return fail("Keep a sticky note under 2000 characters.");
 
   if (body.category != null && !STICKY_CATEGORIES.includes(body.category)) return fail("Invalid category.");
 

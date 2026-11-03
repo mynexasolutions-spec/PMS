@@ -44,7 +44,7 @@ function formatDateLabel(dateString) {
   }
 }
 
-export default function ProjectChatTab({ project }) {
+export default function ProjectChatTab({ project, onMessagesRead }) {
   const { currentUser, notify } = useApp();
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -93,8 +93,12 @@ export default function ProjectChatTab({ project }) {
   // Load chat messages with smart change detection (Prevents scroll flickering)
   async function fetchMessages(showLoader = false) {
     if (showLoader && !isInitialLoadedRef.current) setLoading(true);
-    const { ok, data } = await request(`/api/projects/${project.id}/chat`);
+    const { ok, data } = await request(`/api/projects/${project.id}/chat?markRead=1`);
     if (showLoader) setLoading(false);
+
+    if (ok) {
+      onMessagesRead?.();
+    }
 
     if (ok && Array.isArray(data?.messages)) {
       setMessages((prev) => {

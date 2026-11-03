@@ -38,6 +38,7 @@ export async function PATCH(request, { params }) {
   if (body.projectId !== undefined && !Number.isInteger(body.projectId)) return fail("Invalid project.");
   if (body.parentId !== undefined && !isInt(body.parentId)) return fail("Invalid parent task.");
   if (body.position !== undefined && !Number.isInteger(body.position)) return fail("Invalid position.");
+  if (body.startDate !== undefined && !isText(body.startDate)) return fail("Invalid start date.");
   if (body.dueAt !== undefined && !isText(body.dueAt)) return fail("Invalid due date.");
   if (body.estimateHours !== undefined && !isNum(body.estimateHours)) return fail("Invalid estimated hours.");
   if (body.loggedHours !== undefined && !isNum(body.loggedHours)) return fail("Invalid logged hours.");

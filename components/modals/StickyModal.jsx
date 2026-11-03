@@ -8,7 +8,7 @@ import ColorPicker, { rememberColor } from "@/components/sticky/ColorPicker";
 import { categoryMeta } from "@/components/sticky/categories";
 import { STICKY_CATEGORIES } from "@/lib/constants";
 
-const MAX_LENGTH = 500;
+const MAX_LENGTH = 2000;
 
 export default function StickyModal() {
   const { setStickyModalOpen, createSticky } = useApp();

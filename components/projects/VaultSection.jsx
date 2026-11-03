@@ -1,7 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Download, ExternalLink, Eye, EyeOff, FileCode2, KeyRound, Lock, Pencil, Plus, ShieldCheck, Trash2, Upload } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Download,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  FileCode2,
+  KeyRound,
+  Lock,
+  Pencil,
+  Plus,
+  Search,
+  ShieldCheck,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { useApp } from "@/components/AppProvider";
 import CopyButton from "@/components/ui/CopyButton";
 import Modal from "@/components/ui/Modal";
@@ -12,18 +26,18 @@ import { countVariables, parseEnv } from "@/lib/env-parse";
 const COPY = {
   env: {
     eyebrow: "Environments",
-    title: ".env files",
+    title: ".env Configuration",
     add: "Add .env",
-    blank: "No .env files saved yet. Add one per environment, like Production or Staging.",
-    labelHint: "Production",
+    blank: "No .env files saved yet. Add one per environment, like Production, Staging, or Development.",
+    labelHint: "Production .env",
     icon: FileCode2,
   },
   credential: {
     eyebrow: "Credentials",
-    title: "Account logins",
-    add: "Add login",
-    blank: "No logins saved yet. Add the hosting panel, domain registrar, admin panel, email...",
-    labelHint: "Hostinger panel",
+    title: "Account Login",
+    add: "Add Login",
+    blank: "No logins saved yet. Add hosting panel, database credentials, API keys, domain registrar...",
+    labelHint: "AWS Production / Hostinger Panel",
     icon: KeyRound,
   },
 };
@@ -31,15 +45,15 @@ const COPY = {
 const HIDE_AFTER_MS = 60_000; // an opened secret closes itself again after a minute
 const MASK = "••••••••••";
 
-function Locked({ copy }) {
+function Locked() {
   return (
     <section className="panel grid place-items-center gap-2 px-6 py-14 text-center">
       <span className="grid h-14 w-14 place-items-center rounded-2xl bg-[#f3f6f4] text-ink/55">
         <Lock size={26} />
       </span>
-      <h2 className="text-[19px] font-bold tracking-tight">{copy.title} are for team members</h2>
+      <h2 className="text-[19px] font-bold tracking-tight">Project Storage Vault is for project members</h2>
       <p className="max-w-[420px] text-[14.5px] text-muted">
-        Passwords and .env configurations are accessible to all team members of this project. Ask a Project Admin to add you to the project team.
+        Passwords, API keys, and .env configurations are accessible to all team members and admins of this project. Ask a Project Admin to add you to the project team.
       </p>
     </section>
   );
@@ -54,7 +68,11 @@ function EnvView({ text }) {
     <div className="mt-4 overflow-hidden rounded-xl bg-[#10241a] text-[13.5px]">
       <div className="flex items-center gap-2 border-b border-white/10 px-4 py-2 text-white/70">
         <span>{countVariables(text)} variables</span>
-        <button type="button" className="ml-auto inline-flex items-center gap-1.5 rounded-md px-2 py-1 transition hover:bg-white/10" onClick={() => setShow((value) => !value)}>
+        <button
+          type="button"
+          className="ml-auto inline-flex items-center gap-1.5 rounded-md px-2 py-1 transition hover:bg-white/10"
+          onClick={() => setShow((value) => !value)}
+        >
           {show ? <EyeOff size={15} /> : <Eye size={15} />} {show ? "Hide values" : "Show values"}
         </button>
       </div>
@@ -129,12 +147,15 @@ function CredentialView({ data }) {
   );
 }
 
-function SecretCard({ secret, kind, copy, onEdit, onDelete, onViewed }) {
+function SecretCard({ secret, onEdit, onDelete, onViewed }) {
   const { notify } = useApp();
   const [data, setData] = useState(null);
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const kind = secret.kind;
+  const copy = COPY[kind] || COPY.credential;
   const Icon = copy.icon;
+  const isEnv = kind === "env";
   const updated = stamp(secret.updatedAt);
   const viewed = secret.lastViewedAt ? stamp(secret.lastViewedAt) : null;
 
@@ -150,7 +171,6 @@ function SecretCard({ secret, kind, copy, onEdit, onDelete, onViewed }) {
     return () => clearTimeout(timer);
   }, [confirming]);
 
-  /** Fetches and decrypts the secret (the server notes who opened it). */
   async function open() {
     setBusy(true);
     const { ok, data: body } = await request(`/api/secrets/${secret.id}`);
@@ -182,11 +202,12 @@ function SecretCard({ secret, kind, copy, onEdit, onDelete, onViewed }) {
     link.href = url;
     const trimmed = (secret.label || "").trim();
     const lower = trimmed.toLowerCase();
-    const filename = !trimmed || lower === "production" || lower === "prod" || lower === "default" || lower === "env"
-      ? ".env"
-      : trimmed.startsWith(".env")
-        ? trimmed
-        : `.env.${lower.replace(/[^a-z0-9_.-]/g, "-")}`;
+    const filename =
+      !trimmed || lower === "production" || lower === "prod" || lower === "default" || lower === "env"
+        ? ".env"
+        : trimmed.startsWith(".env")
+          ? trimmed
+          : `.env.${lower.replace(/[^a-z0-9_.-]/g, "-")}`;
     link.download = filename;
     document.body.appendChild(link);
     link.click();
@@ -196,20 +217,35 @@ function SecretCard({ secret, kind, copy, onEdit, onDelete, onViewed }) {
   }
 
   return (
-    <article className="panel p-5">
+    <article className="panel p-5 transition hover:shadow-xs">
       <div className="flex flex-wrap items-start gap-3.5">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#e8f7ec] text-brand-700">
+        <span
+          className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${
+            isEnv ? "bg-[#e8f7ec] text-brand-700" : "bg-[#eef4ff] text-[#2b5fd6]"
+          }`}
+        >
           <Icon size={21} />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="text-[17px] font-bold leading-tight wrap-anywhere">{secret.label}</h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-[17px] font-bold leading-tight wrap-anywhere">{secret.label}</h3>
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold border ${
+                isEnv
+                  ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                  : "bg-blue-50 text-blue-800 border-blue-200"
+              }`}
+            >
+              {isEnv ? ".env File" : "Account Login"}
+            </span>
+          </div>
           <p className="mt-0.5 text-[12.5px] text-muted">
             <span title={updated.full}>
-              Updated {updated.label} by {secret.updatedByName ?? "someone"}
+              Updated {updated.label} by {secret.updatedByName ?? "team member"}
             </span>
             {viewed && (
               <span title={viewed.full}>
-                {" · "}Opened {viewed.label} by {secret.lastViewedBy ?? "someone"}
+                {" · "}Opened {viewed.label} by {secret.lastViewedBy ?? "team member"}
               </span>
             )}
           </p>
@@ -224,8 +260,8 @@ function SecretCard({ secret, kind, copy, onEdit, onDelete, onViewed }) {
               <Eye size={15} /> {busy ? "Opening..." : "Reveal"}
             </button>
           )}
-          {kind === "env" && <CopyButton label="Copy .env" text={async () => (data ?? (await open()))?.text} />}
-          {kind === "env" && (
+          {isEnv && <CopyButton label="Copy .env" text={async () => (data ?? (await open()))?.text} />}
+          {isEnv && (
             <button
               type="button"
               className="btn-secondary btn-compact inline-flex items-center gap-1.5"
@@ -240,17 +276,26 @@ function SecretCard({ secret, kind, copy, onEdit, onDelete, onViewed }) {
             <Pencil size={15} />
           </button>
           {confirming ? (
-            <button type="button" className="btn-compact inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 text-[13.5px] font-semibold text-white hover:bg-red-700" onClick={() => onDelete(secret)}>
+            <button
+              type="button"
+              className="btn-compact inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 text-[13.5px] font-semibold text-white hover:bg-red-700"
+              onClick={() => onDelete(secret)}
+            >
               <Trash2 size={15} /> Delete for good?
             </button>
           ) : (
-            <button type="button" className="icon-btn h-9 w-9 text-red-600" onClick={() => setConfirming(true)} aria-label={`Delete ${secret.label}`}>
+            <button
+              type="button"
+              className="icon-btn h-9 w-9 text-red-600"
+              onClick={() => setConfirming(true)}
+              aria-label={`Delete ${secret.label}`}
+            >
               <Trash2 size={15} />
             </button>
           )}
         </div>
       </div>
-      {data && (kind === "env" ? <EnvView text={data.text} /> : <CredentialView data={data} />)}
+      {data && (isEnv ? <EnvView text={data.text} /> : <CredentialView data={data} />)}
       {data && <p className="mt-2 text-[12px] text-muted">This closes by itself after a minute.</p>}
     </article>
   );
@@ -258,9 +303,11 @@ function SecretCard({ secret, kind, copy, onEdit, onDelete, onViewed }) {
 
 const BLANK_CREDENTIAL = { service: "", url: "", username: "", password: "", notes: "" };
 
-/** Add or edit a secret. `secret` is null when adding; `initial` is its decrypted content when editing. */
-function SecretModal({ kind, copy, projectId, secret, initial, onClose, onSaved }) {
+/** Add or edit a project secret. `secret` is null when adding; `initial` is its decrypted content when editing. */
+function SecretModal({ initialKind = "env", projectId, projectName, secret, initial, onClose, onSaved }) {
   const { notify } = useApp();
+  const [kind, setKind] = useState(secret?.kind ?? initialKind);
+  const copy = COPY[kind] || COPY.env;
   const [label, setLabel] = useState(secret?.label ?? "");
   const [text, setText] = useState(initial?.text ?? "");
   const [fields, setFields] = useState({ ...BLANK_CREDENTIAL, ...(kind === "credential" ? initial : null) });
@@ -280,18 +327,18 @@ function SecretModal({ kind, copy, projectId, secret, initial, onClose, onSaved 
         if (!label.trim()) {
           const fname = file.name.toLowerCase();
           let guessed = "";
-          if (fname.includes("prod")) guessed = "Production";
-          else if (fname.includes("stag")) guessed = "Staging";
-          else if (fname.includes("dev") || fname.includes("local")) guessed = "Development";
-          else if (fname.includes("test")) guessed = "Testing";
+          if (fname.includes("prod")) guessed = "Production .env";
+          else if (fname.includes("stag")) guessed = "Staging .env";
+          else if (fname.includes("dev") || fname.includes("local")) guessed = "Development .env";
+          else if (fname.includes("test")) guessed = "Testing .env";
           else if (fname.startsWith(".env.") && fname.length > 5) {
             const suffix = file.name.slice(5);
-            guessed = suffix.charAt(0).toUpperCase() + suffix.slice(1);
+            guessed = `${suffix.charAt(0).toUpperCase() + suffix.slice(1)} .env`;
           } else if (fname === ".env") {
-            guessed = "Production";
+            guessed = "Production .env";
           } else {
             const clean = file.name.replace(/^\./, "").replace(/\.env$/, "").replace(/^env\./, "");
-            guessed = clean ? clean.charAt(0).toUpperCase() + clean.slice(1) : "Production";
+            guessed = clean ? `${clean.charAt(0).toUpperCase() + clean.slice(1)} .env` : "Production .env";
           }
           if (guessed) setLabel(guessed);
         }
@@ -300,6 +347,7 @@ function SecretModal({ kind, copy, projectId, secret, initial, onClose, onSaved 
     };
     reader.readAsText(file);
   }
+
   const setField = (name) => (event) => setFields((current) => ({ ...current, [name]: event.target.value }));
 
   async function submit(event) {
@@ -312,7 +360,7 @@ function SecretModal({ kind, copy, projectId, secret, initial, onClose, onSaved 
       : await request(`/api/projects/${projectId}/secrets`, "POST", { kind, label, data });
     setBusy(false);
     if (!ok) return setError(body?.error ?? "That could not be saved.");
-    notify(secret ? "Saved." : "Saved and encrypted.");
+    notify(secret ? "Secret updated." : "Saved to Project Storage Vault.");
     onSaved();
     onClose();
   }
@@ -320,16 +368,47 @@ function SecretModal({ kind, copy, projectId, secret, initial, onClose, onSaved 
   const Icon = copy.icon;
   return (
     <Modal
+      size="wide"
       icon={<Icon size={28} />}
-      eyebrow={copy.eyebrow}
-      title={secret ? `Edit ${secret.label}` : kind === "env" ? "Add a .env file" : "Add a login"}
-      subtitle="Encrypted before it is saved."
+      eyebrow={`Project Storage Vault · ${projectName}`}
+      title={secret ? `Edit ${secret.label}` : kind === "env" ? "Add a .env Configuration" : "Add Account Login / Credential"}
+      subtitle="Encrypted with AES-256 before saving. Accessible to project members and admins."
       onClose={onClose}
     >
       <form onSubmit={submit} autoComplete="off" className="grid gap-4">
+        {!secret && (
+          <div className="flex rounded-xl border border-line bg-[#f0f5f2] p-1 text-[13.5px] font-semibold w-fit">
+            <button
+              type="button"
+              onClick={() => setKind("env")}
+              className={`rounded-lg px-3.5 py-1.5 transition inline-flex items-center gap-1.5 ${
+                kind === "env" ? "bg-white text-ink shadow-xs" : "text-ink/65 hover:text-ink"
+              }`}
+            >
+              <FileCode2 size={15} /> .env Configuration File
+            </button>
+            <button
+              type="button"
+              onClick={() => setKind("credential")}
+              className={`rounded-lg px-3.5 py-1.5 transition inline-flex items-center gap-1.5 ${
+                kind === "credential" ? "bg-white text-ink shadow-xs" : "text-ink/65 hover:text-ink"
+              }`}
+            >
+              <KeyRound size={15} /> Account Login / Credential
+            </button>
+          </div>
+        )}
+
         <label className="field">
-          Name
-          <input required autoFocus maxLength={80} placeholder={`e.g. ${copy.labelHint}`} value={label} onChange={(event) => setLabel(event.target.value)} />
+          Name / Label
+          <input
+            required
+            autoFocus
+            maxLength={80}
+            placeholder={`e.g. ${copy.labelHint}`}
+            value={label}
+            onChange={(event) => setLabel(event.target.value)}
+          />
         </label>
 
         {kind === "env" ? (
@@ -388,11 +467,11 @@ function SecretModal({ kind, copy, projectId, secret, initial, onClose, onSaved 
           <>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="field">
-                Service
-                <input maxLength={80} placeholder="Hostinger, GoDaddy, cPanel..." value={fields.service} onChange={setField("service")} />
+                Service / Platform
+                <input maxLength={80} placeholder="Hostinger, AWS, GoDaddy, cPanel..." value={fields.service} onChange={setField("service")} />
               </label>
               <label className="field">
-                Link
+                Login URL / Link
                 <input type="url" maxLength={200} placeholder="https://..." value={fields.url} onChange={setField("url")} />
               </label>
               <label className="field">
@@ -400,7 +479,7 @@ function SecretModal({ kind, copy, projectId, secret, initial, onClose, onSaved 
                 <input maxLength={200} autoComplete="off" value={fields.username} onChange={setField("username")} />
               </label>
               <label className="field">
-                Password
+                Password / Secret Key
                 <span className="relative block">
                   <input
                     type={showPassword ? "text" : "password"}
@@ -422,8 +501,8 @@ function SecretModal({ kind, copy, projectId, secret, initial, onClose, onSaved 
               </label>
             </div>
             <label className="field">
-              Notes
-              <textarea rows={3} maxLength={1000} placeholder="2FA on Harsh's phone, renewal in March..." value={fields.notes} onChange={setField("notes")} />
+              Notes / Extra Details
+              <textarea rows={3} maxLength={1000} placeholder="2FA details, SSH port, server IP, renewal info..." value={fields.notes} onChange={setField("notes")} />
             </label>
           </>
         )}
@@ -438,7 +517,7 @@ function SecretModal({ kind, copy, projectId, secret, initial, onClose, onSaved 
             Cancel
           </button>
           <button className="btn-primary" disabled={busy}>
-            {busy ? "Saving..." : "Save"}
+            {busy ? "Saving..." : secret ? "Update Secret" : "Save to Project Vault"}
           </button>
         </div>
       </form>
@@ -446,10 +525,12 @@ function SecretModal({ kind, copy, projectId, secret, initial, onClose, onSaved 
   );
 }
 
-function VaultList({ project, kind, copy }) {
+function ProjectStorageVaultList({ project, defaultKind = "all" }) {
   const { notify } = useApp();
   const [secrets, setSecrets] = useState(null);
-  const [modal, setModal] = useState(null); // { secret, initial }; secret is null when adding
+  const [kindFilter, setKindFilter] = useState(defaultKind); // "all" | "env" | "credential"
+  const [query, setQuery] = useState("");
+  const [modal, setModal] = useState(null); // { kind, secret, initial }
 
   const load = useCallback(async () => {
     const { ok, data } = await request(`/api/projects/${project.id}/secrets`);
@@ -468,36 +549,137 @@ function VaultList({ project, kind, copy }) {
     notify(`${secret.label} deleted.`);
   }
 
-  const mine = (secrets ?? []).filter((secret) => secret.kind === kind);
+  const allSecrets = secrets ?? [];
+  const envCount = allSecrets.filter((s) => s.kind === "env").length;
+  const credCount = allSecrets.filter((s) => s.kind === "credential").length;
+
+  const filtered = useMemo(() => {
+    return allSecrets.filter((s) => {
+      if (kindFilter !== "all" && s.kind !== kindFilter) return false;
+      if (query.trim()) {
+        const needle = query.toLowerCase();
+        if (!s.label.toLowerCase().includes(needle)) return false;
+      }
+      return true;
+    });
+  }, [allSecrets, kindFilter, query]);
 
   return (
     <div className="space-y-[14px]">
-      <section className="panel flex flex-wrap items-center gap-4 p-5">
+      {/* Header Banner */}
+      <section className="panel flex flex-wrap items-center justify-between gap-4 p-5">
         <div>
-          <p className="eyebrow">{copy.eyebrow}</p>
-          <h2 className="text-[19px] font-bold tracking-tight">{copy.title} for {project.name}</h2>
-          <p className="mt-1 flex items-start gap-1.5 text-[13.5px] text-muted">
-            <ShieldCheck size={16} className="mt-px shrink-0 text-brand-600" />
-            Stored encrypted with AES-256. Accessible to all team members of this project.
+          <p className="eyebrow flex items-center gap-1.5 text-brand-700">
+            <ShieldCheck size={15} /> Project Storage Vault
+          </p>
+          <h2 className="mt-0.5 text-[21px] font-bold tracking-tight text-ink">
+            {project.name} — .env &amp; Credentials Vault
+          </h2>
+          <p className="mt-1 text-[13.5px] text-muted">
+            Unlimited encrypted storage for this project&apos;s .env files, logins, and API keys. Accessible directly to all project members and admins.
           </p>
         </div>
-        <button type="button" className="btn-primary ml-auto" onClick={() => setModal({ secret: null, initial: null })}>
-          <Plus size={17} /> {copy.add}
-        </button>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
+            className="btn-secondary h-10 px-4 text-[13.5px]"
+            onClick={() => setModal({ kind: "env", secret: null, initial: null })}
+          >
+            <FileCode2 size={16} className="text-brand-700" /> Add .env File
+          </button>
+          <button
+            type="button"
+            className="btn-primary h-10 px-4 text-[13.5px]"
+            onClick={() => setModal({ kind: "credential", secret: null, initial: null })}
+          >
+            <Plus size={16} /> Add Login / Credential
+          </button>
+        </div>
       </section>
 
+      {/* Filter Tabs & Search */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white p-3 shadow-xs">
+        <div className="flex rounded-xl border border-line bg-[#f0f5f2] p-1 text-[13.5px] font-semibold">
+          <button
+            type="button"
+            onClick={() => setKindFilter("all")}
+            className={`rounded-lg px-3.5 py-1.5 transition ${
+              kindFilter === "all" ? "bg-white text-ink shadow-xs" : "text-ink/65 hover:text-ink"
+            }`}
+          >
+            All Items ({allSecrets.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setKindFilter("env")}
+            className={`rounded-lg px-3.5 py-1.5 transition inline-flex items-center gap-1.5 ${
+              kindFilter === "env" ? "bg-white text-ink shadow-xs" : "text-ink/65 hover:text-ink"
+            }`}
+          >
+            <FileCode2 size={15} /> .env Files ({envCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setKindFilter("credential")}
+            className={`rounded-lg px-3.5 py-1.5 transition inline-flex items-center gap-1.5 ${
+              kindFilter === "credential" ? "bg-white text-ink shadow-xs" : "text-ink/65 hover:text-ink"
+            }`}
+          >
+            <KeyRound size={15} /> Account Logins ({credCount})
+          </button>
+        </div>
+
+        <div className="flex h-[38px] w-full sm:w-[240px] items-center gap-2 rounded-xl border border-line bg-white px-3 shadow-xs focus-within:border-brand-500">
+          <Search size={15} className="text-ink/45 shrink-0" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search project vault..."
+            className="w-full bg-transparent text-[13.5px] outline-none placeholder:text-ink/40"
+          />
+        </div>
+      </div>
+
+      {/* Secrets List */}
       {secrets === null ? (
-        <div className="empty-view">Loading...</div>
-      ) : mine.length === 0 ? (
-        <div className="empty-view">{copy.blank}</div>
+        <div className="empty-view">Loading project vault...</div>
+      ) : filtered.length === 0 ? (
+        <div className="panel py-14 px-6 text-center text-muted">
+          <KeyRound size={32} className="mx-auto text-ink/30 mb-2" />
+          <p className="text-[16px] font-bold text-ink">
+            {allSecrets.length === 0
+              ? `No .env files or credentials stored for ${project.name} yet.`
+              : "No matching items found in this filter."}
+          </p>
+          <p className="mt-1 text-[13.5px] max-w-md mx-auto">
+            Project members and admins can store unlimited .env configurations (Development, Staging, Production) and service logins here.
+          </p>
+          {allSecrets.length === 0 && (
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setModal({ kind: "env", secret: null, initial: null })}
+              >
+                <FileCode2 size={16} /> Store First .env File
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => setModal({ kind: "credential", secret: null, initial: null })}
+              >
+                <Plus size={16} /> Store First Credential
+              </button>
+            </div>
+          )}
+        </div>
       ) : (
-        mine.map((secret) => (
+        filtered.map((secret) => (
           <SecretCard
-            key={`${secret.id}-${secret.updatedAt}`} // an edit starts the card afresh, so it never shows the old contents
+            key={`${secret.id}-${secret.updatedAt}`}
             secret={secret}
-            kind={kind}
-            copy={copy}
-            onEdit={(item, initial) => setModal({ secret: item, initial })}
+            onEdit={(item, initial) => setModal({ kind: item.kind, secret: item, initial })}
             onDelete={remove}
             onViewed={load}
           />
@@ -506,9 +688,9 @@ function VaultList({ project, kind, copy }) {
 
       {modal && (
         <SecretModal
-          kind={kind}
-          copy={copy}
+          initialKind={modal.kind}
           projectId={project.id}
+          projectName={project.name}
           secret={modal.secret}
           initial={modal.initial}
           onClose={() => setModal(null)}
@@ -519,8 +701,7 @@ function VaultList({ project, kind, copy }) {
   );
 }
 
-/** The .env files or the account logins saved for a project. Managers and admins only. */
-export default function VaultSection({ project, kind, canOpen }) {
-  const copy = COPY[kind];
-  return canOpen ? <VaultList project={project} kind={kind} copy={copy} /> : <Locked copy={copy} />;
+/** The unified Project Storage Vault (.env files and account logins) for a project. Accessible to project members and admins. */
+export default function VaultSection({ project, kind = "all", canOpen }) {
+  return canOpen ? <ProjectStorageVaultList project={project} defaultKind={kind} /> : <Locked />;
 }

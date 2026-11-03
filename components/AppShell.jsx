@@ -4,12 +4,13 @@ import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
 import BottomNav from "@/components/BottomNav";
 import IssueModal from "@/components/modals/IssueModal";
+import TaskDetailModal from "@/components/modals/TaskDetailModal";
 import ProjectModal from "@/components/modals/ProjectModal";
 import StickyModal from "@/components/modals/StickyModal";
 import { useApp } from "@/components/AppProvider";
 
 export default function AppShell({ children }) {
-  const { issueModal, projectModalOpen, stickyModalOpen, toast } = useApp();
+  const { issueModal, taskDetailModal, projectModalOpen, stickyModalOpen, toast } = useApp();
 
   return (
     <div className="flex min-h-screen">
@@ -22,6 +23,7 @@ export default function AppShell({ children }) {
       </div>
 
       {issueModal && <IssueModal />}
+      {taskDetailModal && <TaskDetailModal />}
       {projectModalOpen && <ProjectModal />}
       {stickyModalOpen && <StickyModal />}
       {toast && (

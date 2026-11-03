@@ -48,6 +48,38 @@ export default function NotificationBell() {
 
   async function respondToInvite(notification, action, event) {
     if (event) event.stopPropagation();
+
+    if (notification.type === "collaborator_invite") {
+      const connectionId = notification.metadata?.connectionId;
+      if (!connectionId) return;
+
+      setActionBusy(notification.id);
+      const { ok, data } = await request("/api/collaborators/respond", "POST", {
+        notificationId: notification.id,
+        connectionId,
+        action,
+      });
+      setActionBusy(null);
+
+      if (!ok) {
+        notify?.(data?.error ?? "Could not respond to invitation.");
+        return;
+      }
+
+      if (action === "accept") {
+        notify?.("Collaborator request accepted!");
+        refreshNotifications?.();
+        router.refresh();
+        setOpen(false);
+        router.push("/collaborators");
+      } else {
+        notify?.("Collaborator request declined.");
+        refreshNotifications?.();
+        router.refresh();
+      }
+      return;
+    }
+
     const projectId =
       notification.metadata?.projectId || Number(notification.link?.replace("/projects/", "").split("?")[0]);
     if (!projectId) return;
@@ -124,12 +156,16 @@ export default function NotificationBell() {
             )}
           </div>
 
-          {/* List */}
-          <div className="max-h-[380px] overflow-y-auto divide-y divide-line/60">
+          {/* List - sized for ~3 notifications before scrolling */}
+          <div className="max-h-[260px] overflow-y-auto divide-y divide-line/60 [scrollbar-width:thin]">
             {notifications && notifications.length > 0 ? (
               <>
                 {notifications.map((item) => {
-                  const isInvite = item.type === "project_invite" || item.title?.toLowerCase().includes("invitation");
+                  const isInvite =
+                    item.type === "project_invite" ||
+                    item.type === "collaborator_invite" ||
+                    item.title?.toLowerCase().includes("invitation") ||
+                    item.title?.toLowerCase().includes("collaborator request");
                   const isProject = item.title?.toLowerCase().includes("project");
 
                   return (
@@ -204,11 +240,6 @@ export default function NotificationBell() {
                     </div>
                   );
                 })}
-
-                <div className="flex items-center justify-center gap-1.5 py-2 bg-[#fafcfb] border-t border-line/60 text-[11px] text-muted">
-                  <Clock size={12} />
-                  <span>Read notifications are kept for 7 days</span>
-                </div>
               </>
             ) : (
               <div className="py-10 px-4 text-center">
@@ -222,6 +253,13 @@ export default function NotificationBell() {
               </div>
             )}
           </div>
+
+          {notifications && notifications.length > 0 && (
+            <div className="flex items-center justify-center gap-1.5 py-2 bg-[#fafcfb] border-t border-line/60 text-[11px] text-muted">
+              <Clock size={12} />
+              <span>Read notifications are kept for 7 days</span>
+            </div>
+          )}
         </div>
       )}
     </div>

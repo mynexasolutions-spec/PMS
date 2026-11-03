@@ -50,6 +50,7 @@ export async function POST(request) {
       parentId: body.parentId ?? null,
       assigneeId: body.assigneeId ?? null,
       createdBy: auth.user.id,
+      startDate: typeof body.startDate === "string" ? body.startDate : null,
       dueAt: typeof body.dueAt === "string" ? body.dueAt : null,
       estimateHours: Number(body.estimateHours) >= 0 ? Number(body.estimateHours) : 0,
       loggedHours: Number(body.loggedHours) >= 0 ? Number(body.loggedHours) : 0,

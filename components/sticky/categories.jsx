@@ -1,4 +1,4 @@
-import { Briefcase, Pin, User } from "lucide-react";
+import { Briefcase, Pin, User, Lightbulb, Bell, AlertCircle } from "lucide-react";
 
 // Sticky-note categories: label, filter-chip colours and a small icon (used by the modal and the Sticky Notes page).
 export const categoryMeta = {
@@ -24,5 +24,23 @@ export const categoryMeta = {
     chip: "bg-[#fdefcf] text-[#b45309]",
     Icon: ({ size = 16 }) => <User size={size} fill="currentColor" />,
     NoteIcon: ({ size = 17 }) => <User size={size} fill="currentColor" />,
+  },
+  ideas: {
+    label: "Ideas",
+    chip: "bg-[#e8f6ec] text-[#2d7a45]",
+    Icon: ({ size = 16 }) => <Lightbulb size={size} fill="currentColor" />,
+    NoteIcon: ({ size = 17 }) => <Lightbulb size={size} fill="currentColor" />,
+  },
+  reminders: {
+    label: "Reminders",
+    chip: "bg-[#eff6ff] text-[#1d4ed8]",
+    Icon: ({ size = 16 }) => <Bell size={size} fill="currentColor" />,
+    NoteIcon: ({ size = 17 }) => <Bell size={size} fill="currentColor" />,
+  },
+  urgent: {
+    label: "Urgent",
+    chip: "bg-[#fef2f2] text-[#b91c1c]",
+    Icon: ({ size = 16 }) => <AlertCircle size={size} fill="currentColor" />,
+    NoteIcon: ({ size = 17 }) => <AlertCircle size={size} fill="currentColor" />,
   },
 };

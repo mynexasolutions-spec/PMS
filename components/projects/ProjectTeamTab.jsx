@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Clock, Crown, Ellipsis, Plus, Shield, ShieldAlert, Trash2, UserCheck, UserPlus, Users, X } from "lucide-react";
+import { Check, Clock, Crown, Ellipsis, Mail, Plus, Shield, ShieldAlert, Trash2, UserCheck, UserPlus, Users, X } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
 import Avatar from "@/components/ui/Avatar";
 import Modal from "@/components/ui/Modal";
@@ -9,23 +9,29 @@ import { useCloseOnOutsideClick } from "@/components/ui/useCloseOnOutsideClick";
 import { request } from "@/lib/api";
 
 function InviteMemberModal({ project, existingUserIds, onClose, onAdded }) {
-  const { users, notify } = useApp();
+  const { collaborators, notify } = useApp();
+  const [mode, setMode] = useState("collaborators"); // "collaborators" | "email"
   const [selectedUserId, setSelectedUserId] = useState("");
+  const [email, setEmail] = useState("");
   const [role, setRole] = useState("member");
   const [busy, setBusy] = useState(false);
 
-  // Available users to invite (active users not already in project)
-  const availableUsers = users.filter((u) => u.active && !existingUserIds.has(u.id));
+  // Available collaborators not already in this project
+  const availableCollaborators = (collaborators || []).filter((u) => u.active && !existingUserIds.has(u.id));
 
   async function submit(e) {
     e.preventDefault();
-    if (!selectedUserId) return;
+    if (mode === "collaborators" && !selectedUserId) return;
+    if (mode === "email" && !email.trim()) return;
+
     setBusy(true);
 
-    const { ok, data } = await request(`/api/projects/${project.id}/members`, "POST", {
-      userId: Number(selectedUserId),
-      role,
-    });
+    const payload =
+      mode === "collaborators"
+        ? { userId: Number(selectedUserId), role }
+        : { email: email.trim(), role };
+
+    const { ok, data } = await request(`/api/projects/${project.id}/members`, "POST", payload);
 
     setBusy(false);
     if (!ok) {
@@ -43,40 +49,110 @@ function InviteMemberModal({ project, existingUserIds, onClose, onAdded }) {
       icon={<UserPlus size={26} className="text-brand-700" />}
       eyebrow={project.name}
       title="Invite team member"
-      subtitle="Send an invitation to a registered account. The user can accept or decline from their notifications."
+      subtitle="Invite members to collaborate on this project."
       onClose={onClose}
     >
+      {/* 2-Option Selector Tabs */}
+      <div className="flex rounded-xl bg-[#eef5f0] p-1 mb-4 text-[13.5px] font-semibold">
+        <button
+          type="button"
+          onClick={() => setMode("collaborators")}
+          className={`flex-1 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+            mode === "collaborators"
+              ? "bg-white text-brand-900 shadow-xs"
+              : "text-ink/65 hover:text-ink"
+          }`}
+        >
+          <Users size={15} /> From Collaborators ({availableCollaborators.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("email")}
+          className={`flex-1 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+            mode === "email"
+              ? "bg-white text-brand-900 shadow-xs"
+              : "text-ink/65 hover:text-ink"
+          }`}
+        >
+          <Mail size={15} /> Direct Email
+        </button>
+      </div>
+
       <form onSubmit={submit} className="grid gap-4">
-        <label className="field">
-          Select account to invite
-          <select
-            value={selectedUserId}
-            onChange={(e) => setSelectedUserId(e.target.value)}
-            required
-            autoFocus
-          >
-            <option value="">-- Choose an account --</option>
-            {availableUsers.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name} ({u.email})
-              </option>
-            ))}
-          </select>
-        </label>
+        {mode === "collaborators" ? (
+          <label className="field">
+            Select collaborator
+            {availableCollaborators.length > 0 ? (
+              <select
+                value={selectedUserId}
+                onChange={(e) => setSelectedUserId(e.target.value)}
+                required
+                autoFocus
+                className="mt-1"
+              >
+                <option value="">-- Choose a collaborator --</option>
+                {availableCollaborators.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} ({u.email})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="mt-1 rounded-xl border border-dashed border-line bg-[#fbfdfc] p-4 text-center">
+                <p className="text-[13.5px] text-muted">
+                  No connected collaborators available to add.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setMode("email")}
+                  className="mt-2 text-[13px] font-bold text-brand-700 hover:underline"
+                >
+                  Invite directly by email instead →
+                </button>
+              </div>
+            )}
+          </label>
+        ) : (
+          <label className="field">
+            Colleague's registered email
+            <div className="relative mt-1">
+              <input
+                type="email"
+                required
+                autoFocus
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="colleague@company.com"
+                className="w-full pl-10 pr-3"
+              />
+              <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink/40 pointer-events-none" />
+            </div>
+            <span className="text-[12px] text-muted mt-1">
+              They don't need to be in your Collaborators list.
+            </span>
+          </label>
+        )}
 
         <label className="field">
           Project role
-          <select value={role} onChange={(e) => setRole(e.target.value)}>
+          <select value={role} onChange={(e) => setRole(e.target.value)} className="mt-1">
             <option value="member">Team Member</option>
             <option value="admin">Project Admin</option>
           </select>
         </label>
 
         <div className="flex justify-end gap-3 pt-2">
-          <button type="button" className="btn-secondary" onClick={onClose}>
+          <button type="button" className="btn-secondary" onClick={onClose} disabled={busy}>
             Cancel
           </button>
-          <button className="btn-primary" disabled={busy || !selectedUserId || availableUsers.length === 0}>
+          <button
+            className="btn-primary"
+            disabled={
+              busy ||
+              (mode === "collaborators" && (!selectedUserId || availableCollaborators.length === 0)) ||
+              (mode === "email" && !email.trim())
+            }
+          >
             {busy ? "Sending invite..." : "Send invitation"}
           </button>
         </div>

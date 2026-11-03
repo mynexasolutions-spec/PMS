@@ -1,42 +1,39 @@
 "use client";
 
 import { useState } from "react";
-import { X, KeyRound, FileCode2, FolderPlus, Zap, Calendar, User, FolderKanban } from "lucide-react";
+import { KeyRound, FileCode2, FolderPlus, Zap, ShieldCheck } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
+import Modal from "@/components/ui/Modal";
 
 const PRESETS = [
   {
     id: "credentials",
     label: "Add Credentials",
     icon: KeyRound,
-    color: "bg-blue-50 text-blue-700 border-blue-200",
-    defaultTitle: "Store credentials in Credentials Storage",
+    defaultTitle: "Store credentials in Project Storage Vault",
   },
   {
     id: "env",
     label: "Add .env File",
     icon: FileCode2,
-    color: "bg-emerald-50 text-emerald-700 border-emerald-200",
     defaultTitle: "Configure .env variables in Vault",
   },
   {
     id: "project_setup",
     label: "Setup New Project",
     icon: FolderPlus,
-    color: "bg-purple-50 text-purple-700 border-purple-200",
     defaultTitle: "Configure repository, staging URLs & invite team",
   },
   {
     id: "general",
     label: "Custom Action",
     icon: Zap,
-    color: "bg-amber-50 text-amber-700 border-amber-200",
     defaultTitle: "",
   },
 ];
 
 export default function ActionRequestModal({ isOpen, onClose }) {
-  const { users, projects, currentUser, createAction } = useApp();
+  const { collaborators, projects, currentUser, createAction } = useApp();
 
   const [category, setCategory] = useState("credentials");
   const [assigneeId, setAssigneeId] = useState("");
@@ -48,8 +45,8 @@ export default function ActionRequestModal({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
-  // Filter available active team members
-  const availableUsers = users.filter((u) => u.active);
+  // Only active connected collaborators can be assigned actions
+  const availableCollaborators = (collaborators || []).filter((u) => u.active);
   // Normal projects
   const normalProjects = projects.filter((p) => !p.isVaultOnly);
 
@@ -81,93 +78,96 @@ export default function ActionRequestModal({ isOpen, onClose }) {
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-xs"
-      onClick={onClose}
+    <Modal
+      icon={<ShieldCheck size={22} className="text-brand-700" />}
+      eyebrow="Workspace Delegation"
+      title="New Action Request"
+      subtitle="Delegate an action directly to a collaborator."
+      onClose={onClose}
+      size="default"
+      compact={true}
     >
-      <div
-        className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl border border-line animate-in fade-in zoom-in-95 duration-150"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-line/80 pb-4">
-          <div>
-            <p className="eyebrow">Workspace Delegation</p>
-            <h3 className="text-[19px] font-bold text-ink tracking-tight">New Action Request</h3>
+      <div className="space-y-3">
+        {/* Quick Template Chips */}
+        <div>
+          <span className="block text-[11px] font-semibold uppercase tracking-wider text-ink/55 mb-1.5">
+            Quick Templates
+          </span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {PRESETS.map((preset) => {
+              const active = category === preset.id;
+              const Icon = preset.icon;
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => handleSelectPreset(preset)}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-semibold transition-all ${
+                    active
+                      ? "bg-brand-900 text-white shadow-2xs"
+                      : "bg-[#f1f6f2] text-ink/70 hover:bg-[#e4efe6] hover:text-ink"
+                  }`}
+                >
+                  <Icon size={12.5} className={active ? "text-white" : "text-brand-700"} />
+                  <span>{preset.label}</span>
+                </button>
+              );
+            })}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="grid h-8 w-8 place-items-center rounded-lg text-ink/50 hover:bg-black/5 hover:text-ink transition"
-          >
-            <X size={18} />
-          </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          {/* 1. Quick Presets */}
-          <div>
-            <label className="block text-[12.5px] font-semibold text-ink/75 mb-1.5">
-              Action Template
+        {/* Main Form */}
+        <form onSubmit={handleSubmit} className="space-y-2.5 pt-0.5">
+          {/* Action Summary */}
+          <label className="field !gap-1">
+            <span className="font-semibold text-ink/80 text-[12px]">
+              Action Summary <span className="text-red-500">*</span>
+            </span>
+            <input
+              type="text"
+              required
+              autoFocus
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Store credentials in Project Storage Vault"
+              className="w-full h-[37px] rounded-lg border border-line bg-white px-3 text-[13px] text-ink outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 transition"
+            />
+          </label>
+
+          {/* Row 1: Assignee & Project */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <label className="field !gap-1">
+              <span className="font-semibold text-ink/80 text-[12px]">
+                Assign to Collaborator <span className="text-red-500">*</span>
+              </span>
+              <select
+                required
+                value={assigneeId}
+                onChange={(e) => setAssigneeId(e.target.value)}
+                className="w-full h-[37px] rounded-lg border border-line bg-white px-2.5 text-[12.5px] text-ink outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 transition"
+              >
+                <option value="">-- Choose collaborator --</option>
+                {availableCollaborators.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.email})
+                  </option>
+                ))}
+              </select>
+              {availableCollaborators.length === 0 && (
+                <span className="text-[11px] text-amber-700 leading-tight">
+                  No collaborators added yet. Add someone from Collaborators tab first.
+                </span>
+              )}
             </label>
-            <div className="grid grid-cols-2 gap-2">
-              {PRESETS.map((preset) => {
-                const active = category === preset.id;
-                const Icon = preset.icon;
-                return (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => handleSelectPreset(preset)}
-                    className={`flex items-center gap-2 rounded-xl p-2.5 text-left text-[13px] font-medium border transition ${
-                      active
-                        ? "border-brand-600 bg-brand-50/60 text-brand-900 shadow-2xs ring-1 ring-brand-500"
-                        : "border-line bg-[#f8faf9] text-ink/70 hover:bg-white hover:text-ink"
-                    }`}
-                  >
-                    <span className={`grid h-7 w-7 place-items-center rounded-lg border ${preset.color}`}>
-                      <Icon size={14} />
-                    </span>
-                    <span className="truncate">{preset.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
 
-          {/* 2. Assign To Teammate */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[12.5px] font-semibold text-ink/75 mb-1">
-                Assign to Teammate <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <select
-                  required
-                  value={assigneeId}
-                  onChange={(e) => setAssigneeId(e.target.value)}
-                  className="w-full h-[40px] rounded-xl border border-line bg-white px-3 text-[13.5px] text-ink outline-none focus:border-brand-500 transition"
-                >
-                  <option value="">-- Choose member --</option>
-                  {availableUsers.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name} {u.id === currentUser?.id ? "(me)" : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* 3. Related Project (Optional) */}
-            <div>
-              <label className="block text-[12.5px] font-semibold text-ink/75 mb-1">
-                Related Project <span className="text-muted font-normal">(optional)</span>
-              </label>
+            <label className="field !gap-1">
+              <span className="font-semibold text-ink/80 text-[12px]">
+                Related Project <span className="text-muted font-normal text-[11px]">(optional)</span>
+              </span>
               <select
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
-                className="w-full h-[40px] rounded-xl border border-line bg-white px-3 text-[13.5px] text-ink outline-none focus:border-brand-500 transition"
+                className="w-full h-[37px] rounded-lg border border-line bg-white px-2.5 text-[12.5px] text-ink outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 transition"
               >
                 <option value="">-- No specific project --</option>
                 {normalProjects.map((p) => (
@@ -176,70 +176,57 @@ export default function ActionRequestModal({ isOpen, onClose }) {
                   </option>
                 ))}
               </select>
-            </div>
-          </div>
-
-          {/* 4. Action Summary */}
-          <div>
-            <label className="block text-[12.5px] font-semibold text-ink/75 mb-1">
-              Action Summary <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Add Razorpay keys for Greenleaf Store"
-              className="w-full h-[40px] rounded-xl border border-line bg-white px-3 text-[14px] text-ink outline-none focus:border-brand-500 transition"
-            />
           </div>
 
-          {/* 5. Due Date & Notes */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[12.5px] font-semibold text-ink/75 mb-1">
-                Due Date <span className="text-muted font-normal">(optional)</span>
-              </label>
+          {/* Row 2: Due Date & Context */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <label className="field !gap-1">
+              <span className="font-semibold text-ink/80 text-[12px]">
+                Due Date <span className="text-muted font-normal text-[11px]">(optional)</span>
+              </span>
               <input
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full h-[40px] rounded-xl border border-line bg-white px-3 text-[13.5px] text-ink outline-none focus:border-brand-500 transition"
+                className="w-full h-[37px] rounded-lg border border-line bg-white px-2.5 text-[12.5px] text-ink outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 transition"
               />
-            </div>
-            <div>
-              <label className="block text-[12.5px] font-semibold text-ink/75 mb-1">
-                Notes / Context <span className="text-muted font-normal">(optional)</span>
-              </label>
+            </label>
+
+            <label className="field !gap-1">
+              <span className="font-semibold text-ink/80 text-[12px]">
+                Notes / Context <span className="text-muted font-normal text-[11px]">(optional)</span>
+              </span>
               <input
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="e.g. Credentials are in shared 1Password"
-                className="w-full h-[40px] rounded-xl border border-line bg-white px-3 text-[13.5px] text-ink outline-none focus:border-brand-500 transition"
+                placeholder="e.g. Credentials are in 1Password"
+                className="w-full h-[37px] rounded-lg border border-line bg-white px-2.5 text-[12.5px] text-ink outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 transition"
               />
-            </div>
+            </label>
           </div>
 
-          {/* Footer buttons */}
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-line/80">
+          {/* Footer Actions */}
+          <div className="flex items-center justify-end gap-2.5 pt-2.5 border-t border-line/60">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl px-4 py-2 text-[13.5px] font-medium text-muted hover:text-ink transition"
+              disabled={submitting}
+              className="btn-secondary h-[36px] px-3.5 text-[13px]"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={submitting || !title.trim() || !assigneeId}
-              className="rounded-xl bg-brand-700 px-5 py-2 text-[13.5px] font-bold text-white shadow-xs hover:bg-brand-800 disabled:opacity-40 transition"
+              disabled={submitting || !title.trim() || !assigneeId || availableCollaborators.length === 0}
+              className="btn-primary h-[36px] px-5 text-[13px] font-bold shadow-xs"
             >
               {submitting ? "Sending..." : "Send Request"}
             </button>
           </div>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 }

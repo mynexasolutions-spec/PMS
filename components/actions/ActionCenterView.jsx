@@ -26,7 +26,7 @@ import ActionRequestModal from "@/components/modals/ActionRequestModal";
 
 const CATEGORY_MAP = {
   credentials: {
-    label: "Credentials Storage",
+    label: "Project Storage Vault",
     icon: KeyRound,
     badgeBg: "bg-blue-50 text-blue-700 border-blue-200",
     actionLabel: "Open Vault",
@@ -35,7 +35,7 @@ const CATEGORY_MAP = {
     label: ".env File",
     icon: FileCode2,
     badgeBg: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    actionLabel: "Open Environments",
+    actionLabel: "Open Project Vault",
   },
   project_setup: {
     label: "Project Setup",
@@ -113,10 +113,10 @@ export default function ActionCenterView() {
   // Get action shortcut URL
   function getShortcutUrl(action) {
     if (action.category === "credentials") {
-      return action.projectId ? `/projects/${action.projectId}?tab=credentials` : "/credentials";
+      return action.projectId ? `/projects/${action.projectId}?tab=vault` : "/credentials";
     }
     if (action.category === "env") {
-      return action.projectId ? `/projects/${action.projectId}?tab=env` : "/credentials";
+      return action.projectId ? `/projects/${action.projectId}?tab=vault` : "/credentials";
     }
     if (action.category === "project_setup") {
       return action.projectId ? `/projects/${action.projectId}` : "/projects";
@@ -282,7 +282,7 @@ export default function ActionCenterView() {
             <p className="mt-1 text-[13px] text-muted max-w-sm mx-auto">
               {activeTab === "assigned"
                 ? "You have no pending operational actions right now. You're all caught up!"
-                : "You haven't delegated any actions yet. Click 'New Action Request' to assign setup tasks to teammates."}
+                : "You haven't delegated any actions yet. Click 'New Action Request' to assign setup tasks to collaborators."}
             </p>
             <button
               type="button"

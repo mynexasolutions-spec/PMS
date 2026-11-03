@@ -9,10 +9,12 @@ export default function BottomNav() {
   const pathname = usePathname();
   const { tasks, completed, projects, setSidebarOpen } = useApp();
 
+  const normalProjectsCount = projects.filter((p) => !p.isVaultOnly).length;
+
   const nav = [
     { label: "Overview", icon: LayoutGrid, href: "/" },
     { label: "Tasks", icon: ShieldCheck, href: "/tasks", badge: tasks.length - completed },
-    { label: "Projects", icon: FolderKanban, href: "/projects", badge: projects.length },
+    { label: "Projects", icon: FolderKanban, href: "/projects", badge: normalProjectsCount },
     { label: "Calendar", icon: Calendar, href: "/calendar" },
   ];
 

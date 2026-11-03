@@ -10,7 +10,7 @@ import WeekChart from "./WeekChart";
 import StickyBoard from "@/components/sticky/StickyBoard";
 import IssueBoard from "@/components/issues/IssueBoard";
 
-const twoCols = "grid gap-[17px] xl:grid-cols-[minmax(0,1.58fr)_minmax(0,1fr)]";
+const twoCols = "grid gap-[17px] md:grid-cols-[minmax(0,1.38fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.58fr)_minmax(0,1fr)] items-start";
 
 export default function Overview() {
   const { tasks, todayTodos, todayDate, filterTasks, currentUser } = useApp();

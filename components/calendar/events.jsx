@@ -29,21 +29,65 @@ export function formatClock(time) {
 export function buildEvents({ tasks, todos }) {
   const events = [];
   for (const task of tasks) {
-    if (!task.dueAt) continue;
-    events.push({
-      id: `issue-${task.id}`,
-      source: "issue",
-      kind: task.type === "Feature" ? "milestone" : "task",
-      title: task.title,
-      key: task.issueKey,
-      date: task.dueAt.slice(0, 10),
-      time: task.dueAt.slice(11, 16) || null,
-      projectId: task.projectId,
-      projectName: task.projectName,
-      priority: task.priority,
-      done: task.status === "done",
-      href: `/projects/${task.projectId}`,
-    });
+    if (!task.dueAt && !task.startDate) continue;
+
+    const startDateStr = task.startDate ? task.startDate.slice(0, 10) : null;
+    const dueDateStr = task.dueAt ? task.dueAt.slice(0, 10) : null;
+
+    if (dueDateStr) {
+      events.push({
+        id: `issue-${task.id}`,
+        source: "issue",
+        kind: task.type === "Feature" ? "milestone" : "task",
+        title: task.title,
+        key: task.issueKey,
+        date: dueDateStr,
+        time: task.dueAt.slice(11, 16) || null,
+        startDate: startDateStr,
+        dueDate: dueDateStr,
+        projectId: task.projectId,
+        projectName: task.projectName,
+        priority: task.priority,
+        done: task.status === "done",
+        href: `/projects/${task.projectId}`,
+      });
+
+      if (startDateStr && startDateStr !== dueDateStr) {
+        events.push({
+          id: `issue-start-${task.id}`,
+          source: "issue",
+          kind: "task",
+          title: `Start: ${task.title}`,
+          key: task.issueKey,
+          date: startDateStr,
+          time: task.startDate.slice(11, 16) || null,
+          startDate: startDateStr,
+          dueDate: dueDateStr,
+          projectId: task.projectId,
+          projectName: task.projectName,
+          priority: task.priority,
+          done: task.status === "done",
+          href: `/projects/${task.projectId}`,
+        });
+      }
+    } else if (startDateStr) {
+      events.push({
+        id: `issue-${task.id}`,
+        source: "issue",
+        kind: task.type === "Feature" ? "milestone" : "task",
+        title: task.title,
+        key: task.issueKey,
+        date: startDateStr,
+        time: task.startDate.slice(11, 16) || null,
+        startDate: startDateStr,
+        dueDate: null,
+        projectId: task.projectId,
+        projectName: task.projectName,
+        priority: task.priority,
+        done: task.status === "done",
+        href: `/projects/${task.projectId}`,
+      });
+    }
   }
   for (const todo of todos) {
     events.push({

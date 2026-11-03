@@ -16,15 +16,16 @@ export async function GET(request) {
 
   const all = getProjects();
   if (vaultOnly) {
-    return Response.json({ projects: all.filter((p) => p.isVaultOnly) });
+    return Response.json({ projects: all.filter((p) => p.isVaultOnly && p.createdBy === auth.user.id) });
   }
 
-  const accessible = all.filter(
-    (p) =>
-      p.isVaultOnly ||
+  const accessible = all.filter((p) => {
+    if (p.isVaultOnly) return p.createdBy === auth.user.id;
+    return (
       (p.members || []).some((m) => m.userId === auth.user.id && m.status !== "pending") ||
       p.createdBy === auth.user.id
-  );
+    );
+  });
   const projects = includeVault ? accessible : accessible.filter((p) => !p.isVaultOnly);
 
   return Response.json({ projects });

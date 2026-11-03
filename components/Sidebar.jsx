@@ -21,8 +21,13 @@ export default function Sidebar() {
     { label: "Overview", icon: LayoutGrid, href: "/" },
     { label: "Action Center", icon: ShieldCheck, href: "/tasks", badge: app.myPendingActionsCount },
     { label: "Projects", icon: FolderKanban, href: "/projects", badge: normalProjectsCount },
-    { label: "Credentials Storage", icon: KeyRound, href: "/credentials" },
-    { label: "Accounts", icon: Users, href: "/team", badge: app.users.filter((user) => user.active).length },
+    {
+      label: "Collaborators",
+      icon: Users,
+      href: "/collaborators",
+      badge: app.pendingCollaboratorRequestsCount > 0 ? app.pendingCollaboratorRequestsCount : app.collaborators.length,
+      badgeHighlight: app.pendingCollaboratorRequestsCount > 0,
+    },
   ];
 
   const navPersonal = [
@@ -30,11 +35,12 @@ export default function Sidebar() {
     { label: "My Notes", icon: FileText, href: "/notes", badge: app.notes.length },
     { label: "My Daily To-Do", icon: SquareCheckBig, href: "/daily-todo", badge: app.openTodosToday },
     { label: "My Sticky Notes", icon: StickyNote, href: "/sticky-notes", solidWhenActive: true },
+    { label: "My Credentials", icon: KeyRound, href: "/credentials" },
   ];
 
   const isActive = (href) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
-  const renderItem = ({ label, icon: Icon, href, badge, solidWhenActive }) => {
+  const renderItem = ({ label, icon: Icon, href, badge, solidWhenActive, badgeHighlight }) => {
     const active = isActive(href);
     return (
       <Link
@@ -54,14 +60,18 @@ export default function Sidebar() {
           <>
             <span className="flex-1 truncate">{label}</span>
             {badge !== undefined && (
-              <span className="grid h-[22px] min-w-[22px] place-items-center rounded-full bg-[#cdeed4] px-1.5 text-[12.5px] font-semibold text-brand-800">
+              <span
+                className={`grid h-[22px] min-w-[22px] place-items-center rounded-full px-1.5 text-[12px] font-semibold ${
+                  badgeHighlight ? "bg-amber-200 text-amber-900 font-bold ring-1 ring-amber-400" : "bg-[#cdeed4] text-brand-800"
+                }`}
+              >
                 {badge}
               </span>
             )}
           </>
         )}
         {collapsed && badge !== undefined && badge > 0 && (
-          <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-brand-600" />
+          <span className={`absolute top-1.5 right-1.5 h-2 w-2 rounded-full ${badgeHighlight ? "bg-amber-500 ring-2 ring-white" : "bg-brand-600"}`} />
         )}
       </Link>
     );

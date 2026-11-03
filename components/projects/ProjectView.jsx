@@ -27,6 +27,7 @@ import { useApp } from "@/components/AppProvider";
 import IssueBoard from "@/components/issues/IssueBoard";
 import Greeting from "@/components/overview/Greeting";
 import { StageStepper } from "@/components/projects/stages";
+import { request } from "@/lib/api";
 import DetailsTab from "./DetailsTab";
 import ProjectCalendarTab from "./ProjectCalendarTab";
 import ProjectChatTab from "./ProjectChatTab";
@@ -39,12 +40,11 @@ const CORE_TABS = [
   { id: "calendar", label: "Calendar", icon: Calendar },
   { id: "chat", label: "Team Chat", icon: MessageSquare },
   { id: "sticky", label: "Sticky Notes", icon: StickyNote },
+  { id: "vault", label: "Project Storage Vault", icon: KeyRound },
 ];
 
 const MORE_TABS = [
   { id: "team", label: "Project Team", icon: Users, desc: "Team members & role access" },
-  { id: "env", label: "Environments", icon: FileCode2, desc: "Dev, Staging & Production URLs" },
-  { id: "credentials", label: "Credentials", icon: KeyRound, desc: "Secrets & credentials vault" },
   { id: "details", label: "Project Details", icon: Info, desc: "Description, dates & client info" },
 ];
 
@@ -74,9 +74,20 @@ function StatCard({ label, value, icon: Icon, iconBg, iconColor }) {
 export default function ProjectView({ projectId, initialTab = "kanban" }) {
   const { tasks, projects, currentUser, updateProject } = useApp();
   const project = projects.find((item) => item.id === projectId);
-  const [tab, setTab] = useState(ALL_TABS.some((item) => item.id === initialTab) ? initialTab : "kanban");
+  const normalizedTab = initialTab === "env" || initialTab === "credentials" ? "vault" : initialTab;
+  const [tab, setTab] = useState(ALL_TABS.some((item) => item.id === normalizedTab) ? normalizedTab : "kanban");
   const [moreOpen, setMoreOpen] = useState(false);
   const moreMenuRef = useRef(null);
+  const tabsContainerRef = useRef(null);
+
+  // Auto-scroll active tab into view on smaller screens (iPad / mobile)
+  useEffect(() => {
+    if (!tabsContainerRef.current) return;
+    const activeBtn = tabsContainerRef.current.querySelector('[aria-selected="true"]');
+    if (activeBtn) {
+      activeBtn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
+  }, [tab]);
 
   // Close dropdown on outside click or Escape
   useEffect(() => {
@@ -111,13 +122,46 @@ export default function ProjectView({ projectId, initialTab = "kanban" }) {
 
   const canManage = isProjAdmin;
   const canVault = isMember;
+  const hasAccess = project && (isProjAdmin || isMember);
+
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
+
+  // Poll unread chat count when user is on another tab (e.g. Kanban, Calendar)
+  useEffect(() => {
+    if (!projectId || !hasAccess) return;
+
+    let active = true;
+
+    async function checkUnread() {
+      if (tab === "chat") {
+        setChatUnreadCount(0);
+        return;
+      }
+      try {
+        const { ok, data } = await request(`/api/projects/${projectId}/chat/unread`);
+        if (active && ok && typeof data?.unreadCount === "number") {
+          setChatUnreadCount(data.unreadCount);
+        }
+      } catch {}
+    }
+
+    checkUnread();
+    const timer = setInterval(checkUnread, 4000);
+
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [projectId, hasAccess, tab]);
 
   function selectTab(id) {
     setTab(id);
+    if (id === "chat") {
+      setChatUnreadCount(0);
+      request(`/api/projects/${projectId}/chat/unread`, { method: "POST" }).catch(() => {});
+    }
     window.history.replaceState(null, "", id === "kanban" ? `/projects/${projectId}` : `/projects/${projectId}?tab=${id}`);
   }
-
-  const hasAccess = project && (isProjAdmin || isMember);
 
   if (!project || !hasAccess) {
     return (
@@ -160,7 +204,7 @@ export default function ProjectView({ projectId, initialTab = "kanban" }) {
       />
 
       {/* Standalone KPI Metrics Row */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
           label="Open tasks"
           value={openTasks}
@@ -228,40 +272,56 @@ export default function ProjectView({ projectId, initialTab = "kanban" }) {
         )}
       </section>
 
-      {/* Navigation Tabs (Idea 1: Core Daily Tabs + Manage Dropdown) */}
+      {/* Navigation Tabs (Sliding Core Daily Tabs + Pinned Manage Dropdown) */}
       <div className="border-b border-line">
-        <div role="tablist" aria-label="Project sections" className="flex items-center gap-1 overflow-visible">
-          {/* Daily Core Tabs */}
-          {CORE_TABS.map(({ id, label, icon: Icon }) => {
-            const active = tab === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => selectTab(id)}
-                className={`-mb-px inline-flex shrink-0 items-center gap-2 whitespace-nowrap border-b-[3px] px-4 py-3 text-[14.5px] transition ${
-                  active
-                    ? "border-brand-600 font-bold text-ink"
-                    : "border-transparent font-medium text-ink/65 hover:text-ink hover:border-line"
-                }`}
-              >
-                <Icon size={17} className={active ? "text-brand-700" : ""} />
-                {label}
-              </button>
-            );
-          })}
+        <div role="tablist" aria-label="Project sections" className="flex items-center justify-between gap-1 overflow-visible">
+          {/* Horizontally sliding / swipeable tabs */}
+          <div
+            ref={tabsContainerRef}
+            className="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto no-scrollbar scroll-smooth"
+          >
+            {CORE_TABS.map(({ id, label, icon: Icon }) => {
+              const active = tab === id;
+              const hasChatUnread = id === "chat" && chatUnreadCount > 0;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => selectTab(id)}
+                  className={`-mb-px inline-flex shrink-0 items-center gap-2 whitespace-nowrap border-b-[3px] px-3.5 sm:px-4 py-3 text-[14px] sm:text-[14.5px] transition ${
+                    active
+                      ? "border-brand-600 font-bold text-ink"
+                      : "border-transparent font-medium text-ink/65 hover:text-ink hover:border-line"
+                  }`}
+                >
+                  <div className="relative inline-flex items-center">
+                    <Icon size={17} className={active ? "text-brand-700" : ""} />
+                  </div>
+                  <span>{label}</span>
+                  {hasChatUnread && (
+                    <span
+                      className="inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 text-[11px] font-bold leading-none rounded-full bg-rose-600 text-white shadow-xs"
+                      title={`${chatUnreadCount} unread message${chatUnreadCount > 1 ? "s" : ""}`}
+                    >
+                      {chatUnreadCount > 99 ? "99+" : chatUnreadCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
 
-          {/* Manage / Setup Dropdown */}
-          <div className="relative" ref={moreMenuRef}>
+          {/* Manage / Setup Dropdown (Pinned to the right, outside overflow-x-auto so dropdown never clips!) */}
+          <div className="relative shrink-0 border-l border-line/70 pl-1" ref={moreMenuRef}>
             <button
               type="button"
               role="tab"
               aria-expanded={moreOpen}
               aria-selected={isMoreActive}
               onClick={() => setMoreOpen((prev) => !prev)}
-              className={`-mb-px inline-flex shrink-0 items-center gap-2 whitespace-nowrap border-b-[3px] px-4 py-3 text-[14.5px] transition ${
+              className={`-mb-px inline-flex shrink-0 items-center gap-1.5 sm:gap-2 whitespace-nowrap border-b-[3px] px-3 sm:px-4 py-3 text-[14px] sm:text-[14.5px] transition ${
                 isMoreActive
                   ? "border-brand-600 font-bold text-ink"
                   : "border-transparent font-medium text-ink/65 hover:text-ink hover:border-line"
@@ -270,7 +330,7 @@ export default function ProjectView({ projectId, initialTab = "kanban" }) {
               {isMoreActive && activeMoreItem ? (
                 <>
                   <activeMoreItem.icon size={17} className="text-brand-700" />
-                  <span>{activeMoreItem.label}</span>
+                  <span className="hidden sm:inline">{activeMoreItem.label}</span>
                 </>
               ) : (
                 <>
@@ -286,7 +346,7 @@ export default function ProjectView({ projectId, initialTab = "kanban" }) {
 
             {/* Dropdown Menu */}
             {moreOpen && (
-              <div className="absolute left-0 top-full z-40 mt-1.5 w-72 rounded-2xl border border-line bg-white p-2 shadow-2xl animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute right-0 top-full z-40 mt-1.5 w-72 rounded-2xl border border-line bg-white p-2 shadow-2xl animate-in fade-in zoom-in-95 duration-100 origin-top-right">
                 <div className="border-b border-line/60 px-3 py-2">
                   <p className="text-[11px] font-bold uppercase tracking-wider text-muted">
                     Project Setup & Ops
@@ -348,13 +408,17 @@ export default function ProjectView({ projectId, initialTab = "kanban" }) {
             subtitle={`${own.length} project tasks across stages`}
           />
         )}
-        {tab === "chat" && <ProjectChatTab project={project} />}
+        {tab === "chat" && (
+          <ProjectChatTab
+            project={project}
+            onMessagesRead={() => setChatUnreadCount(0)}
+          />
+        )}
         {tab === "calendar" && <ProjectCalendarTab project={project} />}
         {tab === "sticky" && <ProjectStickyTab project={project} />}
         {tab === "team" && <ProjectTeamTab project={project} canManage={canManage} />}
         {tab === "details" && <DetailsTab project={project} canEdit={canManage} />}
-        {tab === "env" && <VaultSection key="env" project={project} kind="env" canOpen={canVault} />}
-        {tab === "credentials" && <VaultSection key="credential" project={project} kind="credential" canOpen={canVault} />}
+        {tab === "vault" && <VaultSection key="vault" project={project} canOpen={canVault} />}
       </div>
     </div>
   );

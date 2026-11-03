@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { StickyNote, Pin, PinOff, Trash2, Plus, Search, LayoutGrid, List, Ellipsis, Clock } from "lucide-react";
+import { useState, useRef } from "react";
+import { StickyNote, Pin, PinOff, Trash2, Plus, Search, LayoutGrid, List, Ellipsis, Clock, Calendar, X } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
 import { useCloseOnOutsideClick } from "@/components/ui/useCloseOnOutsideClick";
 import { daysBetween, longDate } from "@/lib/datetime";
 import { STICKY_CATEGORIES } from "@/lib/constants";
 import { stickyTone } from "./tones";
 import { categoryMeta } from "./categories";
+import StickyDetailModal from "@/components/modals/StickyDetailModal";
+import Avatar from "@/components/ui/Avatar";
 
 const FOLD = 40; // px size of the curled corner
 const cut = `polygon(0 0, 100% 0, 100% calc(100% - ${FOLD}px), calc(100% - ${FOLD}px) 100%, 0 100%)`;
@@ -24,78 +26,169 @@ function noteTime(createdAt, now) {
   return `${day}, ${timeFormat.format(created)}`;
 }
 
-function Note({ note, now, list, menuOpen, onMenu, onPin, onDelete }) {
-  const t = stickyTone(note.color);
-  const meta = note.category ? categoryMeta[note.category] : null;
+const STICKY_COLORS = [
+  { id: "yellow", bg: "#fef9c3", border: "#fde047", text: "#713f12" },
+  { id: "green", bg: "#dcfce7", border: "#86efac", text: "#14532d" },
+  { id: "blue", bg: "#e0f2fe", border: "#7dd3fc", text: "#0c4a6e" },
+  { id: "pink", bg: "#fce7f3", border: "#f472b6", text: "#831843" },
+  { id: "purple", bg: "#f3e8ff", border: "#c084fc", text: "#581c87" },
+  { id: "orange", bg: "#ffedd5", border: "#fdba74", text: "#7c2d12" },
+];
+
+function formatTime(dateStr) {
+  if (!dateStr) return "";
+  try {
+    const d = new Date(`${dateStr.replace(" ", "T")}Z`);
+    return new Intl.DateTimeFormat("en-GB", { month: "short", day: "numeric" }).format(d);
+  } catch {
+    return "";
+  }
+}
+
+function formatDisplayDate(dateStr) {
+  if (!dateStr) return "";
+  try {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const date = new Date(y, m - 1, d);
+    return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(date);
+  } catch {
+    return dateStr;
+  }
+}
+
+function isSameCalendarDay(noteDateStr, targetYMD) {
+  if (!noteDateStr || !targetYMD) return false;
+  if (noteDateStr.startsWith(targetYMD)) return true;
+  try {
+    const iso = noteDateStr.includes("T") ? noteDateStr : `${noteDateStr.replace(" ", "T")}Z`;
+    const d = new Date(iso);
+    if (!isNaN(d.getTime())) {
+      const ly = d.getFullYear();
+      const lm = String(d.getMonth() + 1).padStart(2, "0");
+      const ld = String(d.getDate()).padStart(2, "0");
+      if (`${ly}-${lm}-${ld}` === targetYMD) return true;
+
+      const uy = d.getUTCFullYear();
+      const um = String(d.getUTCMonth() + 1).padStart(2, "0");
+      const ud = String(d.getUTCDate()).padStart(2, "0");
+      if (`${uy}-${um}-${ud}` === targetYMD) return true;
+    }
+  } catch {}
+  return false;
+}
+
+
+const PREVIEW_LIMIT = 130;
+const FOLD_SIZE = 28;
+
+function Note({ note, now, list, onPin, onDelete, onRead, index = 0, currentUser }) {
+  const colorSpec = STICKY_COLORS.find((c) => c.id === note.color) || STICKY_COLORS[0];
+  const isLong = (note.content || "").length > PREVIEW_LIMIT;
+  const displayContent = isLong ? note.content.slice(0, PREVIEW_LIMIT).trim() + "..." : note.content;
+  const tilt = !list && index % 4 === 0 ? "-rotate-[0.6deg]" : !list && index % 4 === 2 ? "rotate-[0.6deg]" : "rotate-0";
+  const authorName = note.authorName || currentUser?.name || "Nexa Admin";
+  const authorId = note.userId || currentUser?.id;
 
   return (
-    <div className="relative" style={{ filter: "drop-shadow(0 3px 5px rgba(40, 60, 45, 0.18))", zIndex: menuOpen ? 20 : 0 }}>
+    <div
+      onClick={() => onRead(note)}
+      className={`group relative ${list ? "min-h-[140px]" : "h-[215px]"} flex flex-col justify-between p-4 pb-3 cursor-pointer transition-all duration-200 hover:rotate-0 hover:scale-[1.02] hover:z-10 ${tilt}`}
+      style={{
+        filter: "drop-shadow(0 4px 6px rgba(25, 40, 30, 0.12)) drop-shadow(0 1px 2px rgba(25, 40, 30, 0.08))",
+      }}
+    >
+      {/* Paper Body with Curled Bottom-Right Corner */}
       <div
         className="absolute inset-0"
-        style={{ clipPath: cut, borderRadius: "14px 14px 0 14px", background: `linear-gradient(160deg, ${t.body[0]} 0%, ${t.body[1]} 100%)` }}
+        style={{
+          clipPath: `polygon(0 0, 100% 0, 100% calc(100% - ${FOLD_SIZE}px), calc(100% - ${FOLD_SIZE}px) 100%, 0 100%)`,
+          borderRadius: "14px 14px 0 14px",
+          background: `linear-gradient(165deg, ${colorSpec.bg} 0%, ${colorSpec.border}55 100%)`,
+          borderTop: "1px solid rgba(255,255,255,0.7)",
+        }}
       />
-      <div className={`relative flex flex-col p-5 ${list ? "min-h-[150px]" : "min-h-[262px]"}`}>
-        <div className="flex items-start justify-between">
-          <Pin
-            size={26}
-            fill={note.pinned ? t.pin : "none"}
-            color={note.pinned ? t.pin : "rgba(18,28,22,0.4)"}
-            strokeWidth={1.8}
-            className="rotate-45"
-          />
-          <div className="relative">
-            <button
-              className="dots-btn -mr-1 -mt-1"
-              aria-label="More actions"
-              aria-expanded={menuOpen}
-              onClick={(event) => {
-                event.stopPropagation();
-                onMenu();
-              }}
-            >
-              <Ellipsis size={20} />
-            </button>
-            {menuOpen && (
-              <div className="menu-popover">
-                <button onClick={onPin}>
-                  {note.pinned ? <PinOff size={16} /> : <Pin size={16} />}
-                  {note.pinned ? "Unpin" : "Pin to top"}
-                </button>
-                <hr />
-                <button className="danger" onClick={onDelete}>
-                  <Trash2 size={16} /> Delete
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
 
-        <p className="mt-4 whitespace-pre-wrap break-words text-[20px] font-medium leading-[1.25] text-ink/90">{note.content}</p>
+      {/* 3D Curled Flap */}
+      <div
+        className="pointer-events-none absolute bottom-0 right-0"
+        style={{ filter: "drop-shadow(-2px -2px 2px rgba(20, 35, 25, 0.2))" }}
+      >
+        <div
+          style={{
+            width: FOLD_SIZE,
+            height: FOLD_SIZE,
+            clipPath: "polygon(0 0, 100% 0, 0 100%)",
+            background: `linear-gradient(315deg, rgba(255,255,255,0.7) 0%, ${colorSpec.border} 45%, ${colorSpec.text}33 100%)`,
+          }}
+        />
+      </div>
 
-        <div className="mt-auto pt-5">
-          {meta && (
+      {/* Card Top: Category (Left) + Actions (Right) */}
+      <div className="relative z-1 flex items-center justify-between mb-1.5 pt-0.5">
+        <div>
+          {note.category && (
             <span
-              className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[14.5px] font-semibold"
-              style={{ background: `${t.flap[1]}b3`, color: t.pin }}
+              className="rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-white/80 shadow-2xs"
+              style={{ color: colorSpec.text }}
             >
-              <meta.NoteIcon /> {meta.label}
+              {note.category}
             </span>
           )}
-          <p className="mt-3 flex min-h-[20px] items-center gap-2 text-[14px] text-ink/65">
-            <Clock size={17} /> {noteTime(note.createdAt, now)}
-          </p>
+        </div>
+
+        <div className="flex items-center gap-1">
+          {/* Pin Toggle */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onPin();
+            }}
+            className={`grid h-6 w-6 place-items-center rounded-lg transition ${
+              note.pinned
+                ? "bg-white/95 text-brand-700 shadow-2xs"
+                : "text-black/35 hover:text-black hover:bg-white/50"
+            }`}
+            title={note.pinned ? "Unpin note" : "Pin to top"}
+          >
+            <Pin size={13} className={note.pinned ? "fill-brand-700 text-brand-700" : ""} />
+          </button>
+
+          {/* Delete Note */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="grid h-6 w-6 place-items-center rounded-lg text-black/35 hover:text-red-700 hover:bg-white/50 transition opacity-60 hover:opacity-100"
+            title="Delete note"
+          >
+            <Trash2 size={13} />
+          </button>
         </div>
       </div>
 
-      <div className="pointer-events-none absolute bottom-0 right-0" style={{ filter: "drop-shadow(-3px -3px 3px rgba(30, 50, 35, 0.22))" }}>
-        <div
-          style={{
-            width: FOLD,
-            height: FOLD,
-            clipPath: "polygon(0 0, 100% 0, 0 100%)",
-            background: `linear-gradient(315deg, ${t.flap[0]} 0%, ${t.flap[1]} 45%, ${t.flap[2]} 100%)`,
-          }}
-        />
+      {/* Content: Uniform Fixed-height line-clamp-4 with High Contrast Charcoal Ink */}
+      <div className="relative z-1 flex-1 flex flex-col justify-start overflow-hidden my-1">
+        <p className="whitespace-pre-wrap break-words text-[14.5px] leading-[1.45] font-semibold line-clamp-4 select-text text-slate-900 tracking-[-0.01em]">
+          {displayContent}
+        </p>
+        {isLong && (
+          <span className="mt-auto inline-flex items-center gap-1 text-[11.5px] font-bold underline underline-offset-2 text-slate-700 group-hover:text-black transition">
+            Read note &rarr;
+          </span>
+        )}
+      </div>
+
+      {/* Footer: Clean Combined Author + Date (Never Truncates, Zero Collision with Curl) */}
+      <div className="relative z-1 mt-auto pt-2 border-t border-black/10 flex items-center text-[11.5px] text-slate-700 pr-7">
+        <div className="flex items-center gap-1.5 truncate max-w-full">
+          <Avatar name={authorName} id={authorId} size={18} />
+          <span className="font-semibold text-slate-800 shrink-0">{authorName}</span>
+          <span className="text-slate-400">&bull;</span>
+          <span className="shrink-0 text-[10.5px] font-medium text-slate-600">{formatTime(note.createdAt)}</span>
+        </div>
       </div>
     </div>
   );
@@ -114,18 +207,50 @@ function Illustration() {
 }
 
 export default function StickyPage() {
-  const { sticky, now, todayDate, setStickyModalOpen, toggleSticky, deleteSticky } = useApp();
+  const { sticky, now, todayDate, setStickyModalOpen, toggleSticky, deleteSticky, currentUser } = useApp();
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [customDate, setCustomDate] = useState("");
+  const dateInputRef = useRef(null);
   const [view, setView] = useState("grid");
   const [menuId, setMenuId] = useState(null);
+  const [readingNote, setReadingNote] = useState(null);
   useCloseOnOutsideClick(menuId !== null, () => setMenuId(null));
 
   const count = (id) => sticky.filter((note) => note.category === id).length;
   const needle = search.trim().toLowerCase();
-  const visible = sticky.filter(
-    (note) => (filter === "all" || note.category === filter) && (!needle || note.content.toLowerCase().includes(needle)),
-  );
+  const visible = sticky.filter((note) => {
+    // Category filter
+    if (filter !== "all" && note.category !== filter) return false;
+
+    // Search query (content or author)
+    if (needle) {
+      const contentMatch = (note.content || "").toLowerCase().includes(needle);
+      const authorMatch = (note.authorName || "").toLowerCase().includes(needle);
+      if (!contentMatch && !authorMatch) return false;
+    }
+
+    // Date filter (exact custom date OR presets)
+    if (customDate) {
+      if (!isSameCalendarDay(note.createdAt, customDate)) return false;
+    } else if (dateFilter !== "all" && note.createdAt) {
+      try {
+        const created = new Date(`${note.createdAt.replace(" ", "T")}Z`);
+        const now = new Date();
+        const diffDays = Math.round(
+          (new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() -
+            new Date(created.getFullYear(), created.getMonth(), created.getDate()).getTime()) /
+            86_400_000
+        );
+        if (dateFilter === "today" && diffDays !== 0) return false;
+        if (dateFilter === "week" && diffDays > 7) return false;
+        if (dateFilter === "month" && diffDays > 30) return false;
+      } catch {}
+    }
+
+    return true;
+  });
 
   const chipBase = "inline-flex h-[46px] items-center gap-2.5 rounded-xl px-4 text-[15px] font-semibold transition";
   const toggleBtn = "grid h-[46px] w-[50px] place-items-center transition";
@@ -162,15 +287,88 @@ export default function StickyPage() {
           })}
 
           <div className="ml-auto flex flex-wrap items-center gap-3">
-            <label className="flex h-[46px] w-[310px] max-w-full items-center gap-2.5 rounded-xl border border-line bg-white px-4 shadow-[0_1px_3px_rgba(16,60,35,0.05)]">
-              <Search size={19} className="shrink-0 text-ink/70" />
+            <div className="relative flex h-[46px] w-[280px] max-w-full items-center gap-2.5 rounded-xl border border-line bg-white px-4 shadow-[0_1px_3px_rgba(16,60,35,0.05)]">
+              <Search size={18} className="shrink-0 text-ink/70 pointer-events-none" />
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search notes..."
-                className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted"
+                className="min-w-0 flex-1 bg-transparent text-[14.5px] outline-none placeholder:text-muted"
               />
-            </label>
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="text-muted hover:text-ink text-[16px] -mr-1"
+                >
+                  &times;
+                </button>
+              )}
+            </div>
+
+            <select
+              value={dateFilter}
+              onChange={(e) => {
+                setDateFilter(e.target.value);
+                if (e.target.value !== "all") setCustomDate("");
+              }}
+              className="h-[46px] rounded-xl border border-line bg-white px-3.5 text-[14px] font-semibold text-ink outline-none hover:bg-neutral-50 cursor-pointer transition shadow-[0_1px_3px_rgba(16,60,35,0.05)]"
+            >
+              <option value="all">📅 All dates</option>
+              <option value="today">Today</option>
+              <option value="week">Past 7 days</option>
+              <option value="month">Past 30 days</option>
+            </select>
+
+            {/* Professional Date Picker Pill */}
+            <div
+              onClick={() => {
+                try {
+                  dateInputRef.current?.showPicker();
+                } catch {
+                  dateInputRef.current?.focus();
+                }
+              }}
+              className={`relative flex h-[46px] items-center gap-2 rounded-xl border px-3.5 text-[14px] font-semibold transition cursor-pointer shadow-[0_1px_3px_rgba(16,60,35,0.05)] select-none ${
+                customDate
+                  ? "bg-brand-50 border-brand-500 text-brand-900 ring-1 ring-brand-500/30"
+                  : "bg-white border-line text-ink hover:bg-neutral-50 hover:border-black/20"
+              }`}
+              title="Click to pick an exact date"
+            >
+              <Calendar size={16} className={customDate ? "text-brand-700" : "text-muted"} />
+              <span className="font-medium">
+                {customDate ? formatDisplayDate(customDate) : "Pick date"}
+              </span>
+
+              <input
+                ref={dateInputRef}
+                type="date"
+                value={customDate}
+                onChange={(e) => {
+                  setCustomDate(e.target.value);
+                  if (e.target.value) setDateFilter("all");
+                }}
+                className="absolute inset-0 opacity-0 pointer-events-none w-full h-full"
+                tabIndex={-1}
+                aria-label="Pick date filter"
+              />
+
+              {customDate && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCustomDate("");
+                    if (dateInputRef.current) dateInputRef.current.value = "";
+                  }}
+                  className="relative z-10 -mr-1 ml-0.5 rounded-full p-1 text-brand-700 hover:bg-brand-100 hover:text-brand-900 transition"
+                  title="Clear custom date"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
             <div className="flex overflow-hidden rounded-xl border border-line bg-white shadow-[0_1px_3px_rgba(16,60,35,0.05)]">
               <button className={`${toggleBtn} ${view === "grid" ? "bg-[#eef3ef] text-ink" : "text-ink/60 hover:bg-[#f6faf7]"}`} onClick={() => setView("grid")} aria-label="Grid view" aria-pressed={view === "grid"}>
                 <LayoutGrid size={20} fill={view === "grid" ? "currentColor" : "none"} />
@@ -185,20 +383,49 @@ export default function StickyPage() {
           </div>
         </div>
 
-        <div className={`grid gap-5 ${view === "grid" ? "sm:grid-cols-2 xl:grid-cols-4" : "grid-cols-1"}`}>
-          {visible.map((note) => (
+        <div className={`grid gap-5 ${view === "grid" ? "sm:grid-cols-2 xl:grid-cols-4 items-start" : "grid-cols-1"}`}>
+          {visible.map((note, index) => (
             <Note
               key={note.id}
               note={note}
               now={now}
               list={view === "list"}
-              menuOpen={menuId === note.id}
-              onMenu={() => setMenuId(menuId === note.id ? null : note.id)}
               onPin={() => toggleSticky(note)}
               onDelete={() => deleteSticky(note)}
+              onRead={(n) => setReadingNote(n)}
+              index={index}
+              currentUser={currentUser}
             />
           ))}
-          {!visible.length && <div className="empty-view col-span-full">{sticky.length ? "No notes match your search." : "No sticky notes yet. Add one for a quick reminder."}</div>}
+          {!visible.length && (
+            <div className="panel col-span-full p-10 text-center flex flex-col items-center">
+              <p className="font-bold text-[16px] text-ink">
+                {customDate ? `No personal notes on ${formatDisplayDate(customDate)}` : sticky.length ? "No notes match your filters" : "No sticky notes yet"}
+              </p>
+              <p className="text-[13px] text-muted mt-1 max-w-sm">
+                {customDate
+                  ? "Try picking another date or clear the filter to see all your personal notes."
+                  : sticky.length
+                  ? "Try clearing your search query or date filter."
+                  : "Add one for a quick reminder, task or idea."}
+              </p>
+              {(needle || dateFilter !== "all" || customDate || filter !== "all") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch("");
+                    setDateFilter("all");
+                    setCustomDate("");
+                    setFilter("all");
+                    if (dateInputRef.current) dateInputRef.current.value = "";
+                  }}
+                  className="mt-3 text-[13px] font-bold text-brand-700 hover:underline cursor-pointer"
+                >
+                  Clear all filters
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         <section className="flex flex-col items-center rounded-3xl border-2 border-dashed border-line bg-white/50 px-6 py-8 text-center">
@@ -210,6 +437,22 @@ export default function StickyPage() {
           </button>
         </section>
       </div>
+
+      {readingNote && (
+        <StickyDetailModal
+          note={readingNote}
+          onClose={() => setReadingNote(null)}
+          onTogglePin={(note) => {
+            toggleSticky(note);
+            setReadingNote((prev) => prev ? { ...prev, pinned: !prev.pinned } : null);
+          }}
+          onDelete={(note) => {
+            deleteSticky(note);
+            setReadingNote(null);
+          }}
+          canDelete={true}
+        />
+      )}
     </div>
   );
 }

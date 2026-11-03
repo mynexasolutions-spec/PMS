@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Plus, Pin, Trash2, Sparkles, PinOff, Tag, User } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { Plus, Pin, Trash2, Search, Calendar, X } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
 import Avatar from "@/components/ui/Avatar";
+import StickyDetailModal from "@/components/modals/StickyDetailModal";
 import { request } from "@/lib/api";
 
 const STICKY_COLORS = [
@@ -27,11 +28,50 @@ function formatTime(dateStr) {
   }
 }
 
+function formatDisplayDate(dateStr) {
+  if (!dateStr) return "";
+  try {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const date = new Date(y, m - 1, d);
+    return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(date);
+  } catch {
+    return dateStr;
+  }
+}
+
+function isSameCalendarDay(noteDateStr, targetYMD) {
+  if (!noteDateStr || !targetYMD) return false;
+  if (noteDateStr.startsWith(targetYMD)) return true;
+  try {
+    const iso = noteDateStr.includes("T") ? noteDateStr : `${noteDateStr.replace(" ", "T")}Z`;
+    const d = new Date(iso);
+    if (!isNaN(d.getTime())) {
+      const ly = d.getFullYear();
+      const lm = String(d.getMonth() + 1).padStart(2, "0");
+      const ld = String(d.getDate()).padStart(2, "0");
+      if (`${ly}-${lm}-${ld}` === targetYMD) return true;
+
+      const uy = d.getUTCFullYear();
+      const um = String(d.getUTCMonth() + 1).padStart(2, "0");
+      const ud = String(d.getUTCDate()).padStart(2, "0");
+      if (`${uy}-${um}-${ud}` === targetYMD) return true;
+    }
+  } catch {}
+  return false;
+}
+
+const PREVIEW_LIMIT = 130;
+
 export default function ProjectStickyTab({ project }) {
   const { currentUser, notify } = useApp();
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [customDate, setCustomDate] = useState("");
+  const [readingNote, setReadingNote] = useState(null);
+  const dateInputRef = useRef(null);
 
   // Create modal state
   const [isCreating, setIsCreating] = useState(false);
@@ -106,35 +146,179 @@ export default function ProjectStickyTab({ project }) {
   }
 
   const filteredNotes = notes.filter((n) => {
-    if (categoryFilter === "all") return true;
-    return n.category === categoryFilter;
+    // 1. Category filter
+    if (categoryFilter !== "all" && n.category !== categoryFilter) return false;
+
+    // 2. Search query (matches note content, author name, or category)
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const contentMatch = (n.content || "").toLowerCase().includes(q);
+      const authorMatch = (n.authorName || "").toLowerCase().includes(q);
+      const catMatch = (n.category || "").toLowerCase().includes(q);
+      if (!contentMatch && !authorMatch && !catMatch) return false;
+    }
+
+    // 3. Date filter (exact custom date OR presets)
+    if (customDate) {
+      if (!isSameCalendarDay(n.createdAt, customDate)) return false;
+    } else if (dateFilter !== "all" && n.createdAt) {
+      try {
+        const created = new Date(`${n.createdAt.replace(" ", "T")}Z`);
+        const now = new Date();
+        const diffDays = Math.round(
+          (new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() -
+            new Date(created.getFullYear(), created.getMonth(), created.getDate()).getTime()) /
+            86_400_000
+        );
+        if (dateFilter === "today" && diffDays !== 0) return false;
+        if (dateFilter === "week" && diffDays > 7) return false;
+        if (dateFilter === "month" && diffDays > 30) return false;
+      } catch {
+        // preserve note on date parse error
+      }
+    }
+
+    return true;
   });
 
   return (
     <div className="space-y-4">
       {/* ---------------- 1. HEADER & CONTROLS ---------------- */}
-      <div className="panel p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="font-bold text-[18px] text-ink">{project.name} Pinboard</h3>
-            <span className="rounded-full bg-amber-100 text-amber-800 font-bold px-2 py-0.5 text-[11px]">
-              {notes.length} note{notes.length === 1 ? "" : "s"}
-            </span>
+      <div className="panel p-4 flex flex-col gap-3.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-[18px] text-ink">{project.name} Pinboard</h3>
+              <span className="rounded-full bg-amber-100 text-amber-800 font-bold px-2 py-0.5 text-[11px]">
+                {filteredNotes.length} of {notes.length} note{notes.length === 1 ? "" : "s"}
+              </span>
+            </div>
+            <p className="text-[13px] text-muted mt-0.5">
+              Team sticky notes, quick notices, staging reminders & sprint ideas.
+            </p>
           </div>
-          <p className="text-[13px] text-muted mt-0.5">
-            Team sticky notes, quick notices, staging reminders & sprint ideas.
-          </p>
+
+          <button
+            type="button"
+            onClick={() => setIsCreating(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-700 px-4 py-2 text-[13.5px] font-bold text-white shadow-xs hover:bg-brand-800 transition shrink-0"
+          >
+            <Plus size={16} /> Pin a Note
+          </button>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Search, Date Filter & Category Filter Toolbar */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-black/5">
+          <div className="flex flex-wrap items-center gap-2 flex-1">
+            {/* Search Input */}
+            <div className="relative min-w-[210px] max-w-xs flex-1">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search notes, author..."
+                className="w-full rounded-xl border border-line bg-white pl-8 pr-7 py-1.5 text-[12.5px] font-medium outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition placeholder:text-muted"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-ink text-[14px]"
+                >
+                  &times;
+                </button>
+              )}
+            </div>
+
+            {/* Date Filter Dropdown */}
+            <select
+              value={dateFilter}
+              onChange={(e) => {
+                setDateFilter(e.target.value);
+                if (e.target.value !== "all") setCustomDate("");
+              }}
+              className="rounded-xl border border-line bg-white px-3 py-1.5 text-[12.5px] font-semibold text-ink outline-none hover:bg-neutral-50 cursor-pointer transition focus:border-brand-500 shadow-2xs"
+            >
+              <option value="all">📅 All dates</option>
+              <option value="today">Today</option>
+              <option value="week">Past 7 days</option>
+              <option value="month">Past 30 days</option>
+            </select>
+
+            {/* Professional Custom Date Picker Pill */}
+            <div
+              onClick={() => {
+                try {
+                  dateInputRef.current?.showPicker();
+                } catch {
+                  dateInputRef.current?.focus();
+                }
+              }}
+              className={`relative flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[12px] font-semibold transition cursor-pointer shadow-2xs select-none ${
+                customDate
+                  ? "bg-brand-50 border-brand-500 text-brand-900 ring-1 ring-brand-500/30"
+                  : "bg-white border-line text-ink hover:bg-neutral-50 hover:border-black/20"
+              }`}
+              title="Click to pick an exact date"
+            >
+              <Calendar size={13} className={customDate ? "text-brand-700" : "text-muted"} />
+              <span className="font-medium">
+                {customDate ? formatDisplayDate(customDate) : "Pick date"}
+              </span>
+              <input
+                ref={dateInputRef}
+                type="date"
+                value={customDate}
+                onChange={(e) => {
+                  setCustomDate(e.target.value);
+                  if (e.target.value) setDateFilter("all");
+                }}
+                className="absolute inset-0 opacity-0 pointer-events-none w-full h-full"
+                tabIndex={-1}
+                aria-label="Pick date filter"
+              />
+              {customDate && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCustomDate("");
+                    if (dateInputRef.current) dateInputRef.current.value = "";
+                  }}
+                  className="relative z-10 -mr-1 ml-0.5 rounded-full p-0.5 text-brand-700 hover:bg-brand-100 hover:text-brand-900 transition"
+                  title="Clear custom date"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+
+            {/* Clear filters button if active */}
+            {(searchQuery || dateFilter !== "all" || customDate || categoryFilter !== "all") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setDateFilter("all");
+                  setCustomDate("");
+                  setCategoryFilter("all");
+                }}
+                className="text-[12px] font-semibold text-brand-700 hover:underline px-1 py-1"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+
           {/* Category Filter Pills */}
-          <div className="hidden md:flex items-center gap-1 bg-[#f4f7f5] p-1 rounded-xl border border-line">
+          <div className="flex items-center gap-1 bg-[#f4f7f5] p-1 rounded-xl border border-line overflow-x-auto max-w-full">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat}
                 type="button"
                 onClick={() => setCategoryFilter(cat)}
-                className={`rounded-lg px-2.5 py-1 text-[12px] font-semibold capitalize transition ${
+                className={`rounded-lg px-2.5 py-1 text-[11.5px] font-semibold capitalize transition shrink-0 ${
                   categoryFilter === cat
                     ? "bg-white text-ink shadow-xs"
                     : "text-muted hover:text-ink"
@@ -144,14 +328,6 @@ export default function ProjectStickyTab({ project }) {
               </button>
             ))}
           </div>
-
-          <button
-            type="button"
-            onClick={() => setIsCreating(true)}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-700 px-4 py-2 text-[13.5px] font-bold text-white shadow-xs hover:bg-brand-800 transition"
-          >
-            <Plus size={16} /> Pin a Note
-          </button>
         </div>
       </div>
 
@@ -176,7 +352,7 @@ export default function ProjectStickyTab({ project }) {
               <textarea
                 required
                 rows={4}
-                maxLength={500}
+                maxLength={2000}
                 value={newContent}
                 onChange={(e) => setNewContent(e.target.value)}
                 placeholder="Write quick note, reminder, or link..."
@@ -249,7 +425,7 @@ export default function ProjectStickyTab({ project }) {
         <div className="panel p-12 text-center text-muted text-[13.5px]">
           <p className="animate-pulse">Loading project pinboard...</p>
         </div>
-      ) : filteredNotes.length === 0 ? (
+      ) : notes.length === 0 ? (
         <div className="panel p-12 text-center text-muted">
           <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-amber-50 text-amber-700 mb-3">
             <Sparkles size={24} />
@@ -266,54 +442,116 @@ export default function ProjectStickyTab({ project }) {
             <Plus size={15} /> Pin First Note
           </button>
         </div>
+      ) : filteredNotes.length === 0 ? (
+        <div className="panel p-8 text-center flex flex-col items-center">
+          <p className="font-semibold text-[15px] text-ink">
+            {customDate ? `No notes found on ${formatDisplayDate(customDate)}` : "No notes match your filters"}
+          </p>
+          <p className="text-[13px] text-muted mt-1">
+            {customDate
+              ? "Try picking another date or clear the filter to see all notes."
+              : "Try searching with another keyword or resetting the date filter."}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setSearchQuery("");
+              setDateFilter("all");
+              setCustomDate("");
+              setCategoryFilter("all");
+              if (dateInputRef.current) dateInputRef.current.value = "";
+            }}
+            className="mt-3 text-[13px] font-bold text-brand-700 hover:underline"
+          >
+            Clear all filters
+          </button>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredNotes.map((note) => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 items-start">
+          {filteredNotes.map((note, index) => {
             const colorSpec = STICKY_COLORS.find((c) => c.id === note.color) || STICKY_COLORS[0];
             const isMe = note.userId === currentUser?.id;
             const canDelete = isMe || isProjAdmin;
+            const isLong = note.content.length > PREVIEW_LIMIT;
+            const previewText = isLong ? `${note.content.slice(0, PREVIEW_LIMIT).trim()}...` : note.content;
+            const tilt = index % 4 === 0 ? "-rotate-[0.6deg]" : index % 4 === 2 ? "rotate-[0.6deg]" : "rotate-0";
+            const FOLD_SIZE = 28;
 
             return (
               <div
                 key={note.id}
-                className="relative rounded-2xl p-4 shadow-xs transition hover:shadow-md flex flex-col justify-between min-h-[170px] border"
+                onClick={() => setReadingNote(note)}
+                className={`group relative h-[215px] flex flex-col justify-between p-4 pb-3 cursor-pointer transition-all duration-200 hover:rotate-0 hover:scale-[1.02] hover:z-10 ${tilt}`}
                 style={{
-                  backgroundColor: colorSpec.bg,
-                  borderColor: colorSpec.border,
+                  filter: "drop-shadow(0 4px 6px rgba(25, 40, 30, 0.12)) drop-shadow(0 1px 2px rgba(25, 40, 30, 0.08))",
                 }}
               >
-                {/* Top Pin Bar */}
-                <div className="flex items-center justify-between mb-2">
-                  {note.category && (
-                    <span
-                      className="rounded-md px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide bg-white/70 shadow-2xs"
-                      style={{ color: colorSpec.text }}
-                    >
-                      {note.category}
-                    </span>
-                  )}
+                {/* Paper Body with Curled Bottom-Right Corner */}
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    clipPath: `polygon(0 0, 100% 0, 100% calc(100% - ${FOLD_SIZE}px), calc(100% - ${FOLD_SIZE}px) 100%, 0 100%)`,
+                    borderRadius: "14px 14px 0 14px",
+                    background: `linear-gradient(165deg, ${colorSpec.bg} 0%, ${colorSpec.border}55 100%)`,
+                    borderTop: "1px solid rgba(255,255,255,0.7)",
+                  }}
+                />
 
-                  <div className="flex items-center gap-1 ml-auto">
+                {/* 3D Curled Flap */}
+                <div
+                  className="pointer-events-none absolute bottom-0 right-0"
+                  style={{ filter: "drop-shadow(-2px -2px 2px rgba(20, 35, 25, 0.2))" }}
+                >
+                  <div
+                    style={{
+                      width: FOLD_SIZE,
+                      height: FOLD_SIZE,
+                      clipPath: "polygon(0 0, 100% 0, 0 100%)",
+                      background: `linear-gradient(315deg, rgba(255,255,255,0.7) 0%, ${colorSpec.border} 45%, ${colorSpec.text}33 100%)`,
+                    }}
+                  />
+                </div>
+
+                {/* Card Top: Category (Left) + Actions (Right) */}
+                <div className="relative z-1 flex items-center justify-between mb-1.5 pt-0.5">
+                  <div>
+                    {note.category && (
+                      <span
+                        className="rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-white/80 shadow-2xs"
+                        style={{ color: colorSpec.text }}
+                      >
+                        {note.category}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1">
                     {/* Pin Toggle */}
                     <button
                       type="button"
-                      onClick={() => handleTogglePin(note)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleTogglePin(note);
+                      }}
                       className={`grid h-6 w-6 place-items-center rounded-lg transition ${
                         note.pinned
-                          ? "bg-white/90 text-brand-700 shadow-2xs"
-                          : "text-black/30 hover:text-black hover:bg-white/40"
+                          ? "bg-white/95 text-brand-700 shadow-2xs"
+                          : "text-black/35 hover:text-black hover:bg-white/50"
                       }`}
                       title={note.pinned ? "Unpin note" : "Pin to top"}
                     >
-                      <Pin size={13} className={note.pinned ? "fill-brand-700" : ""} />
+                      <Pin size={13} className={note.pinned ? "fill-brand-700 text-brand-700" : ""} />
                     </button>
 
                     {/* Delete Note */}
                     {canDelete && (
                       <button
                         type="button"
-                        onClick={() => handleDelete(note.id)}
-                        className="grid h-6 w-6 place-items-center rounded-lg text-black/30 hover:text-red-700 hover:bg-white/40 transition"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(note.id);
+                        }}
+                        className="grid h-6 w-6 place-items-center rounded-lg text-black/35 hover:text-red-700 hover:bg-white/50 transition opacity-60 hover:opacity-100"
                         title="Delete note"
                       >
                         <Trash2 size={13} />
@@ -322,26 +560,52 @@ export default function ProjectStickyTab({ project }) {
                   </div>
                 </div>
 
-                {/* Content */}
-                <p
-                  className="whitespace-pre-wrap break-words text-[14px] leading-relaxed flex-1 font-medium select-text"
-                  style={{ color: colorSpec.text }}
-                >
-                  {note.content}
-                </p>
+                {/* Content: Uniform Fixed-height line-clamp-4 with High Contrast Charcoal Ink */}
+                <div className="relative z-1 flex-1 flex flex-col justify-start overflow-hidden my-1">
+                  <p
+                    className="whitespace-pre-wrap break-words text-[14.5px] leading-[1.45] font-semibold line-clamp-4 select-text text-slate-900 tracking-[-0.01em]"
+                  >
+                    {previewText}
+                  </p>
+                  {isLong && (
+                    <span
+                      className="mt-auto inline-flex items-center gap-1 text-[11.5px] font-bold underline underline-offset-2 text-slate-700 group-hover:text-black transition"
+                    >
+                      Read note &rarr;
+                    </span>
+                  )}
+                </div>
 
-                {/* Footer Attribution */}
-                <div className="mt-3 pt-2 border-t border-black/5 flex items-center justify-between text-[11px] text-black/55">
-                  <div className="flex items-center gap-1.5 truncate">
+                {/* Footer Attribution: Clean Combined Author + Date, leaving bottom-right curl completely uncollided */}
+                <div className="relative z-1 mt-auto pt-2 border-t border-black/10 flex items-center text-[11.5px] text-slate-700 pr-8">
+                  <div className="flex items-center gap-1.5 truncate max-w-full">
                     <Avatar name={note.authorName || "User"} id={note.userId} size={18} />
-                    <span className="truncate font-semibold">{note.authorName || "Teammate"}</span>
+                    <span className="truncate font-semibold text-slate-800">{note.authorName || "Teammate"}</span>
+                    <span className="text-slate-400">&bull;</span>
+                    <span className="shrink-0 text-[11px] font-medium text-slate-600">{formatTime(note.createdAt)}</span>
                   </div>
-                  <span className="shrink-0">{formatTime(note.createdAt)}</span>
                 </div>
               </div>
             );
           })}
         </div>
+      )}
+
+      {/* Full Note Detail Modal */}
+      {readingNote && (
+        <StickyDetailModal
+          note={readingNote}
+          onClose={() => setReadingNote(null)}
+          onTogglePin={(note) => {
+            handleTogglePin(note);
+            setReadingNote((prev) => prev ? { ...prev, pinned: !prev.pinned } : null);
+          }}
+          onDelete={(note) => {
+            handleDelete(note.id);
+            setReadingNote(null);
+          }}
+          canDelete={readingNote.userId === currentUser?.id || isProjAdmin}
+        />
       )}
     </div>
   );

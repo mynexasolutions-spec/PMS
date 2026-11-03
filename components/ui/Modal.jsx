@@ -8,6 +8,8 @@ const widths = {
   narrow: "max-w-[460px]",
   default: "max-w-[580px]",
   wide: "max-w-[720px]",
+  extraWide: "max-w-[880px]",
+  full: "max-w-[960px]",
 };
 
 export default function Modal({
@@ -52,13 +54,15 @@ export default function Modal({
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <p
-              className={`${
-                compact ? "text-[11.5px]" : "text-[13px]"
-              } font-semibold uppercase tracking-[0.2em] text-ink/60`}
-            >
-              {eyebrow}
-            </p>
+            {eyebrow && (
+              <div
+                className={`${
+                  compact ? "text-[11.5px]" : "text-[13px]"
+                } font-semibold uppercase tracking-[0.2em] text-ink/60`}
+              >
+                {eyebrow}
+              </div>
+            )}
             <h2
               className={`mt-0.5 ${
                 compact ? "text-[19px] sm:text-[20px]" : "text-[24px]"
@@ -67,9 +71,9 @@ export default function Modal({
               {title}
             </h2>
             {subtitle && (
-              <p className={`mt-0.5 ${compact ? "text-[13.5px]" : "text-[15px]"} text-muted`}>
+              <div className={`mt-0.5 ${compact ? "text-[13.5px]" : "text-[15px]"} text-muted`}>
                 {subtitle}
-              </p>
+              </div>
             )}
           </div>
           <button type="button" className="icon-btn shrink-0" onClick={onClose} aria-label="Close">

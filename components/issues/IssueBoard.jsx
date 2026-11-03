@@ -16,6 +16,13 @@ import {
   ChevronDown,
   LayoutGrid,
   Table as TableIcon,
+  BarChart2,
+  CircleDot,
+  CheckCircle2,
+  ShieldAlert,
+  Eye,
+  Search,
+  Calendar,
 } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
 import CommentButton from "@/components/comments/CommentButton";
@@ -32,29 +39,69 @@ const columns = [
 const STATUS_ORDER = ["todo", "progress", "review", "done"];
 const priorityDot = { high: "#e5484d", medium: "#f0a020", low: "#2e9e4f" };
 
-function IssueCard({ task, targetProjectId }) {
-  const { updateTask, deleteTask, openIssueModal, currentUser } = useApp();
+function getEffectiveColumnId(status) {
+  return status === "blocked" ? "progress" : status;
+}
+
+function IssueCard({
+  task,
+  targetProjectId,
+  columnId,
+  hasSubtasks = false,
+  stageSubtaskCount = 0,
+  totalSubtaskCount = 0,
+  isExpanded = false,
+  onToggleExpand,
+  isSubtask = false,
+  subtaskNumber = null,
+}) {
+  const { updateTask, deleteTask, openIssueModal, openTaskDetail, currentUser } = useApp();
 
   const isBlocked = task.status === "blocked" || Boolean(task.blockerReason && task.status !== "done");
-  const effectiveStatus = task.status === "blocked" ? "progress" : task.status;
+  const effectiveStatus = getEffectiveColumnId(task.status);
   const statusIndex = STATUS_ORDER.indexOf(effectiveStatus);
-  const canMoveLeft = statusIndex > 0;
-  const canMoveRight = statusIndex < STATUS_ORDER.length - 1;
+  const canMoveLeft = !hasSubtasks && statusIndex > 0;
+  const canMoveRight = !hasSubtasks && statusIndex < STATUS_ORDER.length - 1;
 
-  const moveLeft = () => canMoveLeft && updateTask(task.id, { status: STATUS_ORDER[statusIndex - 1] });
-  const moveRight = () => canMoveRight && updateTask(task.id, { status: STATUS_ORDER[statusIndex + 1] });
+  const moveLeft = (e) => {
+    e.stopPropagation();
+    if (canMoveLeft) updateTask(task.id, { status: STATUS_ORDER[statusIndex - 1] });
+  };
+  const moveRight = (e) => {
+    e.stopPropagation();
+    if (canMoveRight) updateTask(task.id, { status: STATUS_ORDER[statusIndex + 1] });
+  };
+
+  const isDraggable = !hasSubtasks;
 
   return (
     <article
-      draggable
-      onDragStart={(event) => event.dataTransfer.setData("taskId", String(task.id))}
-      className={`group relative cursor-grab overflow-hidden rounded-xl border border-slate-200/90 bg-white p-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all hover:shadow-md hover:border-slate-300 active:cursor-grabbing ${
+      draggable={isDraggable}
+      onDragStart={(event) => {
+        if (!isDraggable) {
+          event.preventDefault();
+          return;
+        }
+        event.stopPropagation();
+        event.dataTransfer.setData("taskId", String(task.id));
+      }}
+      onClick={() => {
+        openTaskDetail(task);
+      }}
+      className={`group relative overflow-hidden rounded-xl border bg-white p-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all hover:shadow-md hover:border-slate-300 ${
+        isDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer select-none"
+      } ${
+        isSubtask ? "border-slate-200/85 bg-[#fcfdfd]" : "border-slate-200/90"
+      } ${
         isBlocked ? "ring-2 ring-rose-400/80 border-rose-300" : ""
       }`}
       style={{ borderLeftWidth: "4px", borderLeftColor: isBlocked ? "#e11d48" : priorityDot[task.priority] || "#3b82f6" }}
     >
       {/* Floating Action Bar */}
-      <div className="absolute top-2 right-2 hidden group-hover:flex items-center gap-0.5 rounded-lg border border-line/80 bg-white/95 px-1 py-0.5 shadow-md backdrop-blur-xs z-10">
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="absolute top-2 right-2 hidden group-hover:flex items-center gap-0.5 rounded-lg border border-line/80 bg-white/95 px-1 py-0.5 shadow-md backdrop-blur-xs z-10"
+      >
         {canMoveLeft && (
           <button
             className="grid h-5 w-5 place-items-center rounded-md text-ink/65 hover:text-ink hover:bg-black/5"
@@ -73,13 +120,15 @@ function IssueCard({ task, targetProjectId }) {
             <ArrowRight size={12} />
           </button>
         )}
-        <button
-          className="grid h-5 w-5 place-items-center rounded-md text-ink/65 hover:text-brand-700 hover:bg-[#e8f6ec]"
-          title="Create subtask"
-          onClick={() => openIssueModal(task, targetProjectId || task.projectId)}
-        >
-          <Plus size={12} />
-        </button>
+        {!isSubtask && (
+          <button
+            className="grid h-5 w-5 place-items-center rounded-md text-ink/65 hover:text-brand-700 hover:bg-[#e8f6ec]"
+            title="Create subtask"
+            onClick={() => openIssueModal(task, targetProjectId || task.projectId, null, null, columnId || task.status)}
+          >
+            <Plus size={12} />
+          </button>
+        )}
         <button
           className="grid h-5 w-5 place-items-center rounded-md text-ink/65 hover:text-brand-700 hover:bg-black/5"
           title="Edit task"
@@ -98,40 +147,60 @@ function IssueCard({ task, targetProjectId }) {
         )}
       </div>
 
-      {/* Top Header: Issue Key */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => openIssueModal(null, targetProjectId || task.projectId, null, task)}
-          className="text-[12px] font-mono font-semibold text-brand-800 hover:text-brand-900 transition whitespace-nowrap"
-          title="Click to view/edit task"
-        >
-          {task.issueKey}
-        </button>
+      {/* Top Header: Dropdown Toggle + Subtask Stage Count (for main tasks with subtasks) + Issue Key */}
+      <div className="flex items-center justify-between gap-2 pr-1">
+        <div className="flex items-center gap-1.5 min-w-0">
+          {hasSubtasks && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleExpand?.();
+              }}
+              className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-bold transition ${
+                isExpanded
+                  ? "border-brand-300 bg-[#e8f6ec] text-brand-900"
+                  : "border-slate-200 bg-slate-100/90 text-slate-700 hover:bg-slate-200/80"
+              }`}
+              title={isExpanded ? "Hide subtasks in this stage" : "Show subtasks in this stage"}
+            >
+              {isExpanded ? <ChevronDown size={13} className="shrink-0" /> : <ChevronRight size={13} className="shrink-0" />}
+              <span>
+                {stageSubtaskCount}/{totalSubtaskCount}
+              </span>
+            </button>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              openTaskDetail(task);
+            }}
+            className="text-[12px] font-mono font-semibold text-brand-800 hover:text-brand-900 hover:underline transition whitespace-nowrap"
+            title="Click to view task details"
+          >
+            {isSubtask ? subtaskNumber : task.issueKey}
+          </button>
+        </div>
       </div>
 
       {/* Task Title */}
       <h4
-        onClick={() => openIssueModal(null, targetProjectId || task.projectId, null, task)}
+        onClick={(e) => {
+          e.stopPropagation();
+          openTaskDetail(task);
+        }}
         className="mt-1.5 text-[13.5px] font-semibold text-ink/90 leading-[1.35] line-clamp-2 hover:text-brand-700 transition cursor-pointer"
-        title={task.title}
+        title="Click to view task details"
       >
         {task.title}
       </h4>
 
-      {/* Subtask Parent Reference */}
-      {task.parentKey && (
-        <p
-          className="mt-1 inline-flex items-center gap-1 rounded bg-black/[0.03] px-1.5 py-0.5 text-[10.5px] text-muted font-medium max-w-full truncate"
-          title={`Subtask of ${task.parentKey} · ${task.parentTitle}`}
-        >
-          <span>↳ Subtask of</span>
-          <b className="font-semibold text-ink/70">{task.parentKey}</b>
-        </p>
-      )}
-
       {/* Blocker Alert Banner on Card */}
       {isBlocked && (
-        <div className="mt-2 flex items-start gap-1.5 rounded-lg border border-rose-300 bg-rose-50/95 p-2 text-[11px] text-rose-800">
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="mt-2 flex items-start gap-1.5 rounded-lg border border-rose-300 bg-rose-50/95 p-2 text-[11px] text-rose-800"
+        >
           <AlertCircle size={14} className="mt-0.5 shrink-0 text-rose-600 animate-pulse" />
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-1 font-bold text-rose-700 uppercase text-[9.5px] tracking-wide">
@@ -154,7 +223,10 @@ function IssueCard({ task, targetProjectId }) {
       )}
 
       {/* Bottom Footer */}
-      <div className="mt-2.5 flex items-center justify-between gap-1.5 border-t border-line/60 pt-2 text-[11px] text-ink/65">
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="mt-2.5 flex items-center justify-between gap-1.5 border-t border-line/60 pt-2 text-[11px] text-ink/65"
+      >
         <div className="flex min-w-0 items-center gap-1.5 truncate">
           <i
             className="h-2 w-2 shrink-0 rounded-full"
@@ -162,10 +234,27 @@ function IssueCard({ task, targetProjectId }) {
             title={`${task.priority} priority`}
           />
           <span className="capitalize font-semibold text-ink/80 text-[11.5px]">{task.priority}</span>
+          {(task.startDate || task.dueAt) && (
+            <span
+              className="inline-flex items-center gap-1 text-[10.5px] font-medium text-ink/55 truncate border-l border-line/70 pl-1.5"
+              title={`Start: ${task.startDate ? task.startDate.slice(0, 10) : 'None'} | Due: ${task.dueAt ? task.dueAt.slice(0, 10) : 'None'}`}
+            >
+              <Calendar size={11} className="shrink-0 text-brand-700" />
+              <span className="truncate">
+                {task.startDate && task.dueAt
+                  ? `${task.startDate.slice(5, 10)} → ${task.dueAt.slice(5, 10)}`
+                  : (task.dueAt ? task.dueAt.slice(5, 10) : task.startDate.slice(5, 10))}
+              </span>
+            </span>
+          )}
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
-          <CommentButton scope="task" refId={task.id} title={`${task.issueKey} · ${task.title}`} />
+          <CommentButton
+            scope="task"
+            refId={task.id}
+            title={isSubtask ? `${subtaskNumber} · ${task.title}` : `${task.issueKey} · ${task.title}`}
+          />
           <AssigneePicker
             align="right"
             size={20}
@@ -178,8 +267,18 @@ function IssueCard({ task, targetProjectId }) {
   );
 }
 
-/** Rich Tabular View grouped by stage with inline status change, sort, and actions */
-function TaskTableView({ filteredTasks, columns, openIssueModal, updateTask, deleteTask, currentUser, targetProjectId }) {
+/** Rich Tabular View grouped by stage with collapsible Main Task -> Subtask dropdown rows */
+function TaskTableView({
+  getColumnEntries,
+  expandedGroups,
+  toggleGroup,
+  columns,
+  openIssueModal,
+  updateTask,
+  deleteTask,
+  currentUser,
+  targetProjectId,
+}) {
   const [collapsedStages, setCollapsedStages] = useState({});
 
   const toggleStage = (stageId) => {
@@ -190,12 +289,7 @@ function TaskTableView({ filteredTasks, columns, openIssueModal, updateTask, del
     <div className="mt-3.5 space-y-3.5">
       {columns.map((column) => {
         const isCollapsed = Boolean(collapsedStages[column.id]);
-        const items = filteredTasks.filter((task) => {
-          if (column.id === "progress") {
-            return task.status === "progress" || task.status === "blocked";
-          }
-          return task.status === column.id;
-        });
+        const entries = getColumnEntries(column.id);
 
         return (
           <div key={column.id} className="rounded-xl border border-line bg-white overflow-hidden shadow-xs">
@@ -211,7 +305,7 @@ function TaskTableView({ filteredTasks, columns, openIssueModal, updateTask, del
                 <span className={`h-2.5 w-2.5 rounded-full ${column.dot}`} />
                 <span className="font-bold text-[14.5px] text-ink">{column.label}</span>
                 <span className={`grid h-[20px] min-w-[20px] place-items-center rounded-full px-1.5 text-[11px] font-bold ${column.badge}`}>
-                  {items.length}
+                  {entries.length}
                 </span>
                 <span className="text-[12px] text-muted hidden sm:inline">· {column.hint}</span>
               </div>
@@ -231,7 +325,7 @@ function TaskTableView({ filteredTasks, columns, openIssueModal, updateTask, del
 
             {/* Table Content */}
             {!isCollapsed && (
-              items.length === 0 ? (
+              entries.length === 0 ? (
                 <div className="p-6 text-center text-muted text-[13px]">
                   No tasks in {column.label}. Click &quot;+ Add task&quot; to create one.
                 </div>
@@ -240,50 +334,312 @@ function TaskTableView({ filteredTasks, columns, openIssueModal, updateTask, del
                   <table className="w-full text-left border-collapse text-[13.5px]">
                     <thead>
                       <tr className="border-b border-line bg-black/[0.015] text-[11.5px] uppercase font-bold tracking-wider text-muted">
-                        <th className="py-2.5 px-4 w-[110px]">Key</th>
+                        <th className="py-2.5 px-4 w-[150px]">Key</th>
                         <th className="py-2.5 px-4 min-w-[280px]">Task Title</th>
                         <th className="py-2.5 px-3 w-[130px]">Priority</th>
                         <th className="py-2.5 px-3 w-[160px]">Stage / Status</th>
                         <th className="py-2.5 px-3 w-[150px]">Assignee</th>
-                        <th className="py-2.5 px-4 text-right w-[110px]">Actions</th>
+                        <th className="py-2.5 px-4 text-right w-[130px]">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-line/60">
-                      {items.map((task) => {
+                      {entries.flatMap((entry) => {
+                        if (entry.type === "parent") {
+                          const parentTask = entry.task;
+                          const groupKey = `${parentTask.id}:${column.id}`;
+                          const isExpanded =
+                            expandedGroups[groupKey] !== undefined
+                              ? Boolean(expandedGroups[groupKey])
+                              : Boolean(entry.autoExpand);
+                          const isParentBlocked =
+                            parentTask.status === "blocked" ||
+                            Boolean(parentTask.blockerReason && parentTask.status !== "done");
+
+                          const rows = [
+                            <tr
+                              key={`parent-${groupKey}`}
+                              onClick={() => toggleGroup(parentTask.id, column.id)}
+                              className="bg-white hover:bg-[#f6faf7] transition cursor-pointer select-none"
+                            >
+                              {/* Key + Dropdown Toggle */}
+                              <td className="py-2.5 px-4 font-mono font-semibold text-[12.5px] text-brand-800 whitespace-nowrap">
+                                <div className="inline-flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleGroup(parentTask.id, column.id);
+                                    }}
+                                    className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-sans font-bold transition ${
+                                      isExpanded
+                                        ? "border-brand-300 bg-[#e8f6ec] text-brand-900"
+                                        : "border-slate-200 bg-slate-100/90 text-slate-700 hover:bg-slate-200/80"
+                                    }`}
+                                    title={isExpanded ? "Hide subtasks" : "Show subtasks"}
+                                  >
+                                    {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                                    <span>
+                                      {entry.stageSubtasks.length}/{entry.totalSubtaskCount}
+                                    </span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openTaskDetail(parentTask);
+                                    }}
+                                    className="hover:underline transition"
+                                  >
+                                    {parentTask.issueKey}
+                                  </button>
+                                </div>
+                              </td>
+
+                              {/* Title */}
+                              <td className="py-2.5 px-4">
+                                <div className="min-w-0">
+                                  <span
+                                    onClick={() => openTaskDetail(parentTask)}
+                                    className="font-semibold text-ink hover:text-brand-700 cursor-pointer transition line-clamp-1"
+                                    title={parentTask.title}
+                                  >
+                                    {parentTask.title}
+                                  </span>
+                                  {isParentBlocked && (
+                                    <span className="mt-0.5 inline-flex items-center gap-1 rounded bg-rose-50 border border-rose-200 px-1.5 py-0.2 text-[10.5px] font-bold text-rose-700">
+                                      <AlertCircle size={11} className="shrink-0" /> {parentTask.blockerReason || "Blocked"}
+                                    </span>
+                                  )}
+                                  {(parentTask.startDate || parentTask.dueAt) && (
+                                    <div className="mt-0.5 flex items-center gap-1 text-[11px] text-muted">
+                                      <Calendar size={11} className="shrink-0 text-brand-700" />
+                                      <span>
+                                        {parentTask.startDate && parentTask.dueAt
+                                          ? `${parentTask.startDate.slice(5, 10)} → ${parentTask.dueAt.slice(5, 10)}`
+                                          : (parentTask.dueAt ? `Due ${parentTask.dueAt.slice(5, 10)}` : `Starts ${parentTask.startDate.slice(5, 10)}`)}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Priority */}
+                              <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
+                                <span className="inline-flex items-center gap-1.5 font-medium capitalize text-[13px]">
+                                  <i className="h-2 w-2 rounded-full shrink-0" style={{ background: priorityDot[parentTask.priority] }} />
+                                  {parentTask.priority}
+                                </span>
+                              </td>
+
+                              {/* Stage badge for Main Task with subtasks */}
+                              <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
+                                <span className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11.5px] font-semibold ${column.badge}`}>
+                                  <span className={`h-1.5 w-1.5 rounded-full ${column.dot}`} />
+                                  {column.label} ({entry.stageSubtasks.length}/{entry.totalSubtaskCount})
+                                </span>
+                              </td>
+
+                              {/* Assignee */}
+                              <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
+                                <AssigneePicker
+                                  size={22}
+                                  value={parentTask.assigneeId}
+                                  onChange={(assigneeId) => updateTask(parentTask.id, { assigneeId })}
+                                />
+                              </td>
+
+                              {/* Actions */}
+                              <td className="py-2.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                                <div className="inline-flex items-center justify-end gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => openIssueModal(parentTask, targetProjectId || parentTask.projectId, null, null, column.id)}
+                                    className="grid h-7 w-7 place-items-center rounded-lg text-ink/50 hover:bg-[#e8f6ec] hover:text-brand-700 transition"
+                                    title="Create subtask"
+                                  >
+                                    <Plus size={14} />
+                                  </button>
+                                  <CommentButton scope="task" refId={parentTask.id} title={`${parentTask.issueKey} · ${parentTask.title}`} />
+                                  <button
+                                    type="button"
+                                    onClick={() => openIssueModal(null, targetProjectId || parentTask.projectId, null, parentTask)}
+                                    className="grid h-7 w-7 place-items-center rounded-lg text-ink/50 hover:bg-black/5 hover:text-ink transition"
+                                    title="Edit task"
+                                  >
+                                    <Edit3 size={13} />
+                                  </button>
+                                  {can.deleteTask(currentUser, parentTask) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => deleteTask(parentTask)}
+                                      className="grid h-7 w-7 place-items-center rounded-lg text-ink/40 hover:bg-red-50 hover:text-red-600 transition"
+                                      title="Delete task"
+                                    >
+                                      <X size={14} />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>,
+                          ];
+
+                          if (isExpanded) {
+                            entry.stageSubtasks.forEach((subtask, idx) => {
+                              const isSubBlocked =
+                                subtask.status === "blocked" ||
+                                Boolean(subtask.blockerReason && subtask.status !== "done");
+                              rows.push(
+                                <tr
+                                  key={`sub-${subtask.id}`}
+                                  className="bg-[#f9fbfa] hover:bg-[#f2f7f4] transition"
+                                >
+                                  {/* Subtask Simple Number */}
+                                  <td className="py-2 pl-9 pr-4 font-mono font-semibold text-[12px] text-brand-800 whitespace-nowrap">
+                                    <div className="inline-flex items-center gap-1.5">
+                                      <span className="text-ink/35 font-sans">↳</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => openTaskDetail(subtask)}
+                                        className="hover:underline transition"
+                                      >
+                                        {idx + 1}
+                                      </button>
+                                    </div>
+                                  </td>
+
+                                  {/* Subtask Title */}
+                                  <td className="py-2 pl-6 pr-4">
+                                    <div className="min-w-0 border-l-2 border-brand-300/80 pl-3">
+                                      <span
+                                        onClick={() => openTaskDetail(subtask)}
+                                        className="font-medium text-[13px] text-ink/90 hover:text-brand-700 cursor-pointer transition line-clamp-1"
+                                        title={subtask.title}
+                                      >
+                                        {subtask.title}
+                                      </span>
+                                      {isSubBlocked && (
+                                        <span className="mt-0.5 inline-flex items-center gap-1 rounded bg-rose-50 border border-rose-200 px-1.5 py-0.2 text-[10.5px] font-bold text-rose-700">
+                                          <AlertCircle size={11} className="shrink-0" /> {subtask.blockerReason || "Blocked"}
+                                        </span>
+                                      )}
+                                      {(subtask.startDate || subtask.dueAt) && (
+                                        <div className="mt-0.5 flex items-center gap-1 text-[11px] text-muted">
+                                          <Calendar size={10.5} className="shrink-0 text-brand-700" />
+                                          <span>
+                                            {subtask.startDate && subtask.dueAt
+                                              ? `${subtask.startDate.slice(5, 10)} → ${subtask.dueAt.slice(5, 10)}`
+                                              : (subtask.dueAt ? `Due ${subtask.dueAt.slice(5, 10)}` : `Starts ${subtask.startDate.slice(5, 10)}`)}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+
+                                  {/* Subtask Priority */}
+                                  <td className="py-2 px-3">
+                                    <span className="inline-flex items-center gap-1.5 font-medium capitalize text-[12.5px]">
+                                      <i className="h-2 w-2 rounded-full shrink-0" style={{ background: priorityDot[subtask.priority] }} />
+                                      {subtask.priority}
+                                    </span>
+                                  </td>
+
+                                  {/* Subtask Stage / Status Dropdown */}
+                                  <td className="py-2 px-3">
+                                    <select
+                                      value={subtask.status === "blocked" ? "progress" : subtask.status}
+                                      onChange={(e) => updateTask(subtask.id, { status: e.target.value })}
+                                      className="h-7 text-[12px] font-semibold rounded-lg border border-line bg-white px-2 py-0.5 outline-none cursor-pointer focus:border-brand-500"
+                                    >
+                                      {columns.map((c) => (
+                                        <option key={c.id} value={c.id}>
+                                          {c.label}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </td>
+
+                                  {/* Subtask Assignee */}
+                                  <td className="py-2 px-3">
+                                    <AssigneePicker
+                                      size={22}
+                                      value={subtask.assigneeId}
+                                      onChange={(assigneeId) => updateTask(subtask.id, { assigneeId })}
+                                    />
+                                  </td>
+
+                                  {/* Subtask Actions */}
+                                  <td className="py-2 px-4 text-right">
+                                    <div className="inline-flex items-center justify-end gap-1">
+                                      <CommentButton scope="task" refId={subtask.id} title={`${idx + 1} · ${subtask.title}`} />
+                                      <button
+                                        type="button"
+                                        onClick={() => openIssueModal(null, targetProjectId || subtask.projectId, null, subtask)}
+                                        className="grid h-7 w-7 place-items-center rounded-lg text-ink/50 hover:bg-black/5 hover:text-ink transition"
+                                        title="Edit subtask"
+                                      >
+                                        <Edit3 size={13} />
+                                      </button>
+                                      {can.deleteTask(currentUser, subtask) && (
+                                        <button
+                                          type="button"
+                                          onClick={() => deleteTask(subtask)}
+                                          className="grid h-7 w-7 place-items-center rounded-lg text-ink/40 hover:bg-red-50 hover:text-red-600 transition"
+                                          title="Delete subtask"
+                                        >
+                                          <X size={14} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>,
+                              );
+                            });
+                          }
+
+                          return rows;
+                        }
+
+                        // Single task without subtasks
+                        const task = entry.task;
                         const isBlocked = task.status === "blocked" || Boolean(task.blockerReason && task.status !== "done");
 
-                        return (
+                        return [
                           <tr key={task.id} className="hover:bg-[#fbfdfc] transition">
                             {/* Key */}
-                            <td className="py-2.5 px-4 font-mono font-semibold text-[12.5px] text-brand-800">
+                            <td className="py-2.5 px-4 font-mono font-semibold text-[12.5px] text-brand-800 whitespace-nowrap">
                               <button
                                 type="button"
-                                onClick={() => openIssueModal(null, targetProjectId || task.projectId, null, task)}
+                                onClick={() => openTaskDetail(task)}
                                 className="hover:underline transition"
                               >
                                 {task.issueKey}
                               </button>
                             </td>
 
-                            {/* Title & Subtask/Blocker */}
+                            {/* Title & Blocker */}
                             <td className="py-2.5 px-4">
                               <div className="min-w-0">
                                 <span
-                                  onClick={() => openIssueModal(null, targetProjectId || task.projectId, null, task)}
+                                  onClick={() => openTaskDetail(task)}
                                   className="font-semibold text-ink hover:text-brand-700 cursor-pointer transition line-clamp-1"
                                   title={task.title}
                                 >
                                   {task.title}
                                 </span>
-                                {task.parentKey && (
-                                  <span className="text-[11px] text-muted block truncate">
-                                    ↳ Subtask of <b>{task.parentKey}</b>
-                                  </span>
-                                )}
                                 {isBlocked && (
                                   <span className="mt-0.5 inline-flex items-center gap-1 rounded bg-rose-50 border border-rose-200 px-1.5 py-0.2 text-[10.5px] font-bold text-rose-700">
                                     <AlertCircle size={11} className="shrink-0" /> {task.blockerReason || "Blocked"}
                                   </span>
+                                )}
+                                {(task.startDate || task.dueAt) && (
+                                  <div className="mt-0.5 flex items-center gap-1 text-[11px] text-muted">
+                                    <Calendar size={11} className="shrink-0 text-brand-700" />
+                                    <span>
+                                      {task.startDate && task.dueAt
+                                        ? `${task.startDate.slice(5, 10)} → ${task.dueAt.slice(5, 10)}`
+                                        : (task.dueAt ? `Due ${task.dueAt.slice(5, 10)}` : `Starts ${task.startDate.slice(5, 10)}`)}
+                                    </span>
+                                  </div>
                                 )}
                               </div>
                             </td>
@@ -323,6 +679,14 @@ function TaskTableView({ filteredTasks, columns, openIssueModal, updateTask, del
                             {/* Actions */}
                             <td className="py-2.5 px-4 text-right">
                               <div className="inline-flex items-center justify-end gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => openIssueModal(task, targetProjectId || task.projectId, null, null, column.id)}
+                                  className="grid h-7 w-7 place-items-center rounded-lg text-ink/50 hover:bg-[#e8f6ec] hover:text-brand-700 transition"
+                                  title="Create subtask"
+                                >
+                                  <Plus size={14} />
+                                </button>
                                 <CommentButton scope="task" refId={task.id} title={`${task.issueKey} · ${task.title}`} />
                                 <button
                                   type="button"
@@ -344,8 +708,8 @@ function TaskTableView({ filteredTasks, columns, openIssueModal, updateTask, del
                                 )}
                               </div>
                             </td>
-                          </tr>
-                        );
+                          </tr>,
+                        ];
                       })}
                     </tbody>
                   </table>
@@ -359,16 +723,370 @@ function TaskTableView({ filteredTasks, columns, openIssueModal, updateTask, del
   );
 }
 
+/** Visual Stage Analytics & Pipeline View (Option C: Full-Width Executive Pipeline & Stage Cards) */
+function TaskGraphView({ tasks, columns }) {
+  const [hoveredStage, setHoveredStage] = useState(null);
+
+  const stats = useMemo(() => {
+    const total = tasks.length;
+    const stageCounts = {
+      todo: tasks.filter((t) => getEffectiveColumnId(t.status) === "todo").length,
+      progress: tasks.filter((t) => getEffectiveColumnId(t.status) === "progress").length,
+      review: tasks.filter((t) => getEffectiveColumnId(t.status) === "review").length,
+      done: tasks.filter((t) => getEffectiveColumnId(t.status) === "done").length,
+    };
+
+    const stageConfig = {
+      todo: {
+        hex: "#94a3b8",
+        bg: "bg-slate-500",
+        barBg: "bg-slate-400",
+        lightBg: "bg-[#f8fafc]",
+        border: "border-slate-200/80",
+        ringHover: "hover:ring-slate-400/30 hover:border-slate-300",
+        badge: "bg-slate-100 text-slate-800",
+        icon: CircleDot,
+      },
+      progress: {
+        hex: "#3b82f6",
+        bg: "bg-blue-500",
+        barBg: "bg-blue-500",
+        lightBg: "bg-[#f5f8ff]",
+        border: "border-blue-200/80",
+        ringHover: "hover:ring-blue-400/30 hover:border-blue-300",
+        badge: "bg-blue-100 text-blue-800",
+        icon: Clock,
+      },
+      review: {
+        hex: "#a855f7",
+        bg: "bg-purple-500",
+        barBg: "bg-purple-500",
+        lightBg: "bg-[#faf7ff]",
+        border: "border-purple-200/80",
+        ringHover: "hover:ring-purple-400/30 hover:border-purple-300",
+        badge: "bg-purple-100 text-purple-800",
+        icon: Eye,
+      },
+      done: {
+        hex: "#10b981",
+        bg: "bg-emerald-500",
+        barBg: "bg-emerald-500",
+        lightBg: "bg-[#f4fbf6]",
+        border: "border-emerald-200/80",
+        ringHover: "hover:ring-emerald-400/30 hover:border-emerald-300",
+        badge: "bg-emerald-100 text-emerald-800",
+        icon: CheckCircle2,
+      },
+    };
+
+    const stages = columns.map((col) => {
+      const count = stageCounts[col.id] || 0;
+      const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+      const exactPct = total > 0 ? (count / total) * 100 : 0;
+      const conf = stageConfig[col.id] || stageConfig.todo;
+      const highCount = tasks.filter(
+        (t) => getEffectiveColumnId(t.status) === col.id && t.priority === "high"
+      ).length;
+
+      return {
+        ...col,
+        count,
+        pct,
+        exactPct,
+        hex: conf.hex,
+        bg: conf.bg,
+        barBg: conf.barBg,
+        lightBg: conf.lightBg,
+        border: conf.border,
+        ringHover: conf.ringHover,
+        badge: conf.badge,
+        Icon: conf.icon,
+        highCount,
+      };
+    });
+
+    const high = tasks.filter((t) => t.priority === "high").length;
+    const medium = tasks.filter((t) => t.priority === "medium").length;
+    const low = tasks.filter((t) => t.priority === "low").length;
+    const blocked = tasks.filter((t) => t.status === "blocked").length;
+    const completedPct = total > 0 ? Math.round((stageCounts.done / total) * 100) : 0;
+
+    return { total, stages, stageCounts, high, medium, low, blocked, completedPct };
+  }, [tasks, columns]);
+
+  return (
+    <div className="mt-4 space-y-4">
+      {/* Main Executive Analytics & Pipeline Card */}
+      <div className="panel p-5 sm:p-6 shadow-xs border border-line bg-white">
+        {/* Top Header */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-5 border-b border-line/70">
+          <div>
+            <h3 className="text-[17px] font-bold text-ink flex items-center gap-2">
+              <BarChart2 size={19} className="text-brand-700" />
+              Stage Analytics & Distribution
+            </h3>
+            <p className="text-[13px] text-muted mt-0.5">
+              Live task counts and percentage breakdown across workflow stages
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 text-[12.5px] font-semibold">
+            {stats.completedPct === 100 ? (
+              <span className="rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 px-3 py-1 font-bold flex items-center gap-1.5">
+                <CheckCircle2 size={14} className="text-emerald-700" />
+                All Done 🎉
+              </span>
+            ) : (stats.stageCounts.progress > 0 || stats.stageCounts.review > 0) ? (
+              <span className="rounded-full bg-blue-50 text-blue-700 border border-blue-200/80 px-3 py-1 font-bold flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                In Progress
+              </span>
+            ) : (
+              <span className="rounded-full bg-slate-100 text-slate-700 border border-slate-200 px-3 py-1 font-bold">
+                Not Started
+              </span>
+            )}
+            <span className="rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 font-bold">
+              {stats.completedPct}% Completed
+            </span>
+            <span className="rounded-full bg-slate-100 text-slate-700 px-3 py-1 font-bold">
+              {stats.total} Total Tasks
+            </span>
+          </div>
+        </div>
+
+        {/* Full-Width Visual Pipeline Strip */}
+        <div className="pt-5 pb-2">
+          <div className="flex items-center justify-between text-[12.5px] font-bold text-muted mb-2">
+            <span>Workflow Pipeline Distribution</span>
+            <span className="text-ink font-semibold">
+              {stats.stageCounts.done} of {stats.total} completed
+            </span>
+          </div>
+
+          {/* Segmented Pipeline Bar */}
+          <div className="h-3 w-full rounded-full bg-slate-100 overflow-hidden flex p-0.5 gap-0.5 shadow-inner border border-slate-200/60">
+            {stats.stages.map((stage) => {
+              if (stage.count === 0) return null;
+              const isHovered = hoveredStage === stage.id;
+              return (
+                <div
+                  key={stage.id}
+                  onMouseEnter={() => setHoveredStage(stage.id)}
+                  onMouseLeave={() => setHoveredStage(null)}
+                  style={{ width: `${stage.exactPct}%` }}
+                  className={`h-full rounded-full ${stage.barBg} transition-all duration-300 cursor-pointer ${
+                    isHovered ? "ring-2 ring-black/25 brightness-110" : ""
+                  }`}
+                  title={`${stage.label}: ${stage.count} tasks (${stage.pct}%)`}
+                />
+              );
+            })}
+          </div>
+
+          {/* Interactive Pipeline Legend */}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 mt-3 text-[12px]">
+            {stats.stages.map((stage) => {
+              const isHovered = hoveredStage === stage.id;
+              return (
+                <button
+                  key={stage.id}
+                  type="button"
+                  onMouseEnter={() => setHoveredStage(stage.id)}
+                  onMouseLeave={() => setHoveredStage(null)}
+                  className={`flex items-center gap-1.5 font-medium transition-all rounded px-1.5 py-0.5 ${
+                    isHovered ? "bg-black/5 font-bold text-ink" : "text-ink/75 hover:text-ink"
+                  }`}
+                >
+                  <span className={`h-2.5 w-2.5 rounded-full ${stage.bg}`} />
+                  <span>{stage.label}:</span>
+                  <span className="font-bold text-ink">{stage.count}</span>
+                  <span className="text-muted">({stage.pct}%)</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 4 Stage Breakdown Cards (Full-Width 4-Column Grid) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-4 border-t border-line/60">
+          {stats.stages.map((stage) => {
+            const StageIcon = stage.Icon;
+            const isHovered = hoveredStage === stage.id;
+
+            return (
+              <div
+                key={stage.id}
+                onMouseEnter={() => setHoveredStage(stage.id)}
+                onMouseLeave={() => setHoveredStage(null)}
+                className={`p-4 rounded-2xl border transition-all duration-200 cursor-pointer ${
+                  stage.lightBg
+                } ${stage.border} ${stage.ringHover} ${
+                  isHovered ? "ring-2 shadow-sm scale-[1.01] -translate-y-0.5" : "hover:shadow-2xs"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div
+                    className={`grid h-8 w-8 place-items-center rounded-xl bg-white shadow-2xs ${stage.border} border transition-transform ${
+                      isHovered ? "scale-110" : ""
+                    }`}
+                  >
+                    <StageIcon size={16} style={{ color: stage.hex }} />
+                  </div>
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${stage.badge}`}>
+                    {stage.pct}%
+                  </span>
+                </div>
+
+                <div className="mt-3">
+                  <p className="text-[14px] font-bold text-ink leading-tight">
+                    {stage.label}
+                  </p>
+                  <p className="text-[11.5px] text-muted truncate mt-0.5">{stage.hint}</p>
+                </div>
+
+                <div className="mt-3 flex items-baseline justify-between">
+                  <span className="text-[26px] font-black text-ink leading-none">
+                    {stage.count}
+                  </span>
+                  <span className="text-[11.5px] text-muted font-medium">
+                    tasks
+                  </span>
+                </div>
+
+                {/* Progress Bar inside Card */}
+                <div className="mt-2.5 h-1.5 w-full rounded-full bg-black/[0.06] overflow-hidden">
+                  <div
+                    style={{ width: `${stage.pct}%` }}
+                    className={`h-full rounded-full ${stage.barBg} transition-all duration-500`}
+                  />
+                </div>
+
+                {stage.highCount > 0 && (
+                  <div className="mt-2.5 flex items-center gap-1 text-[10.5px] font-bold text-red-700 bg-red-50 border border-red-200/80 rounded px-1.5 py-0.5 w-fit">
+                    <Flame size={10} className="text-red-600" /> {stage.highCount} high priority
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Priority & Workload Health Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="panel p-4 flex flex-col justify-between border-line/80">
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] font-semibold text-muted">High Priority</span>
+            <span className="h-2 w-2 rounded-full bg-red-500" />
+          </div>
+          <div className="mt-2 flex items-baseline justify-between">
+            <span className="text-[22px] font-black text-[#d63a3a] leading-none">{stats.high}</span>
+            <span className="rounded-full bg-red-50 text-red-700 px-2 py-0.5 text-[11px] font-bold">
+              {stats.total > 0 ? Math.round((stats.high / stats.total) * 100) : 0}%
+            </span>
+          </div>
+        </div>
+
+        <div className="panel p-4 flex flex-col justify-between border-line/80">
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] font-semibold text-muted">Medium Priority</span>
+            <span className="h-2 w-2 rounded-full bg-amber-500" />
+          </div>
+          <div className="mt-2 flex items-baseline justify-between">
+            <span className="text-[22px] font-black text-[#8a6508] leading-none">{stats.medium}</span>
+            <span className="rounded-full bg-amber-50 text-amber-800 px-2 py-0.5 text-[11px] font-bold">
+              {stats.total > 0 ? Math.round((stats.medium / stats.total) * 100) : 0}%
+            </span>
+          </div>
+        </div>
+
+        <div className="panel p-4 flex flex-col justify-between border-line/80">
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] font-semibold text-muted">Low Priority</span>
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+          </div>
+          <div className="mt-2 flex items-baseline justify-between">
+            <span className="text-[22px] font-black text-[#2d7a45] leading-none">{stats.low}</span>
+            <span className="rounded-full bg-emerald-50 text-emerald-800 px-2 py-0.5 text-[11px] font-bold">
+              {stats.total > 0 ? Math.round((stats.low / stats.total) * 100) : 0}%
+            </span>
+          </div>
+        </div>
+
+        <div className="panel p-4 flex flex-col justify-between border-line/80">
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] font-semibold text-muted">Blocked Tasks</span>
+            <ShieldAlert size={14} className={stats.blocked > 0 ? "text-rose-600" : "text-muted"} />
+          </div>
+          <div className="mt-2 flex items-baseline justify-between">
+            <span className={`text-[22px] font-black leading-none ${stats.blocked > 0 ? "text-rose-600" : "text-ink"}`}>
+              {stats.blocked}
+            </span>
+            <span
+              className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                stats.blocked > 0 ? "bg-rose-100 text-rose-800" : "bg-emerald-50 text-emerald-700"
+              }`}
+            >
+              {stats.blocked > 0 ? "Needs action" : "All clear"}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** 4-Column Zero-Scroll Task Board with View Mode (Kanban Board vs Tabular View) */
 export default function IssueBoard({ tasks, eyebrow, title, subtitle, projectId }) {
-  const { updateTask, deleteTask, openIssueModal, currentUser } = useApp();
-  const [viewMode, setViewMode] = useState("board"); // "board" | "table"
+  const { updateTask, deleteTask, openIssueModal, openTaskDetail, currentUser } = useApp();
+  const [viewMode, setViewMode] = useState("board"); // "board" | "table" | "chart"
   const [over, setOver] = useState(null);
   const [filterMode, setFilterMode] = useState("all"); // 'all' | 'mine' | 'blocked' | 'high'
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [doneCollapsed, setDoneCollapsed] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState({});
 
   const targetProjectId = projectId || tasks[0]?.projectId || null;
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+
+  const matchesSearch = (t) => {
+    if (!normalizedSearch) return true;
+    const title = (t.title || "").toLowerCase();
+    const key = (t.parentId ? "" : t.issueKey || "").toLowerCase();
+    const cat = (t.category || "").toLowerCase();
+    const desc = (t.description || "").toLowerCase();
+    return (
+      title.includes(normalizedSearch) ||
+      key.includes(normalizedSearch) ||
+      cat.includes(normalizedSearch) ||
+      desc.includes(normalizedSearch)
+    );
+  };
+
+  const toggleGroup = (parentId, columnId) => {
+    const key = `${parentId}:${columnId}`;
+    setExpandedGroups((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  // Map all tasks by ID and index all subtasks by their parentId across all stages
+  const { allTasksById, allSubtasksByParentId } = useMemo(() => {
+    const byId = new Map();
+    tasks.forEach((t) => byId.set(t.id, t));
+
+    const byParent = new Map();
+    tasks.forEach((t) => {
+      if (t.parentId && byId.has(t.parentId)) {
+        if (!byParent.has(t.parentId)) {
+          byParent.set(t.parentId, []);
+        }
+        byParent.get(t.parentId).push(t);
+      }
+    });
+
+    return { allTasksById: byId, allSubtasksByParentId: byParent };
+  }, [tasks]);
 
   // Extract unique categories for tasks in this board
   const categories = useMemo(() => {
@@ -399,6 +1117,8 @@ export default function IssueBoard({ tasks, eyebrow, title, subtitle, projectId 
     }
   }, [tasks, filterMode, categoryFilter, currentUser?.id]);
 
+  const filteredIds = useMemo(() => new Set(filteredTasks.map((t) => t.id)), [filteredTasks]);
+
   const blockedCount = tasks.filter((t) => t.status === "blocked" || Boolean(t.blockerReason)).length;
   const myCount = tasks.filter((t) => t.assigneeId === currentUser?.id).length;
   const highCount = tasks.filter((t) => t.priority === "high").length;
@@ -408,8 +1128,59 @@ export default function IssueBoard({ tasks, eyebrow, title, subtitle, projectId 
     event.preventDefault();
     setOver(null);
     const id = Number(event.dataTransfer.getData("taskId"));
+    if (!id || allSubtasksByParentId.has(id)) return;
     const task = tasks.find((item) => item.id === id);
     if (task && task.status !== status) void updateTask(id, { status });
+  }
+
+  function getColumnEntries(columnId) {
+    const entries = [];
+    tasks.forEach((task) => {
+      // Subtasks are never rendered as standalone top-level items
+      if (task.parentId && allTasksById.has(task.parentId)) {
+        return;
+      }
+
+      // Main task with subtasks: show in this column if it has at least 1 subtask in this stage
+      if (allSubtasksByParentId.has(task.id)) {
+        const allSubtasks = allSubtasksByParentId.get(task.id);
+        const parentMatches = matchesSearch(task);
+
+        const baseStageSubtasks = allSubtasks.filter(
+          (sub) =>
+            getEffectiveColumnId(sub.status) === columnId &&
+            (filteredIds.has(sub.id) || (filteredIds.has(task.id) && filterMode === "all")),
+        );
+
+        const matchingSubtasks = baseStageSubtasks.filter((sub) => matchesSearch(sub));
+        const stageSubtasks =
+          !normalizedSearch || parentMatches ? baseStageSubtasks : matchingSubtasks;
+
+        if (stageSubtasks.length > 0) {
+          entries.push({
+            type: "parent",
+            task,
+            stageSubtasks,
+            totalSubtaskCount: allSubtasks.length,
+            autoExpand: Boolean(normalizedSearch) && matchingSubtasks.length > 0,
+          });
+        }
+        return;
+      }
+
+      // Normal single task without subtasks
+      if (
+        filteredIds.has(task.id) &&
+        getEffectiveColumnId(task.status) === columnId &&
+        matchesSearch(task)
+      ) {
+        entries.push({
+          type: "single",
+          task,
+        });
+      }
+    });
+    return entries;
   }
 
   return (
@@ -448,6 +1219,18 @@ export default function IssueBoard({ tasks, eyebrow, title, subtitle, projectId 
               title="Tabular / List View"
             >
               <TableIcon size={15} /> Table
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("chart")}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition ${
+                viewMode === "chart"
+                  ? "bg-white text-ink shadow-xs font-bold"
+                  : "text-muted hover:text-ink"
+              }`}
+              title="Bar Graph / Analytics View"
+            >
+              <BarChart2 size={15} /> Graph
             </button>
           </div>
 
@@ -507,43 +1290,69 @@ export default function IssueBoard({ tasks, eyebrow, title, subtitle, projectId 
           </button>
         </div>
 
-        {/* Category Dropdown Filter */}
-        {categories.length > 0 && (
-          <div className="flex items-center gap-1.5 ml-auto sm:ml-0">
-            <span className="text-[12px] font-medium text-muted">Category:</span>
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="rounded-lg border border-line bg-white px-2.5 py-1 text-[12.5px] font-semibold text-ink shadow-2xs hover:border-slate-300 focus:outline-hidden max-w-[240px] truncate"
-            >
-              <option value="all">All Categories ({tasks.length})</option>
-              {categories.map((cat) => {
-                const count = tasks.filter((t) => t.category === cat).length;
-                return (
-                  <option key={cat} value={cat}>
-                    {cat} ({count})
-                  </option>
-                );
-              })}
-            </select>
-            {categoryFilter !== "all" && (
+        {/* Search Bar + Category Dropdown Filter */}
+        <div className="flex flex-wrap items-center gap-2 ml-auto sm:ml-0">
+          {/* Kanban Search Input */}
+          <div className="relative flex items-center">
+            <Search size={14} className="pointer-events-none absolute left-2.5 text-ink/45" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search tasks & subtasks..."
+              className="h-[30px] w-[190px] sm:w-[230px] rounded-lg border border-line bg-white pl-8 pr-7 text-[12.5px] font-medium text-ink shadow-2xs transition placeholder:text-ink/40 hover:border-slate-300 focus:border-brand-500 focus:outline-hidden"
+            />
+            {searchQuery && (
               <button
                 type="button"
-                onClick={() => setCategoryFilter("all")}
-                className="text-[11.5px] font-semibold text-muted hover:text-ink underline ml-1"
-                title="Reset category filter"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-1.5 grid h-5 w-5 place-items-center rounded-md text-ink/40 hover:bg-black/5 hover:text-ink"
+                title="Clear search"
               >
-                Clear
+                <X size={12} />
               </button>
             )}
           </div>
-        )}
+
+          {categories.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-[12px] font-medium text-muted">Category:</span>
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="h-[30px] rounded-lg border border-line bg-white px-2.5 py-1 text-[12.5px] font-semibold text-ink shadow-2xs hover:border-slate-300 focus:outline-hidden max-w-[220px] truncate"
+              >
+                <option value="all">All Categories ({tasks.length})</option>
+                {categories.map((cat) => {
+                  const count = tasks.filter((t) => t.category === cat).length;
+                  return (
+                    <option key={cat} value={cat}>
+                      {cat} ({count})
+                    </option>
+                  );
+                })}
+              </select>
+              {categoryFilter !== "all" && (
+                <button
+                  type="button"
+                  onClick={() => setCategoryFilter("all")}
+                  className="text-[11.5px] font-semibold text-muted hover:text-ink underline ml-1"
+                  title="Reset category filter"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* VIEW MODE 1: TABULAR VIEW */}
+      {/* VIEW MODES */}
       {viewMode === "table" ? (
         <TaskTableView
-          filteredTasks={filteredTasks}
+          getColumnEntries={getColumnEntries}
+          expandedGroups={expandedGroups}
+          toggleGroup={toggleGroup}
           columns={columns}
           openIssueModal={openIssueModal}
           updateTask={updateTask}
@@ -551,6 +1360,8 @@ export default function IssueBoard({ tasks, eyebrow, title, subtitle, projectId 
           currentUser={currentUser}
           targetProjectId={targetProjectId}
         />
+      ) : viewMode === "chart" ? (
+        <TaskGraphView tasks={filteredTasks} columns={columns} />
       ) : (
         /* VIEW MODE 2: KANBAN BOARD COLUMNS */
         <div className="mt-3.5 flex items-start gap-3.5">
@@ -558,12 +1369,7 @@ export default function IssueBoard({ tasks, eyebrow, title, subtitle, projectId 
             const isDone = column.id === "done";
             const isCollapsed = isDone && doneCollapsed;
 
-            const items = filteredTasks.filter((task) => {
-              if (column.id === "progress") {
-                return task.status === "progress" || task.status === "blocked";
-              }
-              return task.status === column.id;
-            });
+            const entries = getColumnEntries(column.id);
 
             // Collapsed Done Column (Slim 44px vertical strip)
             if (isCollapsed) {
@@ -577,7 +1383,7 @@ export default function IssueBoard({ tasks, eyebrow, title, subtitle, projectId 
                   <div className="flex flex-col items-center gap-2 pt-1">
                     <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
                     <span className="grid h-[20px] min-w-[20px] place-items-center rounded-full bg-emerald-100 px-1 text-[11px] font-bold text-emerald-800">
-                      {items.length}
+                      {entries.length}
                     </span>
                   </div>
                   <div className="[writing-mode:vertical-lr] rotate-180 text-[13px] font-bold text-emerald-900 tracking-wide select-none">
@@ -613,7 +1419,7 @@ export default function IssueBoard({ tasks, eyebrow, title, subtitle, projectId 
                     <span
                       className={`grid h-[19px] min-w-[19px] place-items-center rounded-full px-1.5 text-[10.5px] font-bold ${column.badge}`}
                     >
-                      {items.length}
+                      {entries.length}
                     </span>
                   </div>
 
@@ -641,10 +1447,53 @@ export default function IssueBoard({ tasks, eyebrow, title, subtitle, projectId 
 
                 {/* Cards Container */}
                 <div className="space-y-2.5 max-h-[580px] overflow-y-auto custom-scrollbar px-0.5 py-0.5 pr-1 flex-1">
-                  {items.map((task) => (
-                    <IssueCard key={task.id} task={task} targetProjectId={targetProjectId} />
-                  ))}
-                  {!items.length && (
+                  {entries.map((entry) => {
+                    if (entry.type === "parent") {
+                      const groupKey = `${entry.task.id}:${column.id}`;
+                      const isExpanded =
+                        expandedGroups[groupKey] !== undefined
+                          ? Boolean(expandedGroups[groupKey])
+                          : Boolean(entry.autoExpand);
+                      return (
+                        <div key={groupKey} className="space-y-1.5">
+                          <IssueCard
+                            task={entry.task}
+                            targetProjectId={targetProjectId}
+                            columnId={column.id}
+                            hasSubtasks={true}
+                            stageSubtaskCount={entry.stageSubtasks.length}
+                            totalSubtaskCount={entry.totalSubtaskCount}
+                            isExpanded={isExpanded}
+                            onToggleExpand={() => toggleGroup(entry.task.id, column.id)}
+                          />
+                          {isExpanded && (
+                            <div className="ml-3 space-y-2 border-l-2 border-brand-300/80 pl-2.5 pt-0.5">
+                              {entry.stageSubtasks.map((subtask, idx) => (
+                                <IssueCard
+                                  key={subtask.id}
+                                  task={subtask}
+                                  targetProjectId={targetProjectId}
+                                  columnId={column.id}
+                                  isSubtask={true}
+                                  subtaskNumber={idx + 1}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <IssueCard
+                        key={entry.task.id}
+                        task={entry.task}
+                        targetProjectId={targetProjectId}
+                        columnId={column.id}
+                      />
+                    );
+                  })}
+                  {!entries.length && (
                     <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-line/80 py-8 text-center text-muted">
                       <p className="text-[12px]">No tasks</p>
                       <button

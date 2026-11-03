@@ -1,7 +1,5 @@
-import TeamView from "@/components/team/TeamView";
-
-export const metadata = { title: "Team – Nexa PMS" };
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <TeamView />;
+  redirect("/collaborators");
 }

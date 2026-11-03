@@ -33,6 +33,8 @@ export function AppProvider({ initial, children }) {
   const [sticky, setSticky] = useState(initial.sticky);
   const [focusItems, setFocusItems] = useState(initial.focus);
   const [users, setUsers] = useState(initial.users);
+  const [collaborators, setCollaborators] = useState(initial.collaborators ?? []);
+  const [collaboratorRequests, setCollaboratorRequests] = useState(initial.collaboratorRequests ?? { incoming: [], outgoing: [] });
   const [commentCounts, setCommentCounts] = useState(initial.commentCounts);
   const [notifications, setNotifications] = useState(initial.notifications ?? []);
   const [actionRequests, setActionRequests] = useState(initial.actionRequests ?? []);
@@ -46,6 +48,7 @@ export function AppProvider({ initial, children }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const [issueModal, setIssueModal] = useState(null); // { parent } while open
+  const [taskDetailId, setTaskDetailId] = useState(null);
   const [projectModalOpen, setProjectModalOpen] = useState(false);
   const [stickyModalOpen, setStickyModalOpen] = useState(false);
 
@@ -123,7 +126,11 @@ export function AppProvider({ initial, children }) {
   }
 
   async function createIssue(form) {
-    const { ok, data } = await request("/api/tasks", "POST", { ...form, dueAt: form.dueAt || null });
+    const { ok, data } = await request("/api/tasks", "POST", {
+      ...form,
+      startDate: form.startDate || null,
+      dueAt: form.dueAt || null,
+    });
     if (!ok) {
       notify(data?.error ?? "The task could not be created.");
       return false;
@@ -221,6 +228,54 @@ export function AppProvider({ initial, children }) {
       return false;
     }
     setUsers((current) => current.map((user) => (user.id === id ? data.user : user)));
+    return true;
+  }
+
+  // ---------- collaborators ----------
+
+  async function refreshCollaborators() {
+    const { ok, data } = await request("/api/collaborators", "GET");
+    if (ok && data) {
+      setCollaborators(data.collaborators || []);
+      setCollaboratorRequests(data.requests || { incoming: [], outgoing: [] });
+    }
+  }
+
+  async function inviteCollaborator(email) {
+    const { ok, data } = await request("/api/collaborators/invite", "POST", { email });
+    if (!ok) {
+      notify(data?.error ?? "Could not send collaborator invitation.");
+      return { ok: false, error: data?.error };
+    }
+    notify(data?.message ?? "Invitation sent.");
+    refreshCollaborators();
+    return { ok: true, data };
+  }
+
+  async function respondCollaboratorRequest(connectionId, action, notificationId = null) {
+    const { ok, data } = await request("/api/collaborators/respond", "POST", {
+      connectionId,
+      action,
+      notificationId,
+    });
+    if (!ok) {
+      notify(data?.error ?? "Could not respond to invitation.");
+      return false;
+    }
+    notify(data?.message ?? (action === "accept" ? "Accepted!" : "Declined."));
+    refreshCollaborators();
+    refreshNotifications();
+    return true;
+  }
+
+  async function removeCollaborator(collaboratorId) {
+    const { ok, data } = await request(`/api/collaborators/${collaboratorId}`, "DELETE");
+    if (!ok) {
+      notify(data?.error ?? "Could not remove collaborator.");
+      return false;
+    }
+    notify("Collaborator removed.");
+    setCollaborators((current) => current.filter((c) => c.id !== collaboratorId));
     return true;
   }
 
@@ -507,6 +562,7 @@ export function AppProvider({ initial, children }) {
   }, [now, myTasks]);
 
   const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
+  const pendingCollaboratorRequestsCount = collaboratorRequests?.incoming?.length || 0;
   const myPendingActionsCount = actionRequests.filter(
     (a) => a.assigneeId === currentUser?.id && a.status === "pending"
   ).length;
@@ -521,13 +577,19 @@ export function AppProvider({ initial, children }) {
     return list.filter((task) => [task.issueKey, task.title, task.projectName, task.type].join(" ").toLowerCase().includes(needle));
   }
 
+  const taskDetailModal = useMemo(
+    () => tasks.find((t) => t.id === taskDetailId) || null,
+    [tasks, taskDetailId],
+  );
+
   const value = {
     // data
-    tasks, projects, setProjects, notes, todos, sticky, focusItems, users, commentCounts, currentUser, notifications, unreadNotificationsCount, markNotificationAsRead, markAllNotificationsAsRead, refreshNotifications,
-    signOut, addUser, editUser, setCommentCount,
+    tasks, projects, setProjects, notes, todos, sticky, focusItems, users, collaborators, collaboratorRequests, pendingCollaboratorRequestsCount, commentCounts, currentUser, notifications, unreadNotificationsCount, markNotificationAsRead, markAllNotificationsAsRead, refreshNotifications,
+    signOut, addUser, editUser, setCommentCount, refreshCollaborators, inviteCollaborator, respondCollaboratorRequest, removeCollaborator,
     // ui state
     query, setQuery, toast, notify, now, todayDate, sidebarOpen, setSidebarOpen, sidebarCollapsed, setSidebarCollapsed, toggleSidebarCollapsed: () => setSidebarCollapsed((v) => !v),
-    issueModal, openIssueModal: (parent = null, projectId = null, dueAt = null, task = null, initialStatus = null) => setIssueModal({ parent, projectId, dueAt, task, initialStatus }), closeIssueModal: () => setIssueModal(null),
+    issueModal, openIssueModal: (parent = null, projectId = null, dueAt = null, task = null, initialStatus = null, startDate = null) => setIssueModal({ parent, projectId, dueAt, task, initialStatus, startDate }), closeIssueModal: () => setIssueModal(null),
+    taskDetailModal, openTaskDetail: (taskOrId) => setTaskDetailId(typeof taskOrId === "object" ? taskOrId.id : taskOrId), closeTaskDetail: () => setTaskDetailId(null),
     projectModalOpen, setProjectModalOpen, stickyModalOpen, setStickyModalOpen,
     // actions
     createAction, updateAction, deleteAction,

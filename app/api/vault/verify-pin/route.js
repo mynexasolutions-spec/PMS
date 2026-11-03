@@ -1,4 +1,5 @@
 import { authorize } from "@/lib/auth";
+import { getUserVaultPin, setUserVaultPin } from "@/lib/db/users";
 import { fail, readJson } from "@/lib/http";
 
 export const runtime = "nodejs";
@@ -12,13 +13,24 @@ const COOLDOWN_MS = 10 * 60 * 1000; // 10 minutes
 // Survives page reloads and prevents brute forcing.
 const userAttempts = new Map();
 
-function getMasterPin() {
-  return String(process.env.VAULT_MASTER_PIN || "0302").trim();
-}
-
 export async function GET(request) {
   const auth = await authorize(request);
   if (auth.error) return auth.error;
+
+  const userPin = getUserVaultPin(auth.user.id);
+  const hasPin = Boolean(userPin);
+
+  if (!hasPin) {
+    userAttempts.delete(auth.user.id);
+    return Response.json(
+      {
+        hasPin: false,
+        locked: false,
+        attemptsLeft: MAX_ATTEMPTS,
+      },
+      { headers: noStore }
+    );
+  }
 
   const record = userAttempts.get(auth.user.id);
   const now = Date.now();
@@ -27,7 +39,7 @@ export async function GET(request) {
     if (now < record.lockedUntil) {
       const remainingMs = record.lockedUntil - now;
       return Response.json(
-        { locked: true, cooldownRemainingMs: remainingMs, attemptsLeft: 0 },
+        { hasPin: true, locked: true, cooldownRemainingMs: remainingMs, attemptsLeft: 0 },
         { headers: noStore }
       );
     } else {
@@ -39,6 +51,7 @@ export async function GET(request) {
   const attemptsUsed = userAttempts.get(auth.user.id)?.attempts || 0;
   return Response.json(
     {
+      hasPin: true,
       locked: false,
       attemptsLeft: Math.max(0, MAX_ATTEMPTS - attemptsUsed),
     },
@@ -49,6 +62,15 @@ export async function GET(request) {
 export async function POST(request) {
   const auth = await authorize(request);
   if (auth.error) return auth.error;
+
+  const userPin = getUserVaultPin(auth.user.id);
+  if (!userPin) {
+    userAttempts.delete(auth.user.id);
+    return Response.json(
+      { ok: true, hasPin: false, message: "No PIN configured." },
+      { headers: noStore }
+    );
+  }
 
   const now = Date.now();
   let record = userAttempts.get(auth.user.id) || { attempts: 0, lockedUntil: null };
@@ -75,13 +97,12 @@ export async function POST(request) {
 
   const body = await readJson(request);
   const enteredPin = String(body?.pin || "").trim();
-  const masterPin = getMasterPin();
 
-  if (enteredPin === masterPin) {
+  if (enteredPin === userPin) {
     // Reset failed counter on successful unlock
     userAttempts.delete(auth.user.id);
     return Response.json(
-      { ok: true, message: "PIN verified successfully." },
+      { ok: true, hasPin: true, message: "PIN verified successfully." },
       { headers: noStore }
     );
   }
@@ -114,5 +135,49 @@ export async function POST(request) {
       attemptsLeft: left,
     },
     { status: 400, headers: noStore }
+  );
+}
+
+/** Set or update the logged-in user's personal 4-digit PIN for My Credentials. */
+export async function PUT(request) {
+  const auth = await authorize(request);
+  if (auth.error) return auth.error;
+
+  const record = userAttempts.get(auth.user.id);
+  if (record?.lockedUntil && Date.now() < record.lockedUntil) {
+    return fail("Vault is currently in security lockout. Please wait before changing PIN.", 429);
+  }
+
+  const body = await readJson(request);
+  const newPin = String(body?.pin || "").trim();
+  if (!/^\d{4}$/.test(newPin)) {
+    return fail("PIN must be an exact 4-digit number (e.g. 1234).");
+  }
+
+  setUserVaultPin(auth.user.id, newPin);
+  userAttempts.delete(auth.user.id);
+
+  return Response.json(
+    { ok: true, hasPin: true, message: "Personal 4-digit PIN saved successfully." },
+    { headers: noStore }
+  );
+}
+
+/** Remove the logged-in user's personal PIN so My Credentials is unprotected by default. */
+export async function DELETE(request) {
+  const auth = await authorize(request);
+  if (auth.error) return auth.error;
+
+  const record = userAttempts.get(auth.user.id);
+  if (record?.lockedUntil && Date.now() < record.lockedUntil) {
+    return fail("Vault is currently in security lockout. Please wait before removing PIN.", 429);
+  }
+
+  setUserVaultPin(auth.user.id, null);
+  userAttempts.delete(auth.user.id);
+
+  return Response.json(
+    { ok: true, hasPin: false, message: "PIN removed. My Credentials is now unprotected." },
+    { headers: noStore }
   );
 }

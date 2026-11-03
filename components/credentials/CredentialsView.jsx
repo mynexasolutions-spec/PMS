@@ -1,20 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import {
-  Check,
-  ChevronDown,
   Download,
   ExternalLink,
   Eye,
   EyeOff,
   FileCode2,
-  Filter,
   FolderLock,
   FolderPlus,
   KeyRound,
   Lock,
+  LockOpen,
   Pencil,
   Plus,
   Search,
@@ -23,9 +20,10 @@ import {
   Upload,
 } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
+import { useVaultPin } from "@/components/credentials/CredentialsLock";
 import CopyButton from "@/components/ui/CopyButton";
 import Modal from "@/components/ui/Modal";
-import ProjectColorPicker, { DEFAULT_PROJECT_COLOR } from "@/components/modals/ProjectColorPicker";
+import ProjectColorPicker from "@/components/modals/ProjectColorPicker";
 import { request } from "@/lib/api";
 import { stamp } from "@/lib/datetime";
 import { countVariables, parseEnv } from "@/lib/env-parse";
@@ -64,6 +62,147 @@ function DownloadEnvButton({ filename, text }) {
   );
 }
 
+// ----------------- MODAL: PERSONAL PIN SETTINGS -----------------
+function PinSettingsModal({ hasPin, onClose, onUpdated }) {
+  const { notify } = useApp();
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSavePin(e) {
+    e.preventDefault();
+    setError("");
+    if (!/^\d{4}$/.test(newPin)) {
+      setError("Please enter an exact 4-digit numeric PIN (0-9).");
+      return;
+    }
+    if (newPin !== confirmPin) {
+      setError("Both 4-digit PINs must match.");
+      return;
+    }
+
+    setBusy(true);
+    const res = await request("/api/vault/verify-pin", "PUT", { pin: newPin });
+    setBusy(false);
+
+    if (!res.ok) {
+      setError(res.data?.error ?? "Could not save PIN.");
+      return;
+    }
+
+    notify(hasPin ? "Personal Vault PIN updated." : "Personal Vault PIN enabled!");
+    onUpdated(true);
+    onClose();
+  }
+
+  async function handleRemovePin() {
+    if (!confirm("Remove your personal PIN? Your My Credentials page will open directly without asking for a PIN.")) {
+      return;
+    }
+    setBusy(true);
+    setError("");
+    const res = await request("/api/vault/verify-pin", "DELETE");
+    setBusy(false);
+
+    if (!res.ok) {
+      setError(res.data?.error ?? "Could not remove PIN.");
+      return;
+    }
+
+    notify("Vault PIN removed. My Credentials is now unprotected.");
+    onUpdated(false);
+    onClose();
+  }
+
+  return (
+    <Modal
+      icon={<Lock size={25} className="text-brand-600" />}
+      eyebrow="My Credentials Security"
+      title={hasPin ? "Manage Personal Vault PIN" : "Set Personal Vault PIN"}
+      subtitle={
+        hasPin
+          ? "Your My Credentials page is currently protected by a 4-digit PIN. You can change it or remove it below."
+          : "By default, My Credentials is unprotected. Set a 4-digit PIN to lock this page with your personal security code."
+      }
+      onClose={onClose}
+    >
+      <form onSubmit={handleSavePin} className="grid gap-4">
+        <div
+          className={`flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-[13px] font-medium ${
+            hasPin
+              ? "border-emerald-200 bg-emerald-50/80 text-emerald-800"
+              : "border-amber-200 bg-amber-50/80 text-amber-800"
+          }`}
+        >
+          <span className="flex items-center gap-2">
+            {hasPin ? <Lock size={15} /> : <LockOpen size={15} />}
+            {hasPin ? "Status: Protected with 4-digit PIN" : "Status: Unprotected (Opens without PIN)"}
+          </span>
+          {hasPin && (
+            <button
+              type="button"
+              onClick={handleRemovePin}
+              disabled={busy}
+              className="rounded-lg bg-white px-2.5 py-1 text-[12px] font-bold text-red-600 shadow-2xs border border-red-200 hover:bg-red-50 transition"
+            >
+              Remove PIN
+            </button>
+          )}
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="field">
+            {hasPin ? "New 4-Digit PIN" : "Enter 4-Digit PIN"}
+            <input
+              type="password"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={4}
+              required
+              autoFocus
+              value={newPin}
+              onChange={(e) => setNewPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              placeholder="e.g. 4829"
+              className="font-mono tracking-widest text-[16px]"
+            />
+          </label>
+
+          <label className="field">
+            Confirm 4-Digit PIN
+            <input
+              type="password"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={4}
+              required
+              value={confirmPin}
+              onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              placeholder="Repeat 4 digits"
+              className="font-mono tracking-widest text-[16px]"
+            />
+          </label>
+        </div>
+
+        {error && (
+          <p className="rounded-xl bg-red-50 px-3.5 py-2.5 text-[13px] font-medium text-red-700">
+            {error}
+          </p>
+        )}
+
+        <div className="flex justify-end gap-3 pt-2 border-t border-line">
+          <button type="button" className="btn-secondary" onClick={onClose}>
+            Cancel
+          </button>
+          <button className="btn-primary" disabled={busy || newPin.length !== 4}>
+            {busy ? "Saving..." : hasPin ? "Update PIN" : "Enable PIN Lock"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 // ----------------- MODAL: VIEW / DECRYPT SECRET -----------------
 function ViewSecretModal({ secret, onClose, onEdit }) {
   const [data, setData] = useState(null);
@@ -97,12 +236,12 @@ function ViewSecretModal({ secret, onClose, onEdit }) {
       icon={isEnv ? <FileCode2 size={26} /> : <KeyRound size={26} />}
       eyebrow={`${secret.projectName} · ${isEnv ? ".env Configuration" : "Account Login"}`}
       title={secret.label}
-      subtitle="Decrypted securely with AES-256-GCM. Keep these details confidential."
+      subtitle="Decrypted securely with AES-256-GCM from your personal vault."
       onClose={onClose}
     >
       {loading && (
         <div className="py-12 text-center text-muted">
-          <p className="animate-pulse">Decrypting secret from secure vault...</p>
+          <p className="animate-pulse">Decrypting secret from your personal vault...</p>
         </div>
       )}
 
@@ -240,7 +379,7 @@ function ViewSecretModal({ secret, onClose, onEdit }) {
   );
 }
 
-// ----------------- MODAL: CREATE VAULT-ONLY PROJECT -----------------
+// ----------------- MODAL: CREATE PERSONAL VAULT CONTAINER -----------------
 function NewVaultProjectModal({ onClose, onCreated }) {
   const { notify } = useApp();
   const [name, setName] = useState("");
@@ -256,17 +395,17 @@ function NewVaultProjectModal({ onClose, onCreated }) {
     const { ok, data } = await request("/api/projects", "POST", {
       name: name.trim(),
       color,
-      description: description.trim() || "Vault & credentials container",
+      description: description.trim() || "Personal credentials folder",
       isVaultOnly: true,
     });
 
     setBusy(false);
     if (!ok) {
-      notify(data?.error ?? "Could not create vault project.");
+      notify(data?.error ?? "Could not create personal vault folder.");
       return;
     }
 
-    notify(`Vault project "${data.project.name}" created.`);
+    notify(`Personal folder "${data.project.name}" created.`);
     onCreated(data.project);
     onClose();
   }
@@ -274,21 +413,21 @@ function NewVaultProjectModal({ onClose, onCreated }) {
   return (
     <Modal
       icon={<FolderLock size={26} className="text-brand-600" />}
-      eyebrow="Credentials Storage"
-      title="New Vault Project"
-      subtitle="Creates a standalone project folder solely for credentials and .env files. It will NOT appear on your main Projects board."
+      eyebrow="My Credentials"
+      title="New Personal Vault Folder"
+      subtitle="Creates a private folder to organize your personal credentials and .env files. Visible only to you."
       onClose={onClose}
     >
       <form onSubmit={submit} className="grid gap-4">
         <label className="field">
-          Project or Container name
+          Folder / Container name
           <input
             required
             autoFocus
             maxLength={50}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. AWS Production Infrastructure, Client X Servers"
+            placeholder="e.g. Personal AWS Keys, Side Projects, My Accounts"
           />
         </label>
 
@@ -298,17 +437,17 @@ function NewVaultProjectModal({ onClose, onCreated }) {
             maxLength={80}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="e.g. Root logins, database credentials, server keys"
+            placeholder="e.g. Personal logins, tokens, and .env backups"
           />
         </label>
 
         <div>
-          <p className="mb-2 text-[14px] font-bold text-ink">Project color</p>
+          <p className="mb-2 text-[14px] font-bold text-ink">Folder color</p>
           <ProjectColorPicker value={color} onChange={setColor} />
         </div>
 
-        <div className="rounded-xl bg-amber-50 border border-amber-200/80 p-3 text-[13px] text-amber-800 leading-relaxed">
-          <strong>Vault-Only Project:</strong> This project will be visible exclusively here in Credentials Storage. Your main Projects page and task boards will stay completely clean.
+        <div className="rounded-xl bg-emerald-50/80 border border-emerald-200/80 p-3 text-[13px] text-emerald-900 leading-relaxed">
+          <strong>Strictly Private:</strong> This folder is stored in your personal space and is never shared with other team members or main Projects.
         </div>
 
         <div className="flex justify-end gap-3 pt-2">
@@ -316,7 +455,7 @@ function NewVaultProjectModal({ onClose, onCreated }) {
             Cancel
           </button>
           <button className="btn-primary" disabled={busy || !name.trim()}>
-            {busy ? "Creating..." : "Create Vault Project"}
+            {busy ? "Creating..." : "Create Personal Folder"}
           </button>
         </div>
       </form>
@@ -324,11 +463,12 @@ function NewVaultProjectModal({ onClose, onCreated }) {
   );
 }
 
-// ----------------- MODAL: ADD / EDIT SECRET -----------------
+// ----------------- MODAL: ADD / EDIT PERSONAL SECRET -----------------
 function SecretFormModal({ secretToEdit, allProjects, initialProjectId, onClose, onSaved, onOpenNewVaultProject }) {
   const { notify } = useApp();
+  const vaultOnlyProjs = allProjects.filter((p) => p.isVaultOnly);
   const [projectId, setProjectId] = useState(
-    secretToEdit?.projectId || initialProjectId || allProjects[0]?.id || "",
+    secretToEdit?.projectId || initialProjectId || vaultOnlyProjs[0]?.id || "",
   );
   const [kind, setKind] = useState(secretToEdit?.kind || "env");
   const [label, setLabel] = useState(secretToEdit?.label || "");
@@ -368,7 +508,7 @@ function SecretFormModal({ secretToEdit, allProjects, initialProjectId, onClose,
     const reader = new FileReader();
     reader.onload = (event) => {
       setEnvText(String(event.target?.result ?? ""));
-      if (!label) setLabel(file.name.replace(/^\.env\.?/, "").trim() || "Production .env");
+      if (!label) setLabel(file.name.replace(/^\.env\.?/, "").trim() || "Personal .env");
     };
     reader.readAsText(file);
   }
@@ -391,7 +531,7 @@ function SecretFormModal({ secretToEdit, allProjects, initialProjectId, onClose,
       });
     } else {
       res = await request("/api/vault", "POST", {
-        projectId: Number(projectId),
+        projectId: projectId ? Number(projectId) : null,
         kind,
         label: label.trim(),
         data: payloadData,
@@ -404,20 +544,18 @@ function SecretFormModal({ secretToEdit, allProjects, initialProjectId, onClose,
       return;
     }
 
-    notify(secretToEdit ? "Secret updated successfully." : "Secret added to vault.");
+    notify(secretToEdit ? "Personal secret updated." : "Secret saved to My Credentials.");
     onSaved();
     onClose();
   }
-
-  const vaultOnlyProjs = allProjects.filter((p) => p.isVaultOnly);
 
   return (
     <Modal
       size="wide"
       icon={kind === "env" ? <FileCode2 size={26} /> : <KeyRound size={26} />}
-      eyebrow={secretToEdit ? "Edit Secret" : "Project Credentials Storage"}
-      title={secretToEdit ? `Edit ${secretToEdit.label}` : "Store credentials or .env"}
-      subtitle="Encrypted with AES-256 before saving to the database."
+      eyebrow={secretToEdit ? "Edit Personal Secret" : "My Credentials"}
+      title={secretToEdit ? `Edit ${secretToEdit.label}` : "Store personal credential or .env"}
+      subtitle="Encrypted with AES-256 and visible only to your account."
       onClose={onClose}
     >
       {loadingInitial ? (
@@ -427,12 +565,11 @@ function SecretFormModal({ secretToEdit, allProjects, initialProjectId, onClose,
           {!secretToEdit && (
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="field">
-                Select Vault Project
+                Personal Vault Folder
                 {vaultOnlyProjs.length > 0 ? (
                   <select
                     value={projectId}
                     onChange={(e) => setProjectId(e.target.value)}
-                    required
                   >
                     {vaultOnlyProjs.map((p) => (
                       <option key={p.id} value={p.id}>
@@ -441,8 +578,8 @@ function SecretFormModal({ secretToEdit, allProjects, initialProjectId, onClose,
                     ))}
                   </select>
                 ) : (
-                  <div className="mt-1 rounded-xl border border-dashed border-amber-300 bg-amber-50/50 p-2.5 text-[12.5px] text-amber-900">
-                    No vault project found. Please create one first.
+                  <div className="mt-1 rounded-xl border border-dashed border-emerald-300 bg-emerald-50/50 p-2.5 text-[12.5px] text-emerald-900">
+                    Default &quot;Personal Vault&quot; folder will be created automatically.
                   </div>
                 )}
                 <button
@@ -450,7 +587,7 @@ function SecretFormModal({ secretToEdit, allProjects, initialProjectId, onClose,
                   onClick={onOpenNewVaultProject}
                   className="mt-1 text-left text-[12px] font-semibold text-brand-700 hover:underline"
                 >
-                  + Create new vault project
+                  + Create new personal folder
                 </button>
               </label>
 
@@ -472,7 +609,7 @@ function SecretFormModal({ secretToEdit, allProjects, initialProjectId, onClose,
               maxLength={80}
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder={kind === "env" ? "e.g. Production .env, Staging Config" : "e.g. AWS Root Account, Stripe API Keys, CPanel"}
+              placeholder={kind === "env" ? "e.g. Local .env, Personal API Keys" : "e.g. GitHub Token, Personal AWS, SSH Key"}
             />
           </label>
 
@@ -502,7 +639,7 @@ function SecretFormModal({ secretToEdit, allProjects, initialProjectId, onClose,
                   maxLength={80}
                   value={service}
                   onChange={(e) => setService(e.target.value)}
-                  placeholder="e.g. AWS, Hostinger, GitHub"
+                  placeholder="e.g. GitHub, AWS, OpenAI, Hostinger"
                 />
               </label>
               <label className="field">
@@ -511,7 +648,7 @@ function SecretFormModal({ secretToEdit, allProjects, initialProjectId, onClose,
                   maxLength={200}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="admin@company.com"
+                  placeholder="you@example.com"
                 />
               </label>
               <label className="field">
@@ -531,7 +668,7 @@ function SecretFormModal({ secretToEdit, allProjects, initialProjectId, onClose,
                   maxLength={200}
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://console.aws.amazon.com"
+                  placeholder="https://..."
                 />
               </label>
               <label className="field sm:col-span-2">
@@ -541,7 +678,7 @@ function SecretFormModal({ secretToEdit, allProjects, initialProjectId, onClose,
                   maxLength={1000}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="e.g. Recovery codes, 2FA backup instructions, IP whitelist"
+                  placeholder="e.g. Recovery codes, 2FA backup instructions, personal notes"
                 />
               </label>
             </div>
@@ -564,6 +701,7 @@ function SecretFormModal({ secretToEdit, allProjects, initialProjectId, onClose,
 // ----------------- MAIN VIEW COMPONENT -----------------
 export default function CredentialsView() {
   const { projects: appProjects = [], setProjects, notify } = useApp();
+  const { hasPin, setHasPin } = useVaultPin();
   const [localProjects, setLocalProjects] = useState(appProjects);
   const [secrets, setSecrets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -575,8 +713,8 @@ export default function CredentialsView() {
   const [addingSecret, setAddingSecret] = useState(false);
   const [preselectedProjectId, setPreselectedProjectId] = useState(null);
   const [creatingVaultProject, setCreatingVaultProject] = useState(false);
+  const [pinModalOpen, setPinModalOpen] = useState(false);
 
-  // Fetch secrets and fresh projects (including vault-only)
   async function loadData() {
     setLoading(true);
     const [secretsRes, projectsRes] = await Promise.all([
@@ -590,9 +728,6 @@ export default function CredentialsView() {
     }
     if (projectsRes.ok && projectsRes.data.projects) {
       setLocalProjects(projectsRes.data.projects);
-      if (typeof setProjects === "function") {
-        setProjects(projectsRes.data.projects);
-      }
     }
   }
 
@@ -609,7 +744,6 @@ export default function CredentialsView() {
     return localProjects.find((p) => p.id === Number(selectedProjectId));
   }, [localProjects, selectedProjectId]);
 
-  // Filter secrets
   const filteredSecrets = useMemo(() => {
     return secrets.filter((s) => {
       if (kindFilter !== "all" && s.kind !== kindFilter) return false;
@@ -617,7 +751,7 @@ export default function CredentialsView() {
       if (query.trim()) {
         const needle = query.toLowerCase();
         const matchLabel = s.label.toLowerCase().includes(needle);
-        const matchProject = s.projectName.toLowerCase().includes(needle);
+        const matchProject = (s.projectName || "").toLowerCase().includes(needle);
         if (!matchLabel && !matchProject) return false;
       }
       return true;
@@ -631,19 +765,19 @@ export default function CredentialsView() {
       notify("Could not delete secret.");
       return;
     }
-    notify("Secret deleted from vault.");
+    notify("Secret deleted from your personal vault.");
     setSecrets((cur) => cur.filter((item) => item.id !== secret.id));
   }
 
   async function handleDeleteVaultProject(project, e) {
     if (e) e.stopPropagation();
-    if (!confirm(`Are you sure you want to delete vault project "${project.name}"? Any credentials stored inside it will also be deleted.`)) return;
+    if (!confirm(`Are you sure you want to delete personal folder "${project.name}"? Any credentials stored inside it will also be deleted.`)) return;
     const res = await request(`/api/projects/${project.id}`, "DELETE");
     if (!res.ok) {
-      notify(res.data?.error ?? "Could not delete vault project.");
+      notify(res.data?.error ?? "Could not delete folder.");
       return;
     }
-    notify(`Vault project "${project.name}" deleted.`);
+    notify(`Personal folder "${project.name}" deleted.`);
     setLocalProjects((cur) => cur.filter((p) => p.id !== project.id));
     if (typeof setProjects === "function") {
       setProjects((cur) => cur.filter((p) => p.id !== project.id));
@@ -661,25 +795,48 @@ export default function CredentialsView() {
     <div className="space-y-6 px-5 pb-8 pt-6 md:px-[34px]">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <span className="eyebrow flex items-center gap-1.5 text-brand-700">
-            <ShieldCheck size={16} /> Secure Encrypted Storage
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="eyebrow flex items-center gap-1.5 text-brand-700">
+              <ShieldCheck size={16} /> Private Encrypted Storage
+            </span>
+            <span
+              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11.5px] font-bold ${
+                hasPin
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  : "border-amber-200 bg-amber-50 text-amber-800"
+              }`}
+            >
+              {hasPin ? <Lock size={11} /> : <LockOpen size={11} />}
+              {hasPin ? "PIN Protected" : "Unprotected (No PIN)"}
+            </span>
+          </div>
           <h1 className="mt-1 text-[38px] font-extrabold leading-tight tracking-tight text-brand-900 md:text-[46px]">
-            Project Credentials
+            My Credentials
           </h1>
           <p className="mt-2 text-[15.5px] text-muted max-w-2xl">
-            Global team storage for .env configurations and login credentials. Standalone vault projects accessible to all team members with the Master Security PIN.
+            Your personal encrypted storage for private .env configurations, API keys, and login credentials. Strictly private to your account.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
           <button
+            type="button"
+            className="btn-secondary h-[46px] px-4 text-[14px]"
+            onClick={() => setPinModalOpen(true)}
+            title={hasPin ? "Change or remove your personal 4-digit PIN" : "Protect My Credentials with a personal 4-digit PIN"}
+          >
+            {hasPin ? <Lock size={16} className="text-emerald-700" /> : <KeyRound size={16} className="text-amber-600" />}
+            {hasPin ? "PIN Settings" : "Set Vault PIN"}
+          </button>
+          <button
+            type="button"
             className="btn-secondary h-[46px] px-4 text-[14.5px]"
             onClick={() => setCreatingVaultProject(true)}
           >
-            <FolderPlus size={17} /> New Vault Project
+            <FolderPlus size={17} /> New Personal Folder
           </button>
           <button
+            type="button"
             className="btn-primary h-[46px] px-5 text-[14.5px]"
             onClick={() => {
               setPreselectedProjectId(selectedProjectId !== "all" ? Number(selectedProjectId) : null);
@@ -691,14 +848,14 @@ export default function CredentialsView() {
         </div>
       </header>
 
-      {/* ---------------- SECTION 1: VAULT-ONLY PROJECTS DISPLAY ---------------- */}
+      {/* ---------------- SECTION 1: PERSONAL VAULT FOLDERS DISPLAY ---------------- */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-[17px] font-bold text-ink flex items-center gap-2">
-            <FolderLock size={19} className="text-brand-700" /> Standalone Vault Projects ({vaultOnlyProjects.length})
+            <FolderLock size={19} className="text-brand-700" /> Personal Vault Folders ({vaultOnlyProjects.length})
           </h2>
           <span className="text-[13px] text-muted hidden sm:inline">
-            Credentials-only projects (excluded from main Projects list)
+            Private folders visible only to you
           </span>
         </div>
 
@@ -740,7 +897,7 @@ export default function CredentialsView() {
                         setAddingSecret(true);
                       }}
                       className="btn-secondary h-8 px-2.5 text-[12px] inline-flex items-center gap-1"
-                      title="Add credential or .env to this project"
+                      title="Add credential or .env to this folder"
                     >
                       <Plus size={13} /> Add
                     </button>
@@ -748,7 +905,7 @@ export default function CredentialsView() {
                       type="button"
                       onClick={(e) => handleDeleteVaultProject(p, e)}
                       className="grid h-8 w-8 place-items-center rounded-lg text-ink/40 hover:bg-red-50 hover:text-red-600 transition"
-                      title="Delete this vault project"
+                      title="Delete this personal folder"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -757,7 +914,7 @@ export default function CredentialsView() {
 
                 {isSelected && (
                   <div className="mt-2.5 pt-2 border-t border-brand-200/60 flex items-center justify-between text-[11.5px] font-semibold text-brand-700">
-                    <span>Filtering secrets for this project</span>
+                    <span>Filtering secrets for this folder</span>
                     <span className="underline">Click to view all</span>
                   </div>
                 )}
@@ -768,8 +925,10 @@ export default function CredentialsView() {
           {vaultOnlyProjects.length === 0 && (
             <div className="panel p-6 text-center text-muted sm:col-span-2 lg:col-span-3 border-dashed">
               <FolderLock size={28} className="mx-auto text-ink/30 mb-1.5" />
-              <p className="text-[14.5px] font-semibold text-ink/75">No Vault-Only Projects Created Yet</p>
-              <p className="text-[13px] mt-0.5">Click &quot;New Vault Project&quot; above to create a dedicated container for .env and logins.</p>
+              <p className="text-[14.5px] font-semibold text-ink/75">No Personal Folders Created Yet</p>
+              <p className="text-[13px] mt-0.5">
+                Click &quot;New Personal Folder&quot; or directly click &quot;Store Secret&quot; above to save your private .env files and logins.
+              </p>
             </div>
           )}
         </div>
@@ -779,7 +938,7 @@ export default function CredentialsView() {
       <section className="space-y-3 pt-2">
         <div className="flex items-center justify-between">
           <h2 className="text-[17px] font-bold text-ink flex items-center gap-2">
-            <KeyRound size={18} className="text-brand-700" /> Stored Credentials &amp; .env Files ({filteredSecrets.length})
+            <KeyRound size={18} className="text-brand-700" /> My Stored Credentials &amp; .env Files ({filteredSecrets.length})
           </h2>
           {selectedProjectObj && (
             <button
@@ -824,14 +983,14 @@ export default function CredentialsView() {
             </button>
           </div>
 
-          {/* Project Picker & Search Input */}
+          {/* Folder Picker & Search Input */}
           <div className="flex flex-wrap items-center gap-3">
             <select
               value={selectedProjectId}
               onChange={(e) => setSelectedProjectId(e.target.value)}
               className="h-[40px] rounded-xl border border-line bg-white px-3 text-[13.5px] font-medium outline-none text-ink/80 focus:border-brand-500"
             >
-              <option value="all">All Vault Containers ({vaultOnlyProjects.length})</option>
+              <option value="all">All Personal Folders ({vaultOnlyProjects.length})</option>
               {vaultOnlyProjects.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -845,7 +1004,7 @@ export default function CredentialsView() {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search credentials..."
+                placeholder="Search my credentials..."
                 className="w-full bg-transparent text-[13.5px] outline-none placeholder:text-ink/40"
               />
             </div>
@@ -856,7 +1015,7 @@ export default function CredentialsView() {
         <section className="panel divide-y divide-line overflow-visible shadow-card">
           {loading && (
             <div className="py-16 text-center text-muted">
-              <p className="animate-pulse">Loading credentials from encrypted storage...</p>
+              <p className="animate-pulse">Loading your personal credentials...</p>
             </div>
           )}
 
@@ -868,7 +1027,6 @@ export default function CredentialsView() {
                   key={secret.id}
                   className="flex flex-wrap items-center gap-4 px-5 py-4 transition hover:bg-[#fafcfb]"
                 >
-                  {/* Kind Icon */}
                   <span
                     className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${
                       isEnv ? "bg-[#e8f7ec] text-brand-700" : "bg-[#eef4ff] text-[#2b5fd6]"
@@ -877,7 +1035,6 @@ export default function CredentialsView() {
                     {isEnv ? <FileCode2 size={21} /> : <KeyRound size={21} />}
                   </span>
 
-                  {/* Label and Project Badge */}
                   <div className="min-w-[200px] flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <button
@@ -890,19 +1047,17 @@ export default function CredentialsView() {
                       <span
                         className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11.5px] font-semibold border"
                         style={{
-                          backgroundColor: `${secret.projectColor}15`,
-                          borderColor: `${secret.projectColor}40`,
-                          color: secret.projectColor,
+                          backgroundColor: `${secret.projectColor || "#2e9e4f"}15`,
+                          borderColor: `${secret.projectColor || "#2e9e4f"}40`,
+                          color: secret.projectColor || "#2e9e4f",
                         }}
                       >
-                        <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: secret.projectColor }} />
+                        <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: secret.projectColor || "#2e9e4f" }} />
                         {secret.projectName}
                       </span>
-                      {secret.isVaultOnly && (
-                        <span className="rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10.5px] font-bold text-amber-800">
-                          Vault-only
-                        </span>
-                      )}
+                      <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10.5px] font-bold text-emerald-800">
+                        Personal
+                      </span>
                     </div>
                     <p className="text-[12.5px] text-muted mt-0.5">
                       Updated {formatAuditDate(secret.updatedAt)}
@@ -910,7 +1065,6 @@ export default function CredentialsView() {
                     </p>
                   </div>
 
-                  {/* Kind Tag */}
                   <span
                     className={`rounded-full px-3 py-1 text-[12px] font-bold ${
                       isEnv ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : "bg-blue-50 text-blue-800 border border-blue-200"
@@ -919,7 +1073,6 @@ export default function CredentialsView() {
                     {isEnv ? ".env Configuration" : "Account Login"}
                   </span>
 
-                  {/* Action Buttons */}
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
@@ -958,7 +1111,7 @@ export default function CredentialsView() {
                     &quot;{selectedProjectObj.name}&quot; has no credentials stored yet.
                   </p>
                   <p className="mt-1 text-[13.5px]">
-                    Click below to store your first .env configuration or login credentials for this project.
+                    Click below to store your first .env configuration or login credentials in this folder.
                   </p>
                   <button
                     onClick={() => {
@@ -972,14 +1125,23 @@ export default function CredentialsView() {
                 </div>
               ) : (
                 <div>
-                  <p className="text-[16px] font-semibold text-ink/70">No credentials or .env files found.</p>
-                  <p className="mt-1 text-[13.5px]">Click &quot;Store Secret&quot; above to store your first configuration or login.</p>
+                  <p className="text-[16px] font-semibold text-ink/70">No personal credentials or .env files stored yet.</p>
+                  <p className="mt-1 text-[13.5px]">Click &quot;Store Secret&quot; above to save your first private configuration or login.</p>
                 </div>
               )}
             </div>
           )}
         </section>
       </section>
+
+      {/* Modal: PIN Settings */}
+      {pinModalOpen && (
+        <PinSettingsModal
+          hasPin={hasPin}
+          onClose={() => setPinModalOpen(false)}
+          onUpdated={(nextHasPin) => setHasPin(nextHasPin)}
+        />
+      )}
 
       {/* Modal: View & Decrypt Secret */}
       {viewingSecret && (
@@ -1021,7 +1183,7 @@ export default function CredentialsView() {
         />
       )}
 
-      {/* Modal: Create Vault Project */}
+      {/* Modal: Create Personal Vault Folder */}
       {creatingVaultProject && (
         <NewVaultProjectModal
           onClose={() => setCreatingVaultProject(false)}

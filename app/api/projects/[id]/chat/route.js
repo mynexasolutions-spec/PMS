@@ -4,8 +4,10 @@ import {
   deleteProjectMessage,
   getProject,
   getProjectMessages,
+  getProjectUnreadChatCount,
   hideProjectMessageForUser,
   isProjectAdmin,
+  markProjectChatRead,
 } from "@/lib/db/repo";
 import { fail, idFrom, readJson } from "@/lib/http";
 
@@ -28,9 +30,16 @@ export async function GET(request, { params }) {
     project.createdBy === auth.user.id;
   if (!isMember) return fail("Forbidden: You are not a member of this project.", 403);
 
+  const url = new URL(request.url);
+  const shouldMarkRead = url.searchParams.get("markRead") === "1" || url.searchParams.get("markRead") === "true";
+  if (shouldMarkRead) {
+    markProjectChatRead(projectId, auth.user.id);
+  }
+
   // Filter messages hiding those "deleted for me" by this user
   const messages = getProjectMessages(projectId, auth.user.id);
-  return Response.json({ messages }, { headers: noStore });
+  const unreadCount = getProjectUnreadChatCount(projectId, auth.user.id);
+  return Response.json({ messages, unreadCount }, { headers: noStore });
 }
 
 export async function POST(request, { params }) {
@@ -52,6 +61,9 @@ export async function POST(request, { params }) {
   if (text.length > 2000) return fail("Message too long (max 2000 characters).", 400);
 
   const message = createProjectMessage(projectId, auth.user.id, text);
+  if (message?.id) {
+    markProjectChatRead(projectId, auth.user.id, message.id);
+  }
   return Response.json({ message }, { status: 201, headers: noStore });
 }
 

@@ -1,15 +1,31 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertCircle, Check, Clock, KeyRound, Lock, ShieldCheck, Unlock } from "lucide-react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { AlertCircle, Check, Clock, KeyRound, Lock, Unlock } from "lucide-react";
+import { useApp } from "@/components/AppProvider";
 import { request } from "@/lib/api";
 
 const MAX_ATTEMPTS = 5;
 const INACTIVITY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes auto-lock
 const COOLDOWN_KEY = "nexa_vault_cooldown_until";
 
+const VaultPinContext = createContext({
+  hasPin: false,
+  setHasPin: () => {},
+  lockNow: () => {},
+});
+
+export function useVaultPin() {
+  return useContext(VaultPinContext);
+}
+
 export default function CredentialsLock({ children }) {
-  const [unlocked, setUnlocked] = useState(false);
+  const { currentUser } = useApp();
+  const initialHasPin = Boolean(currentUser?.hasVaultPin);
+
+  const [hasPin, setHasPin] = useState(initialHasPin);
+  const [unlocked, setUnlocked] = useState(!initialHasPin);
+  const [checking, setChecking] = useState(initialHasPin);
   const [pin, setPin] = useState("");
   const [attemptsLeft, setAttemptsLeft] = useState(MAX_ATTEMPTS);
   const [cooldownRemainingMs, setCooldownRemainingMs] = useState(0);
@@ -21,21 +37,23 @@ export default function CredentialsLock({ children }) {
   const inactivityTimerRef = useRef(null);
   const cooldownTimerRef = useRef(null);
 
-  // 1. Check existing cooldown on mount (both local storage & server)
+  // 1. Check user's personal PIN status & cooldown on mount
   useEffect(() => {
-    const localUntil = Number(localStorage.getItem(COOLDOWN_KEY) || 0);
-    const now = Date.now();
-    if (localUntil > now) {
-      setCooldownRemainingMs(localUntil - now);
-      setAnimState("cooldown");
-    }
-
-    // Verify with server
     let ignore = false;
     async function checkServerStatus() {
       const res = await request("/api/vault/verify-pin");
       if (ignore) return;
+      setChecking(false);
+
       if (res.ok && res.data) {
+        if (!res.data.hasPin) {
+          setHasPin(false);
+          setUnlocked(true);
+          localStorage.removeItem(COOLDOWN_KEY);
+          return;
+        }
+
+        setHasPin(true);
         if (res.data.locked) {
           const ms = res.data.cooldownRemainingMs || 600000;
           setCooldownRemainingMs(ms);
@@ -77,23 +95,31 @@ export default function CredentialsLock({ children }) {
     };
   }, [cooldownRemainingMs]);
 
-  // 3. Keep keyboard input focused at all times
+  // 3. Keep keyboard input focused when lock screen is visible
   useEffect(() => {
-    if (!unlocked && animState !== "cooldown" && animState !== "unlocking") {
+    if (hasPin && !unlocked && animState !== "cooldown" && animState !== "unlocking") {
       inputRef.current?.focus();
     }
-  }, [unlocked, animState]);
+  }, [hasPin, unlocked, animState]);
 
-  // 4. Inactivity auto-lock (10 minutes) when unlocked
+  const handleLock = useCallback((msg = "") => {
+    setUnlocked(false);
+    setPin("");
+    setAnimState("idle");
+    setErrorMsg(msg);
+  }, []);
+
+  // 4. Inactivity auto-lock (10 minutes) only when user has a PIN set and vault is unlocked
   const resetInactivityTimer = useCallback(() => {
     if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+    if (!hasPin) return;
     inactivityTimerRef.current = setTimeout(() => {
       handleLock("Session timed out after 10 minutes of inactivity.");
     }, INACTIVITY_TIMEOUT_MS);
-  }, []);
+  }, [hasPin, handleLock]);
 
   useEffect(() => {
-    if (!unlocked) return;
+    if (!unlocked || !hasPin) return;
 
     resetInactivityTimer();
 
@@ -106,14 +132,7 @@ export default function CredentialsLock({ children }) {
       if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
       events.forEach((evt) => window.removeEventListener(evt, handleUserActivity));
     };
-  }, [unlocked, resetInactivityTimer]);
-
-  const handleLock = (msg = "") => {
-    setUnlocked(false);
-    setPin("");
-    setAnimState("idle");
-    setErrorMsg(msg);
-  };
+  }, [unlocked, hasPin, resetInactivityTimer]);
 
   // 5. Submit PIN verification
   const verifyPin = async (candidatePin) => {
@@ -125,16 +144,14 @@ export default function CredentialsLock({ children }) {
       const res = await request("/api/vault/verify-pin", "POST", { pin: candidatePin });
 
       if (res.ok) {
-        // macOS/iOS snappy spring unlock animation (quick & buttery smooth)
         setAnimState("unlocking");
         setTimeout(() => {
           setUnlocked(true);
           setBusy(false);
           setPin("");
           setAnimState("idle");
-        }, 420); // 420ms snappy response
+        }, 420);
       } else {
-        // Wrong PIN
         const data = res.data || {};
         if (data.locked) {
           const ms = data.cooldownRemainingMs || 10 * 60 * 1000;
@@ -193,7 +210,6 @@ export default function CredentialsLock({ children }) {
     }
   };
 
-  // Cooldown time formatting MM:SS
   const formatCooldown = (ms) => {
     const totalSecs = Math.max(0, Math.ceil(ms / 1000));
     const mins = Math.floor(totalSecs / 60);
@@ -201,27 +217,51 @@ export default function CredentialsLock({ children }) {
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   };
 
-  // If successfully unlocked, render credentials view
-  if (unlocked) {
+  const handlePinConfigured = useCallback((nextHasPin) => {
+    setHasPin(nextHasPin);
+    setUnlocked(true);
+    if (!nextHasPin) {
+      localStorage.removeItem(COOLDOWN_KEY);
+    }
+  }, []);
+
+  if (checking && !unlocked) {
     return (
-      <div className="relative animate-[fadeIn_0.3s_ease-out]">
-        {/* Floating Quick-Lock button */}
-        <div className="fixed bottom-6 right-6 z-40 print:hidden">
-          <button
-            onClick={() => handleLock("Vault manually locked.")}
-            className="group flex items-center gap-2 rounded-full border border-emerald-900/10 bg-white/95 px-4 py-2.5 text-[13px] font-semibold text-slate-700 shadow-lg backdrop-blur-md transition-all hover:border-red-300 hover:bg-red-50 hover:text-red-700 hover:shadow-xl active:scale-95"
-            title="Lock credentials storage immediately"
-          >
-            <Lock size={15} className="text-emerald-700 transition-colors group-hover:text-red-600" />
-            <span>Lock Vault</span>
-          </button>
-        </div>
-        {children}
+      <div className="flex min-h-[60vh] items-center justify-center p-6 text-muted">
+        <p className="animate-pulse text-[14px]">Checking vault security...</p>
       </div>
     );
   }
 
-  // Otherwise, render Apple/macOS Minimalist Spring Lock Screen
+  // If unprotected (no PIN set) or unlocked with PIN, render My Credentials
+  if (!hasPin || unlocked) {
+    return (
+      <VaultPinContext.Provider
+        value={{
+          hasPin,
+          setHasPin: handlePinConfigured,
+          lockNow: () => hasPin && handleLock("Vault manually locked."),
+        }}
+      >
+        <div className="relative animate-[fadeIn_0.3s_ease-out]">
+          {hasPin && (
+            <div className="fixed bottom-6 right-6 z-40 print:hidden">
+              <button
+                onClick={() => handleLock("Vault manually locked.")}
+                className="group flex items-center gap-2 rounded-full border border-emerald-900/10 bg-white/95 px-4 py-2.5 text-[13px] font-semibold text-slate-700 shadow-lg backdrop-blur-md transition-all hover:border-red-300 hover:bg-red-50 hover:text-red-700 hover:shadow-xl active:scale-95"
+                title="Lock My Credentials immediately"
+              >
+                <Lock size={15} className="text-emerald-700 transition-colors group-hover:text-red-600" />
+                <span>Lock Vault</span>
+              </button>
+            </div>
+          )}
+          {children}
+        </div>
+      </VaultPinContext.Provider>
+    );
+  }
+
   const isUnlocking = animState === "unlocking";
   const isError = animState === "error";
   const isCooldown = animState === "cooldown" || cooldownRemainingMs > 0;
@@ -231,7 +271,6 @@ export default function CredentialsLock({ children }) {
       className="relative flex min-h-[68vh] w-full items-center justify-center p-4 select-none"
       onClick={() => inputRef.current?.focus()}
     >
-      {/* Hidden real input capturing desktop and mobile keyboard */}
       <input
         ref={inputRef}
         type="password"
@@ -251,13 +290,11 @@ export default function CredentialsLock({ children }) {
         tabIndex={0}
       />
 
-      {/* Main Glassmorphism Card */}
       <div
         className={`relative w-full max-w-[360px] overflow-hidden rounded-3xl border border-emerald-950/10 bg-white/95 px-8 py-8 shadow-[0_20px_50px_-12px_rgba(20,80,45,0.1)] backdrop-blur-2xl transition-all duration-300 ${
           isError ? "animate-[lockShake_0.4s_cubic-bezier(0.36,0.07,0.19,0.97)]" : ""
         } ${isUnlocking ? "scale-[0.98] opacity-90 transition-transform duration-300" : ""}`}
       >
-        {/* Apple/macOS Center Lock Badge with Spring Animation */}
         <div className="relative mb-5 flex flex-col items-center text-center">
           <div
             className={`relative flex h-18 w-18 items-center justify-center rounded-2xl shadow-sm transition-all duration-300 ${
@@ -283,18 +320,17 @@ export default function CredentialsLock({ children }) {
           </div>
 
           <h2 className="mt-4 text-[20px] font-extrabold tracking-tight text-slate-900">
-            {isUnlocking ? "Vault Unlocked" : isCooldown ? "Security Lockout" : "Credentials Vault"}
+            {isUnlocking ? "Vault Unlocked" : isCooldown ? "Security Lockout" : "My Credentials"}
           </h2>
           <p className="mt-1 text-[12.5px] text-slate-500">
             {isCooldown
               ? "Too many incorrect attempts. Please wait."
               : isUnlocking
               ? "Access verified. Opening..."
-              : "Type your 4-digit security PIN"}
+              : "Enter your personal 4-digit security PIN"}
           </p>
         </div>
 
-        {/* ---------------- 4 APPLE-STYLE PIN DOTS / PILLS ---------------- */}
         {!isCooldown ? (
           <div className="relative my-5 flex items-center justify-center gap-4">
             {[0, 1, 2, 3].map((idx) => {
@@ -319,7 +355,6 @@ export default function CredentialsLock({ children }) {
             })}
           </div>
         ) : (
-          /* Cooldown Timer View */
           <div className="my-5 rounded-2xl border border-red-200 bg-red-50/90 p-4 text-center">
             <div className="flex items-center justify-center gap-1.5 text-red-700 font-semibold text-[13px]">
               <Clock size={15} />
@@ -331,10 +366,9 @@ export default function CredentialsLock({ children }) {
           </div>
         )}
 
-        {/* Status / Error Message */}
         <div className="min-h-[22px] text-center">
           {isUnlocking ? (
-            <p className="text-[12.5px] font-semibold text-emerald-700">Opening secure storage...</p>
+            <p className="text-[12.5px] font-semibold text-emerald-700">Opening personal vault...</p>
           ) : errorMsg ? (
             <p className="flex items-center justify-center gap-1 text-[12px] font-medium text-red-600">
               <AlertCircle size={13} /> {errorMsg}
@@ -352,10 +386,9 @@ export default function CredentialsLock({ children }) {
           ) : null}
         </div>
 
-        {/* Bottom subtle footnote */}
         <div className="mt-5 flex items-center justify-center gap-1.5 border-t border-slate-100 pt-3 text-center text-[11.5px] text-slate-400">
           <KeyRound size={12} className="text-slate-400" />
-          <span>Auto-locks on leaving or 10m inactivity</span>
+          <span>Protected by your personal PIN · 10m auto-lock</span>
         </div>
       </div>
     </div>
