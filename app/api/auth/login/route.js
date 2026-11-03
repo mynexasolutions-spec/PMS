@@ -37,7 +37,7 @@ export async function POST(request) {
 
   if (user.active !== 1) {
     recordFailure(key);
-    return fail("This account has been deactivated. Please contact an administrator.", 403);
+    return fail("Your account access has been blocked by the administrator.", 403);
   }
 
   clearFailures(key);

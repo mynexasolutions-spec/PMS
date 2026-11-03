@@ -21,10 +21,10 @@ const box =
   "flex h-[50px] items-center gap-3 rounded-xl border border-line bg-white px-4 shadow-[0_1px_2px_rgba(16,60,35,0.05)] transition focus-within:border-brand-500 focus-within:ring-[3px] focus-within:ring-brand-100";
 const input = "min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-ink/40 disabled:opacity-60";
 
-export default function SuperadminLogin({ defaultEmail = "admin@pms.com" }) {
+export default function SuperadminLogin() {
   const router = useRouter();
   const passwordRef = useRef(null);
-  const [email, setEmail] = useState(defaultEmail);
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [error, setError] = useState("");
@@ -93,11 +93,12 @@ export default function SuperadminLogin({ defaultEmail = "admin@pms.com" }) {
                 id="sa-email"
                 type="email"
                 required
+                autoFocus
                 autoComplete="username"
                 disabled={busy}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@pms.com"
+                placeholder="Enter superadmin username"
                 className={input}
               />
             </div>
@@ -112,7 +113,6 @@ export default function SuperadminLogin({ defaultEmail = "admin@pms.com" }) {
                 id="sa-password"
                 type={show ? "text" : "password"}
                 required
-                autoFocus
                 autoComplete="current-password"
                 disabled={busy}
                 value={password}

@@ -6,16 +6,19 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowLeft,
+  Ban,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
   Clock,
   FolderKanban,
   Layers,
+  Loader2,
   LogOut,
   Mail,
   Search,
   ShieldCheck,
+  Unlock,
   UserCheck,
   Users,
   XCircle,
@@ -55,6 +58,7 @@ export default function SuperadminDashboard({ data, superadminEmail }) {
   const [expandedUserIds, setExpandedUserIds] = useState(() => new Set());
   const [expandedProjectIds, setExpandedProjectIds] = useState(() => new Set());
   const [loggingOut, setLoggingOut] = useState(false);
+  const [togglingUserId, setTogglingUserId] = useState(null);
 
   const { stats, accounts, projects } = data;
 
@@ -104,6 +108,19 @@ export default function SuperadminDashboard({ data, superadminEmail }) {
     setLoggingOut(true);
     await request("/api/superadmin/logout", "POST");
     router.refresh();
+  }
+
+  async function handleToggleUserStatus(e, account) {
+    e.stopPropagation();
+    if (togglingUserId) return;
+    setTogglingUserId(account.id);
+    const { ok } = await request(`/api/superadmin/users/${account.id}`, "PATCH", {
+      active: !account.active,
+    });
+    setTogglingUserId(null);
+    if (ok) {
+      router.refresh();
+    }
   }
 
   return (
@@ -288,7 +305,7 @@ export default function SuperadminDashboard({ data, superadminEmail }) {
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700 ring-1 ring-red-200">
-                                <XCircle size={11} /> Inactive
+                                <XCircle size={11} /> Blocked
                               </span>
                             )}
                           </div>
@@ -305,7 +322,7 @@ export default function SuperadminDashboard({ data, superadminEmail }) {
                       </div>
 
                       <div className="flex items-center justify-between gap-3 border-t border-line pt-3 sm:border-t-0 sm:pt-0">
-                        <div className="flex items-center gap-2.5">
+                        <div className="flex flex-wrap items-center gap-2.5">
                           <div className="rounded-xl bg-[#eef8f0] px-3 py-1.5 text-center ring-1 ring-brand-200/70">
                             <span className="block text-[16px] font-extrabold leading-none text-brand-800">
                               {acc.createdProjectsCount}
@@ -332,6 +349,26 @@ export default function SuperadminDashboard({ data, superadminEmail }) {
                               Joined Projects
                             </span>
                           </div>
+
+                          <button
+                            type="button"
+                            disabled={togglingUserId === acc.id}
+                            onClick={(e) => handleToggleUserStatus(e, acc)}
+                            className={`inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-[12.5px] font-semibold transition disabled:opacity-50 ${
+                              acc.active
+                                ? "border border-red-200 bg-red-50/70 text-red-700 hover:bg-red-100"
+                                : "border border-emerald-200 bg-emerald-50/70 text-emerald-700 hover:bg-emerald-100"
+                            }`}
+                          >
+                            {togglingUserId === acc.id ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : acc.active ? (
+                              <Ban size={14} />
+                            ) : (
+                              <Unlock size={14} />
+                            )}
+                            <span>{acc.active ? "Block Access" : "Unblock"}</span>
+                          </button>
                         </div>
 
                         <button
@@ -354,7 +391,7 @@ export default function SuperadminDashboard({ data, superadminEmail }) {
 
                           {acc.createdProjects.length === 0 ? (
                             <p className="mt-2 rounded-xl border border-dashed border-line bg-white px-4 py-3 text-[13px] text-muted">
-                              Is account ne abhi tak koi project create nahi kiya hai.
+                              This account has not created any projects yet.
                             </p>
                           ) : (
                             <div className="mt-2.5 grid gap-3 sm:grid-cols-2">
