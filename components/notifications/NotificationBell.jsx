@@ -30,6 +30,7 @@ export default function NotificationBell() {
     markNotificationAsRead,
     markAllNotificationsAsRead,
     refreshNotifications,
+    refreshProjectInvites,
     notify,
   } = useApp();
   const [open, setOpen] = useState(false);
@@ -100,12 +101,14 @@ export default function NotificationBell() {
     if (action === "accept") {
       notify?.(`You joined "${data.projectName}"!`);
       refreshNotifications?.();
+      refreshProjectInvites?.();
       router.refresh();
       setOpen(false);
       router.push(`/projects/${projectId}`);
     } else {
       notify?.("Invitation declined.");
       refreshNotifications?.();
+      refreshProjectInvites?.();
       router.refresh();
     }
   }

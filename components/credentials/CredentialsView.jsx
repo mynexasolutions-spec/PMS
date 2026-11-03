@@ -64,7 +64,7 @@ function DownloadEnvButton({ filename, text }) {
 
 // ----------------- MODAL: PERSONAL PIN SETTINGS -----------------
 function PinSettingsModal({ hasPin, onClose, onUpdated }) {
-  const { notify } = useApp();
+  const { notify, confirmDialog } = useApp();
   const [newPin, setNewPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   const [busy, setBusy] = useState(false);
@@ -97,9 +97,13 @@ function PinSettingsModal({ hasPin, onClose, onUpdated }) {
   }
 
   async function handleRemovePin() {
-    if (!confirm("Remove your personal PIN? Your My Credentials page will open directly without asking for a PIN.")) {
-      return;
-    }
+    const ok = await confirmDialog({
+      title: "Remove Personal PIN?",
+      message: "Your My Credentials page will open directly without asking for a PIN. Anyone with access to your device could view your personal secrets.",
+      confirmText: "Remove PIN",
+      type: "warning",
+    });
+    if (!ok) return;
     setBusy(true);
     setError("");
     const res = await request("/api/vault/verify-pin", "DELETE");
@@ -700,7 +704,7 @@ function SecretFormModal({ secretToEdit, allProjects, initialProjectId, onClose,
 
 // ----------------- MAIN VIEW COMPONENT -----------------
 export default function CredentialsView() {
-  const { projects: appProjects = [], setProjects, notify } = useApp();
+  const { projects: appProjects = [], setProjects, notify, confirmDialog } = useApp();
   const { hasPin, setHasPin } = useVaultPin();
   const [localProjects, setLocalProjects] = useState(appProjects);
   const [secrets, setSecrets] = useState([]);
@@ -759,7 +763,13 @@ export default function CredentialsView() {
   }, [secrets, kindFilter, selectedProjectId, query]);
 
   async function handleDelete(secret) {
-    if (!confirm(`Are you sure you want to delete "${secret.label}"? This cannot be undone.`)) return;
+    const ok = await confirmDialog({
+      title: "Delete Secret",
+      message: `Are you sure you want to delete "${secret.label}"? This cannot be undone.`,
+      confirmText: "Delete",
+      type: "danger",
+    });
+    if (!ok) return;
     const res = await request(`/api/secrets/${secret.id}`, "DELETE");
     if (!res.ok) {
       notify("Could not delete secret.");
@@ -771,7 +781,13 @@ export default function CredentialsView() {
 
   async function handleDeleteVaultProject(project, e) {
     if (e) e.stopPropagation();
-    if (!confirm(`Are you sure you want to delete personal folder "${project.name}"? Any credentials stored inside it will also be deleted.`)) return;
+    const ok = await confirmDialog({
+      title: "Delete Personal Folder",
+      message: `Are you sure you want to delete personal folder "${project.name}"? Any credentials stored inside it will also be deleted.`,
+      confirmText: "Delete Folder",
+      type: "danger",
+    });
+    if (!ok) return;
     const res = await request(`/api/projects/${project.id}`, "DELETE");
     if (!res.ok) {
       notify(res.data?.error ?? "Could not delete folder.");

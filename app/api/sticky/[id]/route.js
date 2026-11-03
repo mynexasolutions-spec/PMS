@@ -37,6 +37,10 @@ export async function PATCH(request, { params }) {
   if (body.color !== undefined && !isStickyColor(body.color)) return fail("Invalid colour.");
   if (body.pinned !== undefined && typeof body.pinned !== "boolean") return fail("Invalid pin value.");
   if (body.category != null && !STICKY_CATEGORIES.includes(body.category)) return fail("Invalid category.");
+  if (body.completed !== undefined && typeof body.completed !== "boolean") return fail("Invalid completed value.");
+  if (body.completedAt !== undefined && typeof body.completedAt !== "string" && body.completedAt !== null) {
+    return fail("Invalid completedAt value.");
+  }
 
   return Response.json({ note: updateStickyNote(id, { ...body, content }) });
 }

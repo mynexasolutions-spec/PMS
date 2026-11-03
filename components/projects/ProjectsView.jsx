@@ -126,7 +126,7 @@ function Ring({ percent }) {
 }
 
 function CardMenu({ project, className = "" }) {
-  const { openIssueModal, toggleBlacklistProject, deleteProject, currentUser } = useApp();
+  const { openIssueModal, toggleBlacklistProject, deleteProject, currentUser, confirmDialog } = useApp();
   const canManage =
     project?.isProjectAdmin ||
     project?.createdBy === currentUser?.id ||
@@ -183,9 +183,15 @@ function CardMenu({ project, className = "" }) {
               </button>
               <button
                 className="danger"
-                onClick={() => {
+                onClick={async () => {
                   setOpen(false);
-                  if (window.confirm(`Are you sure you want to delete "${project.name}"? This will permanently delete the project and all its tasks.`)) {
+                  const ok = await confirmDialog({
+                    title: "Delete Project",
+                    message: `Are you sure you want to delete "${project.name}"? This will permanently delete the project and all its tasks.`,
+                    confirmText: "Delete Project",
+                    type: "danger",
+                  });
+                  if (ok) {
                     deleteProject(project.id);
                   }
                 }}

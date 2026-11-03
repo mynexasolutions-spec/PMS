@@ -35,6 +35,7 @@ export function AppProvider({ initial, children }) {
   const [users, setUsers] = useState(initial.users);
   const [collaborators, setCollaborators] = useState(initial.collaborators ?? []);
   const [collaboratorRequests, setCollaboratorRequests] = useState(initial.collaboratorRequests ?? { incoming: [], outgoing: [] });
+  const [projectInvites, setProjectInvites] = useState(initial.projectInvites ?? []);
   const [commentCounts, setCommentCounts] = useState(initial.commentCounts);
   const [notifications, setNotifications] = useState(initial.notifications ?? []);
   const [actionRequests, setActionRequests] = useState(initial.actionRequests ?? []);
@@ -51,6 +52,47 @@ export function AppProvider({ initial, children }) {
   const [taskDetailId, setTaskDetailId] = useState(null);
   const [projectModalOpen, setProjectModalOpen] = useState(false);
   const [stickyModalOpen, setStickyModalOpen] = useState(false);
+  const [dialogState, setDialogState] = useState(null);
+
+  const confirmDialog = (options) => {
+    return new Promise((resolve) => {
+      const opts = typeof options === "string" ? { message: options } : (options || {});
+      const isDelete = /(delete|remove|destroy|trash|deleting)/i.test(opts.message || opts.title || "");
+      setDialogState({
+        isOpen: true,
+        mode: "confirm",
+        variant: opts.variant || opts.type || (isDelete ? "danger" : "warning"),
+        title: opts.title || (isDelete ? "Confirm Deletion" : "Please Confirm"),
+        message: opts.message || "",
+        confirmText: opts.confirmText || (isDelete ? "Delete" : "Confirm"),
+        cancelText: opts.cancelText || "Cancel",
+        resolve,
+      });
+    });
+  };
+
+  const alertDialog = (options) => {
+    return new Promise((resolve) => {
+      const opts = typeof options === "string" ? { message: options } : (options || {});
+      setDialogState({
+        isOpen: true,
+        mode: "alert",
+        variant: opts.variant || opts.type || "info",
+        title: opts.title || "Notice",
+        message: opts.message || "",
+        confirmText: opts.confirmText || opts.buttonText || "Got it",
+        cancelText: null,
+        resolve,
+      });
+    });
+  };
+
+  const closeDialog = (confirmed = false) => {
+    if (dialogState?.resolve) {
+      dialogState.resolve(confirmed);
+    }
+    setDialogState(null);
+  };
 
   // Browser-local time is only known after mount, so the server and first client render match.
   useEffect(() => {
@@ -97,6 +139,7 @@ export function AppProvider({ initial, children }) {
     if (ok && data?.notifications) {
       setNotifications(data.notifications);
     }
+    refreshProjectInvites();
   }
 
   useEffect(() => {
@@ -279,6 +322,40 @@ export function AppProvider({ initial, children }) {
     return true;
   }
 
+  // ---------- project invitations ----------
+
+  async function refreshProjectInvites() {
+    const { ok, data } = await request("/api/invites", "GET");
+    if (ok && data?.invites) {
+      setProjectInvites(data.invites);
+    }
+  }
+
+  async function respondProjectInvite({ projectId, action, notificationId = null }) {
+    const { ok, data } = await request("/api/invites/respond", "POST", {
+      projectId,
+      notificationId,
+      action,
+    });
+    if (!ok) {
+      notify(data?.error ?? "Could not respond to project invitation.");
+      return { ok: false, error: data?.error };
+    }
+    if (action === "accept") {
+      notify(`Joined "${data.projectName || "project"}"!`);
+      const projRes = await request("/api/projects", "GET");
+      if (projRes.ok && projRes.data?.projects) {
+        setProjects(projRes.data.projects);
+      }
+    } else {
+      notify(`Declined invitation for "${data.projectName || "project"}".`);
+    }
+    setProjectInvites((prev) => prev.filter((inv) => inv.projectId !== projectId));
+    refreshNotifications();
+    refreshCollaborators();
+    return { ok: true, data };
+  }
+
   /** Keeps the comment badges in step after a comment is added or removed. */
   function setCommentCount(scope, ref, count) {
     setCommentCounts((current) => ({ ...current, [`${scope}:${ref}`]: count }));
@@ -441,6 +518,22 @@ export function AppProvider({ initial, children }) {
     }
   }
 
+  async function toggleStickyComplete(note) {
+    const nextCompleted = !note.completedAt;
+    const nextCompletedAt = nextCompleted ? new Date().toISOString() : null;
+    const previous = sticky;
+    setSticky((current) =>
+      current.map((item) => (item.id === note.id ? { ...item, completedAt: nextCompletedAt } : item)),
+    );
+    const { ok } = await request(`/api/sticky/${note.id}`, "PATCH", { completed: nextCompleted });
+    if (!ok) {
+      setSticky(previous);
+      notify("The sticky note could not be updated.");
+    } else {
+      notify(nextCompleted ? "Marked as resolved (auto-deletes in 48h) ✓" : "Restored to active 📌");
+    }
+  }
+
   async function deleteSticky(note) {
     const { ok } = await request(`/api/sticky/${note.id}`, "DELETE");
     if (!ok) return;
@@ -563,6 +656,7 @@ export function AppProvider({ initial, children }) {
 
   const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
   const pendingCollaboratorRequestsCount = collaboratorRequests?.incoming?.length || 0;
+  const pendingProjectInvitesCount = projectInvites.length;
   const myPendingActionsCount = actionRequests.filter(
     (a) => a.assigneeId === currentUser?.id && a.status === "pending"
   ).length;
@@ -584,10 +678,11 @@ export function AppProvider({ initial, children }) {
 
   const value = {
     // data
-    tasks, projects, setProjects, notes, todos, sticky, focusItems, users, collaborators, collaboratorRequests, pendingCollaboratorRequestsCount, commentCounts, currentUser, notifications, unreadNotificationsCount, markNotificationAsRead, markAllNotificationsAsRead, refreshNotifications,
-    signOut, addUser, editUser, setCommentCount, refreshCollaborators, inviteCollaborator, respondCollaboratorRequest, removeCollaborator,
+    tasks, projects, setProjects, notes, todos, sticky, focusItems, users, collaborators, collaboratorRequests, pendingCollaboratorRequestsCount, projectInvites, pendingProjectInvitesCount, commentCounts, currentUser, notifications, unreadNotificationsCount, markNotificationAsRead, markAllNotificationsAsRead, refreshNotifications,
+    signOut, addUser, editUser, setCommentCount, refreshCollaborators, inviteCollaborator, respondCollaboratorRequest, removeCollaborator, refreshProjectInvites, respondProjectInvite,
     // ui state
     query, setQuery, toast, notify, now, todayDate, sidebarOpen, setSidebarOpen, sidebarCollapsed, setSidebarCollapsed, toggleSidebarCollapsed: () => setSidebarCollapsed((v) => !v),
+    dialogState, confirmDialog, alertDialog, closeDialog, confirmModal: confirmDialog, alertModal: alertDialog,
     issueModal, openIssueModal: (parent = null, projectId = null, dueAt = null, task = null, initialStatus = null, startDate = null) => setIssueModal({ parent, projectId, dueAt, task, initialStatus, startDate }), closeIssueModal: () => setIssueModal(null),
     taskDetailModal, openTaskDetail: (taskOrId) => setTaskDetailId(typeof taskOrId === "object" ? taskOrId.id : taskOrId), closeTaskDetail: () => setTaskDetailId(null),
     projectModalOpen, setProjectModalOpen, stickyModalOpen, setStickyModalOpen,
@@ -595,7 +690,7 @@ export function AppProvider({ initial, children }) {
     createAction, updateAction, deleteAction,
     updateTask, createIssue, deleteTask, createProject, updateProject, deleteProject, toggleBlacklistProject, createNote, updateNote, deleteNote, removeAttachment,
     patchTodo, addTodo, deleteTodo, postponeTodo, carryOverTodos,
-    addFocus, toggleFocus, deleteFocus, createSticky, toggleSticky, deleteSticky,
+    addFocus, toggleFocus, deleteFocus, createSticky, toggleSticky, toggleStickyComplete, deleteSticky,
     goToProject: (project) => router.push(`/projects/${project.id}`),
     // derived
     actionRequests, myPendingActionsCount,

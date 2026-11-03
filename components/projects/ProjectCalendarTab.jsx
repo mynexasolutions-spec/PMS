@@ -47,7 +47,7 @@ function addMonths(iso, amount) {
 }
 
 export default function ProjectCalendarTab({ project }) {
-  const { tasks, now, todayDate, notify, currentUser } = useApp();
+  const { tasks, now, todayDate, notify, currentUser, confirmDialog } = useApp();
   const [picked, setPicked] = useState(null);
   const [view, setView] = useState("month"); // "month" | "week" | "agenda"
   const [customEvents, setCustomEvents] = useState([]);
@@ -146,7 +146,13 @@ export default function ProjectCalendarTab({ project }) {
 
   // Handle delete custom event
   async function handleDeleteEvent(rawId) {
-    if (!confirm("Are you sure you want to remove this event?")) return;
+    const ok = await confirmDialog({
+      title: "Remove Event",
+      message: "Are you sure you want to remove this event from the project calendar?",
+      confirmText: "Remove Event",
+      type: "danger",
+    });
+    if (!ok) return;
     setCustomEvents((prev) => prev.filter((e) => e.id !== rawId));
     await request(`/api/projects/${project.id}/events?eventId=${rawId}`, "DELETE");
     notify("Event removed.");

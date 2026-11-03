@@ -76,6 +76,7 @@ export default function TaskDetailModal() {
     tasks,
     currentUser,
     projects,
+    confirmDialog,
   } = useApp();
 
   const [mounted, setMounted] = useState(false);
@@ -181,8 +182,14 @@ export default function TaskDetailModal() {
             {canDelete && (
               <button
                 type="button"
-                onClick={() => {
-                  if (confirm(`Are you sure you want to delete ${task.issueKey}?`)) {
+                onClick={async () => {
+                  const ok = await confirmDialog({
+                    title: `Delete ${task.issueKey}`,
+                    message: `Are you sure you want to delete "${task.title || task.issueKey}"? This action cannot be undone.`,
+                    confirmText: "Delete Task",
+                    type: "danger",
+                  });
+                  if (ok) {
                     deleteTask(task);
                     closeTaskDetail();
                   }

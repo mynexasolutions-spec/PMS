@@ -1,5 +1,12 @@
 import { authorize } from "@/lib/auth";
-import { acceptProjectInvite, createNotification, declineProjectInvite, getProject, markNotificationRead } from "@/lib/db/repo";
+import {
+  acceptProjectInvite,
+  createNotification,
+  declineProjectInvite,
+  getProject,
+  markNotificationRead,
+  markProjectInviteNotificationsRead,
+} from "@/lib/db/repo";
 import { fail, readJson } from "@/lib/http";
 
 export const runtime = "nodejs";
@@ -24,6 +31,7 @@ export async function POST(request) {
     if (notificationId) {
       markNotificationRead(notificationId, auth.user.id);
     }
+    markProjectInviteNotificationsRead(projectId, auth.user.id);
 
     // Notify project creator / admins if different user
     if (project.createdBy && project.createdBy !== auth.user.id) {
@@ -50,6 +58,7 @@ export async function POST(request) {
     if (notificationId) {
       markNotificationRead(notificationId, auth.user.id);
     }
+    markProjectInviteNotificationsRead(projectId, auth.user.id);
 
     if (project.createdBy && project.createdBy !== auth.user.id) {
       try {

@@ -155,14 +155,17 @@ export default function CollaboratorsView() {
     collaboratorRequests,
     respondCollaboratorRequest,
     removeCollaborator,
+    projectInvites = [],
+    respondProjectInvite,
     projects,
     tasks,
     currentUser,
     todayDate,
     notify,
+    confirmDialog,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState("all"); // "all" | "requests"
+  const [activeTab, setActiveTab] = useState("all"); // "all" | "requests" | "project-invites"
   const [searchQuery, setSearchQuery] = useState("");
   const [addingModal, setAddingModal] = useState(false);
   const [actionBusy, setActionBusy] = useState(null);
@@ -194,7 +197,13 @@ export default function CollaboratorsView() {
   }
 
   async function handleRemove(collaborator) {
-    if (confirm(`Remove ${collaborator.name} from your collaborators?`)) {
+    const ok = await confirmDialog({
+      title: "Remove Collaborator",
+      message: `Remove ${collaborator.name} from your collaborators? They will no longer have access to shared projects.`,
+      confirmText: "Remove",
+      type: "danger",
+    });
+    if (ok) {
       await removeCollaborator(collaborator.id);
     }
   }
@@ -263,6 +272,25 @@ export default function CollaboratorsView() {
             </span>
           )}
           {activeTab === "requests" && (
+            <span className="absolute bottom-0 inset-x-0 h-0.5 bg-brand-600 rounded-full" />
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("project-invites")}
+          className={`relative pb-3 pt-2 text-[15px] font-semibold transition-colors flex items-center gap-2 px-3 ${
+            activeTab === "project-invites" ? "text-brand-900" : "text-ink/60 hover:text-ink"
+          }`}
+        >
+          <FolderKanban size={18} />
+          Project Invitations
+          {projectInvites.length > 0 && (
+            <span className="rounded-full bg-amber-100 text-amber-900 ring-1 ring-amber-300 px-2 py-0.5 text-[12px] font-bold">
+              {projectInvites.length} new
+            </span>
+          )}
+          {activeTab === "project-invites" && (
             <span className="absolute bottom-0 inset-x-0 h-0.5 bg-brand-600 rounded-full" />
           )}
         </button>
@@ -467,6 +495,127 @@ export default function CollaboratorsView() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Tab: Project Invitations */}
+      {activeTab === "project-invites" && (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="text-[18px] font-bold text-ink flex items-center gap-2">
+                <FolderKanban size={20} className="text-brand-700" />
+                Project Invitations
+                {projectInvites.length > 0 && (
+                  <span className="rounded-full bg-amber-100 text-amber-900 ring-1 ring-amber-300 px-2 py-0.5 text-[12px] font-bold">
+                    {projectInvites.length} pending
+                  </span>
+                )}
+              </h3>
+              <p className="text-[13.5px] text-muted mt-0.5">
+                Review and respond to invitations from project administrators to collaborate on projects.
+              </p>
+            </div>
+          </div>
+
+          {projectInvites.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {projectInvites.map((invite) => (
+                <div
+                  key={invite.memberId || invite.projectId}
+                  className="panel p-5 flex flex-col justify-between gap-4 border-l-4 shadow-xs"
+                  style={{ borderLeftColor: invite.projectColor || "#1b8742" }}
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="inline-block h-3 w-3 rounded-full shrink-0"
+                            style={{ backgroundColor: invite.projectColor || "#1b8742" }}
+                          />
+                          <h4 className="text-[17px] font-bold text-ink leading-snug truncate">
+                            {invite.projectName}
+                          </h4>
+                        </div>
+                        {invite.projectDescription && (
+                          <p className="mt-1 text-[13px] text-muted line-clamp-2">
+                            {invite.projectDescription}
+                          </p>
+                        )}
+                      </div>
+                      <span className="rounded-full bg-brand-50 border border-brand-200/80 px-2.5 py-0.5 text-[11.5px] font-semibold text-brand-900 capitalize shrink-0">
+                        {invite.role === "admin" ? "Project Admin" : "Team Member"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 rounded-xl bg-[#f7faf8] border border-line/60 p-2.5 text-[13px] text-ink/80">
+                      <Avatar
+                        user={{
+                          name: invite.inviterName || "Project Admin",
+                          email: invite.inviterEmail,
+                        }}
+                        size={34}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-medium text-ink truncate">
+                          Invited by <span className="font-semibold text-brand-900">{invite.inviterName || "Admin"}</span>
+                        </p>
+                        <p className="text-[11.5px] text-muted truncate">
+                          {invite.inviterEmail || (invite.invitedAt ? new Date(invite.invitedAt).toLocaleDateString() : "")}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2 border-t border-line/60">
+                    <button
+                      type="button"
+                      disabled={actionBusy === `proj-${invite.projectId}`}
+                      onClick={async () => {
+                        setActionBusy(`proj-${invite.projectId}`);
+                        await respondProjectInvite({ projectId: invite.projectId, action: "accept" });
+                        setActionBusy(null);
+                      }}
+                      className="btn-primary flex-1 h-[38px] text-[13px] font-bold inline-flex items-center justify-center gap-1.5"
+                    >
+                      {actionBusy === `proj-${invite.projectId}` ? (
+                        <span className="flex items-center gap-1.5">
+                          <Clock size={14} className="animate-spin" /> Joining...
+                        </span>
+                      ) : (
+                        <>
+                          <Check size={15} strokeWidth={2.4} /> Accept Invite
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={actionBusy === `proj-${invite.projectId}`}
+                      onClick={async () => {
+                        setActionBusy(`proj-${invite.projectId}`);
+                        await respondProjectInvite({ projectId: invite.projectId, action: "decline" });
+                        setActionBusy(null);
+                      }}
+                      className="btn-secondary h-[38px] px-3.5 text-[13px] text-ink/75 hover:text-red-700 hover:bg-red-50 hover:border-red-200"
+                    >
+                      <X size={15} /> Decline
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="panel p-10 text-center flex flex-col items-center justify-center">
+              <div className="grid h-16 w-16 place-items-center rounded-2xl bg-[#e6f4ea] text-brand-700 mb-3 shadow-xs">
+                <FolderKanban size={30} />
+              </div>
+              <h3 className="text-[19px] font-bold text-ink">No pending project invitations</h3>
+              <p className="mt-1 text-[14px] text-muted max-w-md">
+                When someone invites you to collaborate on a project, their invitation request will appear here for you to accept or decline.
+              </p>
+            </div>
+          )}
         </div>
       )}
 

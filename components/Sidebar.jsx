@@ -17,6 +17,10 @@ export default function Sidebar() {
   // Normal development projects (excluding vault-only credentials containers)
   const normalProjectsCount = app.projects.filter((p) => !p.isVaultOnly).length;
 
+  // Count badge strictly dedicated to pending requests (collaborator requests + project invitations)
+  const pendingRequestsCount =
+    (app.pendingCollaboratorRequestsCount || 0) + (app.pendingProjectInvitesCount || 0);
+
   const navWorkspace = [
     { label: "Overview", icon: LayoutGrid, href: "/" },
     { label: "Action Center", icon: ShieldCheck, href: "/tasks", badge: app.myPendingActionsCount },
@@ -25,8 +29,8 @@ export default function Sidebar() {
       label: "Collaborators",
       icon: Users,
       href: "/collaborators",
-      badge: app.pendingCollaboratorRequestsCount > 0 ? app.pendingCollaboratorRequestsCount : app.collaborators.length,
-      badgeHighlight: app.pendingCollaboratorRequestsCount > 0,
+      badge: pendingRequestsCount > 0 ? pendingRequestsCount : undefined,
+      badgeHighlight: pendingRequestsCount > 0,
     },
   ];
 

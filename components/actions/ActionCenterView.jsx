@@ -62,7 +62,7 @@ function formatShortDate(dateStr) {
 }
 
 export default function ActionCenterView() {
-  const { actionRequests, currentUser, updateAction, deleteAction } = useApp();
+  const { actionRequests, currentUser, updateAction, deleteAction, confirmDialog } = useApp();
   const [activeTab, setActiveTab] = useState("assigned"); // "assigned" | "delegated" | "all"
   const [filterPendingOnly, setFilterPendingOnly] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -106,7 +106,13 @@ export default function ActionCenterView() {
   }
 
   async function handleDelete(action) {
-    if (!confirm(`Are you sure you want to remove action: "${action.title}"?`)) return;
+    const ok = await confirmDialog({
+      title: "Remove Action",
+      message: `Are you sure you want to remove action: "${action.title}"?`,
+      confirmText: "Remove Action",
+      type: "danger",
+    });
+    if (!ok) return;
     await deleteAction(action.id);
   }
 

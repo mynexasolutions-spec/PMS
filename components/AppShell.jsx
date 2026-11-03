@@ -7,10 +7,19 @@ import IssueModal from "@/components/modals/IssueModal";
 import TaskDetailModal from "@/components/modals/TaskDetailModal";
 import ProjectModal from "@/components/modals/ProjectModal";
 import StickyModal from "@/components/modals/StickyModal";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useApp } from "@/components/AppProvider";
 
 export default function AppShell({ children }) {
-  const { issueModal, taskDetailModal, projectModalOpen, stickyModalOpen, toast } = useApp();
+  const {
+    issueModal,
+    taskDetailModal,
+    projectModalOpen,
+    stickyModalOpen,
+    toast,
+    dialogState,
+    closeDialog,
+  } = useApp();
 
   return (
     <div className="flex min-h-screen">
@@ -26,6 +35,7 @@ export default function AppShell({ children }) {
       {taskDetailModal && <TaskDetailModal />}
       {projectModalOpen && <ProjectModal />}
       {stickyModalOpen && <StickyModal />}
+      <ConfirmDialog state={dialogState} onClose={closeDialog} />
       {toast && (
         <div role="status" className="fixed bottom-20 lg:bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-xl bg-ink px-5 py-3 text-[14px] font-medium text-white shadow-2xl">
           {toast}

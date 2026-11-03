@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { StickyNote, Pin, PinOff, Trash2, Plus, Search, LayoutGrid, List, Ellipsis, Clock, Calendar, X } from "lucide-react";
+import { StickyNote, Pin, PinOff, Trash2, Plus, Search, LayoutGrid, List, Ellipsis, Clock, Calendar, X, Check } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
 import { useCloseOnOutsideClick } from "@/components/ui/useCloseOnOutsideClick";
 import { daysBetween, longDate } from "@/lib/datetime";
@@ -78,10 +78,27 @@ function isSameCalendarDay(noteDateStr, targetYMD) {
 }
 
 
+function getExpiryTimeLeft(completedAt) {
+  if (!completedAt) return null;
+  try {
+    const completedDate = new Date(completedAt.includes("T") ? completedAt : `${completedAt.replace(" ", "T")}Z`);
+    const now = new Date();
+    const diffMs = 48 * 60 * 60 * 1000 - (now.getTime() - completedDate.getTime());
+    if (diffMs <= 0) return "Expiring soon";
+    const hoursLeft = Math.ceil(diffMs / (1000 * 60 * 60));
+    if (hoursLeft <= 1) return "<1h left";
+    return `${hoursLeft}h left`;
+  } catch {
+    return "48h left";
+  }
+}
+
 const PREVIEW_LIMIT = 130;
 const FOLD_SIZE = 28;
 
-function Note({ note, now, list, onPin, onDelete, onRead, index = 0, currentUser }) {
+function Note({ note, now, list, onPin, onToggleComplete, onDelete, onRead, index = 0, currentUser }) {
+  const isResolved = !!note.completedAt;
+  const expiryLeft = getExpiryTimeLeft(note.completedAt);
   const colorSpec = STICKY_COLORS.find((c) => c.id === note.color) || STICKY_COLORS[0];
   const isLong = (note.content || "").length > PREVIEW_LIMIT;
   const displayContent = isLong ? note.content.slice(0, PREVIEW_LIMIT).trim() + "..." : note.content;
@@ -92,7 +109,7 @@ function Note({ note, now, list, onPin, onDelete, onRead, index = 0, currentUser
   return (
     <div
       onClick={() => onRead(note)}
-      className={`group relative ${list ? "min-h-[140px]" : "h-[215px]"} flex flex-col justify-between p-4 pb-3 cursor-pointer transition-all duration-200 hover:rotate-0 hover:scale-[1.02] hover:z-10 ${tilt}`}
+      className={`group relative ${list ? "min-h-[140px]" : "h-[215px]"} flex flex-col justify-between p-4 pb-3 cursor-pointer transition-all duration-200 hover:rotate-0 hover:scale-[1.02] hover:z-10 ${tilt} ${isResolved ? "opacity-85 hover:opacity-100" : ""}`}
       style={{
         filter: "drop-shadow(0 4px 6px rgba(25, 40, 30, 0.12)) drop-shadow(0 1px 2px rgba(25, 40, 30, 0.08))",
       }}
@@ -125,7 +142,7 @@ function Note({ note, now, list, onPin, onDelete, onRead, index = 0, currentUser
 
       {/* Card Top: Category (Left) + Actions (Right) */}
       <div className="relative z-1 flex items-center justify-between mb-1.5 pt-0.5">
-        <div>
+        <div className="flex items-center gap-1.5 flex-wrap">
           {note.category && (
             <span
               className="rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-white/80 shadow-2xs"
@@ -134,9 +151,38 @@ function Note({ note, now, list, onPin, onDelete, onRead, index = 0, currentUser
               {note.category}
             </span>
           )}
+          {isResolved && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9.5px] font-bold bg-emerald-100/95 text-emerald-800 border border-emerald-300/60 shadow-2xs"
+              title={`This note will automatically be deleted 48 hours after being marked resolved (${expiryLeft})`}
+            >
+              <Clock size={10} /> {expiryLeft}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-1">
+          {/* Mark Done / Resolve Toggle */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleComplete();
+            }}
+            className={`grid h-6 w-6 place-items-center rounded-lg transition ${
+              isResolved
+                ? "bg-emerald-600 text-white shadow-2xs hover:bg-emerald-700"
+                : "text-black/35 hover:text-emerald-700 hover:bg-emerald-500/20"
+            }`}
+            title={
+              isResolved
+                ? `Resolved! Auto-deletes in ${expiryLeft} (Click to undo)`
+                : "Mark as resolved (auto-deletes in 48 hours)"
+            }
+          >
+            <Check size={12} strokeWidth={isResolved ? 3 : 2.2} />
+          </button>
+
           {/* Pin Toggle */}
           <button
             type="button"
@@ -171,7 +217,11 @@ function Note({ note, now, list, onPin, onDelete, onRead, index = 0, currentUser
 
       {/* Content: Uniform Fixed-height line-clamp-4 with High Contrast Charcoal Ink */}
       <div className="relative z-1 flex-1 flex flex-col justify-start overflow-hidden my-1">
-        <p className="whitespace-pre-wrap break-words text-[14.5px] leading-[1.45] font-semibold line-clamp-4 select-text text-slate-900 tracking-[-0.01em]">
+        <p
+          className={`whitespace-pre-wrap break-words text-[14.5px] leading-[1.45] font-semibold line-clamp-4 select-text text-slate-900 tracking-[-0.01em] ${
+            isResolved ? "line-through opacity-75 decoration-emerald-700/60" : ""
+          }`}
+        >
           {displayContent}
         </p>
         {isLong && (
@@ -207,7 +257,7 @@ function Illustration() {
 }
 
 export default function StickyPage() {
-  const { sticky, now, todayDate, setStickyModalOpen, toggleSticky, deleteSticky, currentUser } = useApp();
+  const { sticky, now, todayDate, setStickyModalOpen, toggleSticky, toggleStickyComplete, deleteSticky, currentUser } = useApp();
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState("all");
@@ -391,6 +441,7 @@ export default function StickyPage() {
               now={now}
               list={view === "list"}
               onPin={() => toggleSticky(note)}
+              onToggleComplete={() => toggleStickyComplete(note)}
               onDelete={() => deleteSticky(note)}
               onRead={(n) => setReadingNote(n)}
               index={index}
@@ -444,7 +495,13 @@ export default function StickyPage() {
           onClose={() => setReadingNote(null)}
           onTogglePin={(note) => {
             toggleSticky(note);
-            setReadingNote((prev) => prev ? { ...prev, pinned: !prev.pinned } : null);
+            setReadingNote((prev) => (prev ? { ...prev, pinned: !prev.pinned } : null));
+          }}
+          onToggleComplete={(note) => {
+            toggleStickyComplete(note);
+            const nextCompleted = !note.completedAt;
+            const nextCompletedAt = nextCompleted ? new Date().toISOString() : null;
+            setReadingNote((prev) => (prev ? { ...prev, completedAt: nextCompletedAt } : null));
           }}
           onDelete={(note) => {
             deleteSticky(note);

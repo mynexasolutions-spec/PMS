@@ -614,6 +614,7 @@ export default function IssueModal() {
     currentUser,
     isMember,
     myProjects,
+    confirmDialog,
   } = useApp();
 
   const parent = issueModal.parent;
@@ -716,7 +717,13 @@ export default function IssueModal() {
 
   async function handleDelete() {
     if (!editingTask) return;
-    if (!confirm(`Are you sure you want to delete "${editingTask.title}"?`)) return;
+    const ok = await confirmDialog({
+      title: "Delete Task",
+      message: `Are you sure you want to delete "${editingTask.title}"? This cannot be undone.`,
+      confirmText: "Delete Task",
+      type: "danger",
+    });
+    if (!ok) return;
     await deleteTask(editingTask.id);
     closeIssueModal();
   }

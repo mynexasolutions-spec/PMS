@@ -6,6 +6,21 @@ import Avatar from "@/components/ui/Avatar";
 import { categoryMeta } from "@/components/sticky/categories";
 import { stickyTone } from "@/components/sticky/tones";
 
+function getExpiryTimeLeft(completedAt) {
+  if (!completedAt) return null;
+  try {
+    const completedDate = new Date(completedAt.includes("T") ? completedAt : `${completedAt.replace(" ", "T")}Z`);
+    const now = new Date();
+    const diffMs = 48 * 60 * 60 * 1000 - (now.getTime() - completedDate.getTime());
+    if (diffMs <= 0) return "Expiring soon";
+    const hoursLeft = Math.ceil(diffMs / (1000 * 60 * 60));
+    if (hoursLeft <= 1) return "<1h left";
+    return `${hoursLeft}h left`;
+  } catch {
+    return "48h left";
+  }
+}
+
 const COLOR_MAP = {
   yellow: { bg: "#fef9c3", border: "#fde047", text: "#713f12" },
   green: { bg: "#dcfce7", border: "#86efac", text: "#14532d" },
@@ -15,7 +30,7 @@ const COLOR_MAP = {
   orange: { bg: "#ffedd5", border: "#fdba74", text: "#7c2d12" },
 };
 
-export default function StickyDetailModal({ note, onClose, onTogglePin, onDelete, canDelete = true }) {
+export default function StickyDetailModal({ note, onClose, onTogglePin, onToggleComplete, onDelete, canDelete = true }) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -31,6 +46,8 @@ export default function StickyDetailModal({ note, onClose, onTogglePin, onDelete
   const colorConfig = COLOR_MAP[note.color] || COLOR_MAP.yellow;
   const tone = stickyTone(note.color);
   const meta = note.category ? categoryMeta[note.category] : null;
+  const isResolved = !!note.completedAt;
+  const expiryLeft = getExpiryTimeLeft(note.completedAt);
 
   const handleCopy = () => {
     if (note.content) {
@@ -83,9 +100,37 @@ export default function StickyDetailModal({ note, onClose, onTogglePin, onDelete
                 <Pin size={12} fill="currentColor" /> Pinned
               </span>
             )}
+
+            {isResolved && (
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs"
+                title={`This note will automatically be deleted 48 hours after resolution (${expiryLeft})`}
+              >
+                <Clock size={12} /> Resolved • {expiryLeft}
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5">
+            {onToggleComplete && (
+              <button
+                type="button"
+                onClick={() => onToggleComplete(note)}
+                className={`grid h-8 w-8 place-items-center rounded-xl transition shadow-2xs cursor-pointer ${
+                  isResolved
+                    ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                    : "bg-white/60 hover:bg-emerald-50 text-ink hover:text-emerald-700"
+                }`}
+                title={
+                  isResolved
+                    ? `Resolved! Auto-deletes in ${expiryLeft} (Click to restore)`
+                    : "Mark as resolved (auto-deletes in 48h)"
+                }
+              >
+                <Check size={16} strokeWidth={isResolved ? 3 : 2.2} />
+              </button>
+            )}
+
             {onTogglePin && (
               <button
                 type="button"
@@ -134,7 +179,9 @@ export default function StickyDetailModal({ note, onClose, onTogglePin, onDelete
         {/* Note Content (Scrollable with High Contrast Charcoal Ink) */}
         <div className="flex-1 overflow-y-auto py-5 pr-2 select-text">
           <p
-            className="whitespace-pre-wrap break-words text-[16px] md:text-[17px] leading-[1.65] font-semibold text-slate-900"
+            className={`whitespace-pre-wrap break-words text-[16px] md:text-[17px] leading-[1.65] font-semibold text-slate-900 ${
+              isResolved ? "line-through opacity-75 decoration-emerald-700/60" : ""
+            }`}
           >
             {note.content}
           </p>
@@ -154,9 +201,16 @@ export default function StickyDetailModal({ note, onClose, onTogglePin, onDelete
           </div>
 
           {note.createdAt && (
-            <span className="flex items-center gap-1.5 shrink-0">
-              <Clock size={13} /> {note.createdAt.slice(0, 10)}
-            </span>
+            <div className="flex items-center gap-3 shrink-0">
+              {isResolved && (
+                <span className="flex items-center gap-1 text-emerald-800 font-semibold bg-emerald-50 border border-emerald-300/50 px-2 py-0.5 rounded-full">
+                  <Check size={12} strokeWidth={2.5} /> Auto-deletes in {expiryLeft}
+                </span>
+              )}
+              <span className="flex items-center gap-1.5">
+                <Clock size={13} /> {note.createdAt.slice(0, 10)}
+              </span>
+            </div>
           )}
         </div>
       </div>

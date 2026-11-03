@@ -1,11 +1,26 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Plus, Pin, Trash2, Search, Calendar, X } from "lucide-react";
+import { Plus, Pin, Trash2, Search, Calendar, X, Check, Clock } from "lucide-react";
 import { useApp } from "@/components/AppProvider";
 import Avatar from "@/components/ui/Avatar";
 import StickyDetailModal from "@/components/modals/StickyDetailModal";
 import { request } from "@/lib/api";
+
+export function getExpiryTimeLeft(completedAt) {
+  if (!completedAt) return null;
+  try {
+    const completedDate = new Date(completedAt.includes("T") ? completedAt : `${completedAt.replace(" ", "T")}Z`);
+    const now = new Date();
+    const diffMs = 48 * 60 * 60 * 1000 - (now.getTime() - completedDate.getTime());
+    if (diffMs <= 0) return "Expiring soon";
+    const hoursLeft = Math.ceil(diffMs / (1000 * 60 * 60));
+    if (hoursLeft <= 1) return "<1h left";
+    return `${hoursLeft}h left`;
+  } catch {
+    return "48h left";
+  }
+}
 
 const STICKY_COLORS = [
   { id: "yellow", bg: "#fef9c3", border: "#fde047", text: "#713f12" },
@@ -63,10 +78,11 @@ function isSameCalendarDay(noteDateStr, targetYMD) {
 const PREVIEW_LIMIT = 130;
 
 export default function ProjectStickyTab({ project }) {
-  const { currentUser, notify } = useApp();
+  const { currentUser, notify, confirmDialog } = useApp();
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("all");
   const [customDate, setCustomDate] = useState("");
@@ -137,16 +153,48 @@ export default function ProjectStickyTab({ project }) {
     await request(`/api/sticky/${note.id}`, "PATCH", { pinned: nextPinned });
   }
 
+  // Handle mark done / complete toggle (auto-deletes in 48h)
+  async function handleToggleComplete(note) {
+    const nextCompleted = !note.completedAt;
+    const nextCompletedAt = nextCompleted ? new Date().toISOString() : null;
+
+    setNotes((prev) =>
+      prev.map((n) => (n.id === note.id ? { ...n, completedAt: nextCompletedAt } : n))
+    );
+
+    const { ok } = await request(`/api/sticky/${note.id}`, "PATCH", { completed: nextCompleted });
+    if (!ok) {
+      notify("Could not update note status.");
+      fetchNotes();
+      return;
+    }
+
+    notify(nextCompleted ? "Marked as resolved (auto-deletes in 48h) ✓" : "Restored to active 📌");
+  }
+
   // Handle delete
   async function handleDelete(noteId) {
-    if (!confirm("Are you sure you want to remove this sticky note?")) return;
+    const ok = await confirmDialog({
+      title: "Remove Sticky Note",
+      message: "Are you sure you want to remove this sticky note?",
+      confirmText: "Remove",
+      type: "danger",
+    });
+    if (!ok) return;
     setNotes((prev) => prev.filter((n) => n.id !== noteId));
     await request(`/api/sticky/${noteId}`, "DELETE");
     notify("Sticky note removed.");
   }
 
+  const activeCount = notes.filter((n) => !n.completedAt).length;
+  const resolvedCount = notes.filter((n) => !!n.completedAt).length;
+
   const filteredNotes = notes.filter((n) => {
-    // 1. Category filter
+    // 1. Status filter
+    if (statusFilter === "active" && n.completedAt) return false;
+    if (statusFilter === "resolved" && !n.completedAt) return false;
+
+    // 2. Category filter
     if (categoryFilter !== "all" && n.category !== categoryFilter) return false;
 
     // 2. Search query (matches note content, author name, or category)
@@ -231,6 +279,17 @@ export default function ProjectStickyTab({ project }) {
               )}
             </div>
 
+            {/* Status Filter Dropdown */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="rounded-xl border border-line bg-white px-3 py-1.5 text-[12.5px] font-semibold text-ink outline-none hover:bg-neutral-50 cursor-pointer transition focus:border-brand-500 shadow-2xs"
+            >
+              <option value="all">⚡ All Status ({notes.length})</option>
+              <option value="active">📌 Active ({activeCount})</option>
+              <option value="resolved">✓ Resolved ({resolvedCount})</option>
+            </select>
+
             {/* Date Filter Dropdown */}
             <select
               value={dateFilter}
@@ -295,11 +354,12 @@ export default function ProjectStickyTab({ project }) {
             </div>
 
             {/* Clear filters button if active */}
-            {(searchQuery || dateFilter !== "all" || customDate || categoryFilter !== "all") && (
+            {(searchQuery || statusFilter !== "all" || dateFilter !== "all" || customDate || categoryFilter !== "all") && (
               <button
                 type="button"
                 onClick={() => {
                   setSearchQuery("");
+                  setStatusFilter("all");
                   setDateFilter("all");
                   setCustomDate("");
                   setCategoryFilter("all");
@@ -476,12 +536,16 @@ export default function ProjectStickyTab({ project }) {
             const previewText = isLong ? `${note.content.slice(0, PREVIEW_LIMIT).trim()}...` : note.content;
             const tilt = index % 4 === 0 ? "-rotate-[0.6deg]" : index % 4 === 2 ? "rotate-[0.6deg]" : "rotate-0";
             const FOLD_SIZE = 28;
+            const isResolved = !!note.completedAt;
+            const expiryLeft = getExpiryTimeLeft(note.completedAt);
 
             return (
               <div
                 key={note.id}
                 onClick={() => setReadingNote(note)}
-                className={`group relative h-[215px] flex flex-col justify-between p-4 pb-3 cursor-pointer transition-all duration-200 hover:rotate-0 hover:scale-[1.02] hover:z-10 ${tilt}`}
+                className={`group relative h-[215px] flex flex-col justify-between p-4 pb-3 cursor-pointer transition-all duration-200 hover:rotate-0 hover:scale-[1.02] hover:z-10 ${tilt} ${
+                  isResolved ? "opacity-85 hover:opacity-100" : ""
+                }`}
                 style={{
                   filter: "drop-shadow(0 4px 6px rgba(25, 40, 30, 0.12)) drop-shadow(0 1px 2px rgba(25, 40, 30, 0.08))",
                 }}
@@ -512,9 +576,9 @@ export default function ProjectStickyTab({ project }) {
                   />
                 </div>
 
-                {/* Card Top: Category (Left) + Actions (Right) */}
+                {/* Card Top: Category/Status (Left) + Actions (Right) */}
                 <div className="relative z-1 flex items-center justify-between mb-1.5 pt-0.5">
-                  <div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     {note.category && (
                       <span
                         className="rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-white/80 shadow-2xs"
@@ -523,9 +587,38 @@ export default function ProjectStickyTab({ project }) {
                         {note.category}
                       </span>
                     )}
+                    {isResolved && (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9.5px] font-bold bg-emerald-100/95 text-emerald-800 border border-emerald-300/60 shadow-2xs"
+                        title={`This note will automatically be deleted 48 hours after being marked resolved (${expiryLeft})`}
+                      >
+                        <Clock size={10} /> {expiryLeft}
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-1">
+                    {/* Mark Done / Resolve Toggle */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleComplete(note);
+                      }}
+                      className={`grid h-6 w-6 place-items-center rounded-lg transition ${
+                        isResolved
+                          ? "bg-emerald-600 text-white shadow-2xs hover:bg-emerald-700"
+                          : "text-black/35 hover:text-emerald-700 hover:bg-emerald-500/20"
+                      }`}
+                      title={
+                        isResolved
+                          ? `Resolved! Auto-deletes in ${expiryLeft} (Click to undo)`
+                          : "Mark as resolved (auto-deletes in 48 hours)"
+                      }
+                    >
+                      <Check size={12} strokeWidth={isResolved ? 3 : 2.2} />
+                    </button>
+
                     {/* Pin Toggle */}
                     <button
                       type="button"
@@ -563,7 +656,9 @@ export default function ProjectStickyTab({ project }) {
                 {/* Content: Uniform Fixed-height line-clamp-4 with High Contrast Charcoal Ink */}
                 <div className="relative z-1 flex-1 flex flex-col justify-start overflow-hidden my-1">
                   <p
-                    className="whitespace-pre-wrap break-words text-[14.5px] leading-[1.45] font-semibold line-clamp-4 select-text text-slate-900 tracking-[-0.01em]"
+                    className={`whitespace-pre-wrap break-words text-[14.5px] leading-[1.45] font-semibold line-clamp-4 select-text text-slate-900 tracking-[-0.01em] ${
+                      isResolved ? "line-through opacity-75 decoration-emerald-700/60" : ""
+                    }`}
                   >
                     {previewText}
                   </p>
@@ -598,7 +693,13 @@ export default function ProjectStickyTab({ project }) {
           onClose={() => setReadingNote(null)}
           onTogglePin={(note) => {
             handleTogglePin(note);
-            setReadingNote((prev) => prev ? { ...prev, pinned: !prev.pinned } : null);
+            setReadingNote((prev) => (prev ? { ...prev, pinned: !prev.pinned } : null));
+          }}
+          onToggleComplete={(note) => {
+            handleToggleComplete(note);
+            const nextCompleted = !note.completedAt;
+            const nextCompletedAt = nextCompleted ? new Date().toISOString() : null;
+            setReadingNote((prev) => (prev ? { ...prev, completedAt: nextCompletedAt } : null));
           }}
           onDelete={(note) => {
             handleDelete(note.id);

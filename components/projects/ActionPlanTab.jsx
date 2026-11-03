@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { request } from "@/lib/api";
 import Modal from "@/components/ui/Modal";
+import { useApp } from "@/components/AppProvider";
 
 // Pre-defined template 1: Nexa Business & Agency Strategy (9 Pillars & Targets)
 // All tasks are clean & empty by default!
@@ -649,6 +650,7 @@ function formatMonthName(monthStr) {
 }
 
 export default function ActionPlanTab({ project, canManage }) {
+  const { confirmDialog, alertDialog } = useApp();
   const [plans, setPlans] = useState([]);
   const [currentMonth, setCurrentMonth] = useState("2026-11");
   const [loading, setLoading] = useState(true);
@@ -866,14 +868,24 @@ export default function ActionPlanTab({ project, canManage }) {
       setCurrentMonth(res.data.plan.monthYear);
       setPlanModalOpen(false);
     } else {
-      alert(res.data?.error || "Failed to create plan.");
+      await alertDialog({
+        title: "Failed to Create Plan",
+        message: res.data?.error || "Failed to create plan. Please verify the month and details.",
+        type: "error",
+      });
     }
   }
 
   // Delete current plan
   async function handleDeletePlan() {
     if (!activePlan || !canManage) return;
-    if (!confirm(`Are you sure you want to delete the plan for ${formatMonthName(activePlan.monthYear)}?`)) return;
+    const ok = await confirmDialog({
+      title: "Delete Action Plan",
+      message: `Are you sure you want to delete the plan for ${formatMonthName(activePlan.monthYear)}? All sections and tasks in this month will be removed.`,
+      confirmText: "Delete Plan",
+      type: "danger",
+    });
+    if (!ok) return;
 
     const res = await request(`/api/projects/${project.id}/plan?planId=${activePlan.id}`, "DELETE");
     if (res.ok) {
@@ -980,9 +992,15 @@ export default function ActionPlanTab({ project, canManage }) {
   }
 
   // Delete Section
-  function handleDeleteSection(secId) {
+  async function handleDeleteSection(secId) {
     if (!activePlan || !canManage) return;
-    if (!confirm("Are you sure you want to delete this section and all its tasks?")) return;
+    const ok = await confirmDialog({
+      title: "Delete Section",
+      message: "Are you sure you want to delete this section and all its tasks? This action cannot be undone.",
+      confirmText: "Delete Section",
+      type: "danger",
+    });
+    if (!ok) return;
     savePlan({ sections: activePlan.sections.filter((s) => s.id !== secId) });
   }
 
