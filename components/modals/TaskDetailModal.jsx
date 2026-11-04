@@ -120,14 +120,14 @@ export default function TaskDetailModal() {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ink/50 p-3 sm:p-5 backdrop-blur-[2px] animate-in fade-in duration-150"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-ink/50 p-3.5 sm:p-5 backdrop-blur-[2px] animate-in fade-in duration-150"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) closeTaskDetail();
       }}
     >
-      <div className="my-auto flex flex-col w-full max-w-[880px] max-h-[92vh] overflow-hidden rounded-2xl sm:rounded-3xl bg-white shadow-2xl border border-line animate-in zoom-in-95 duration-150">
+      <div className="flex flex-col w-full max-w-[880px] max-h-[85dvh] sm:max-h-[90vh] overflow-hidden rounded-2xl sm:rounded-3xl bg-white shadow-2xl border border-line animate-in zoom-in-95 duration-150">
         {/* ================= HEADER ================= */}
-        <div className="flex items-center justify-between gap-3 border-b border-line/75 px-5 py-3.5 bg-[#fcfdfd]">
+        <div className="shrink-0 flex items-center justify-between gap-2 sm:gap-3 border-b border-line/75 px-4 py-3 sm:px-5 sm:py-3.5 bg-[#fcfdfd]">
           {/* Left: Key, Type, Parent Breadcrumb */}
           <div className="flex flex-wrap items-center gap-2 min-w-0">
             {parentTask ? (
@@ -427,24 +427,26 @@ export default function TaskDetailModal() {
                 </div>
               </div>
 
-              {/* Assignee */}
-              <div>
-                <label className="block text-[11.5px] font-semibold text-ink/70 mb-1">
-                  Assignee
-                </label>
-                <div className="flex items-center justify-between rounded-xl border border-line bg-white px-3 py-1.5">
-                  <span className="text-[13px] font-medium text-ink truncate">
-                    {task.assigneeId
-                      ? task.assigneeName || "Assigned"
-                      : "Unassigned"}
-                  </span>
-                  <AssigneePicker
-                    size={24}
-                    value={task.assigneeId}
-                    onChange={(assigneeId) => updateTask(task.id, { assigneeId })}
-                  />
+              {/* Assignee (only for project tasks) */}
+              {task.projectId != null && (
+                <div>
+                  <label className="block text-[11.5px] font-semibold text-ink/70 mb-1">
+                    Assignee
+                  </label>
+                  <div className="flex items-center justify-between rounded-xl border border-line bg-white px-3 py-1.5">
+                    <span className="text-[13px] font-medium text-ink truncate">
+                      {task.assigneeId
+                        ? task.assigneeName || "Assigned"
+                        : "Unassigned"}
+                    </span>
+                    <AssigneePicker
+                      size={24}
+                      value={task.assigneeId}
+                      onChange={(assigneeId) => updateTask(task.id, { assigneeId })}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Dates */}
               <div className="space-y-2 border-t border-line/75 pt-3">

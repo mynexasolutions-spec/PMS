@@ -35,14 +35,14 @@ export default function DeadlineCard() {
               <span className="text-[42px] font-extrabold leading-none tracking-tight">{pad(due.getDate())}</span>
               <div className="pb-0.5 leading-tight">
                 <p className="text-[16px] font-bold">{monthName.format(due)}</p>
-                <p className="text-[13px] text-ink/70">{task.projectName}</p>
+                <p className="text-[13px] text-ink/70">{task.projectName || "Personal Workspace"}</p>
               </div>
             </div>
             <div className="mt-2.5 h-[6px] rounded-full bg-white/70">
               <div className="h-full rounded-full bg-gradient-to-r from-[#2c9d57] to-[#14632f]" style={{ width: `${deadlineProgress}%` }} />
             </div>
             <p className="mt-2 text-[13px] text-ink/75">
-              {task.issueKey} · {task.projectName} is {deadlineProgress}% complete.
+              {task.issueKey} · {task.projectName ? `${task.projectName} is ${deadlineProgress}% complete.` : "Personal task"}
             </p>
           </>
         )}

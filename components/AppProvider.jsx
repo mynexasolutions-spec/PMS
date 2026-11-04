@@ -586,7 +586,12 @@ export function AppProvider({ initial, children }) {
 
   const isMember = false;
   const myTasks = useMemo(
-    () => tasks.filter((t) => t.assigneeId === currentUser?.id),
+    () =>
+      tasks.filter((t) =>
+        !t.projectId
+          ? t.assigneeId === currentUser?.id || t.createdBy === currentUser?.id
+          : t.assigneeId === currentUser?.id,
+      ),
     [tasks, currentUser?.id],
   );
   const myTodos = useMemo(

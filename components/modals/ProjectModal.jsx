@@ -30,18 +30,18 @@ export default function ProjectModal() {
   return (
     <Modal
       size="wide"
-      icon={<FolderPlus size={30} strokeWidth={1.8} />}
+      icon={<FolderPlus size={24} strokeWidth={1.8} className="sm:h-[30px] sm:w-[30px]" />}
       eyebrow="New project"
       title="Create a project"
       subtitle="You will be the Project Admin with full control over this project. You can add team members from the Project Team tab."
       onClose={close}
     >
       <form onSubmit={submit}>
-        <label htmlFor="project-name" className="block text-[15px] font-bold">
+        <label htmlFor="project-name" className="block text-[13.5px] sm:text-[15px] font-bold">
           Project name
         </label>
-        <div className="mt-2 flex items-center gap-3 rounded-xl border border-brand-300 bg-white px-4 ring-2 ring-brand-100 focus-within:border-brand-500">
-          <Folder size={21} strokeWidth={1.7} className="shrink-0 text-ink/80" />
+        <div className="mt-1.5 sm:mt-2 flex items-center gap-2.5 sm:gap-3 rounded-xl border border-brand-300 bg-white px-3.5 sm:px-4 ring-2 ring-brand-100 focus-within:border-brand-500">
+          <Folder size={19} strokeWidth={1.7} className="shrink-0 text-ink/80 sm:h-[21px] sm:w-[21px]" />
           <input
             id="project-name"
             required
@@ -50,14 +50,14 @@ export default function ProjectModal() {
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="e.g. Bright Dental Website"
-            className="h-[50px] min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted"
+            className="h-[42px] sm:h-[50px] min-w-0 flex-1 bg-transparent text-[14.5px] sm:text-[16px] outline-none placeholder:text-muted"
           />
-          <span className="shrink-0 text-[14px] text-muted">
+          <span className="shrink-0 text-[12.5px] sm:text-[14px] text-muted">
             {name.length}/{MAX_NAME}
           </span>
         </div>
 
-        <label htmlFor="project-description" className="mt-5 block text-[15px] font-bold">
+        <label htmlFor="project-description" className="mt-3.5 sm:mt-5 block text-[13.5px] sm:text-[15px] font-bold">
           Description <span className="font-normal text-muted">(optional)</span>
         </label>
         <input
@@ -66,18 +66,18 @@ export default function ProjectModal() {
           value={description}
           onChange={(event) => setDescription(event.target.value)}
           placeholder="e.g. E-commerce website with modern UI"
-          className="mt-2 h-[48px] w-full rounded-xl border border-line bg-white px-4 text-[15px] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+          className="mt-1.5 sm:mt-2 h-[42px] sm:h-[48px] w-full rounded-xl border border-line bg-white px-3.5 sm:px-4 text-[14px] sm:text-[15px] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
         />
 
-        <p className="mb-3 mt-5 text-[15px] font-bold">Project color</p>
+        <p className="mb-2 sm:mb-3 mt-3.5 sm:mt-5 text-[13.5px] sm:text-[15px] font-bold">Project color</p>
         <ProjectColorPicker value={color} onChange={setColor} />
 
-        <div className="-mx-6 mt-6 flex justify-end gap-3 border-t border-line px-6 pt-5">
-          <button type="button" className="btn-secondary h-[46px] px-7 text-[15px]" onClick={close}>
+        <div className="mt-4 sm:mt-6 flex justify-end gap-2.5 sm:gap-3 border-t border-line pt-3.5 sm:pt-5">
+          <button type="button" className="btn-secondary h-[40px] sm:h-[46px] px-5 sm:px-7 text-[13.5px] sm:text-[15px]" onClick={close}>
             Cancel
           </button>
-          <button className="btn-primary h-[46px] px-6 text-[15px]" disabled={saving}>
-            <Plus size={18} /> {saving ? "Creating..." : "Create project"}
+          <button className="btn-primary h-[40px] sm:h-[46px] px-5 sm:px-6 text-[13.5px] sm:text-[15px]" disabled={saving}>
+            <Plus size={17} /> {saving ? "Creating..." : "Create project"}
           </button>
         </div>
       </form>

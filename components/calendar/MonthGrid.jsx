@@ -21,12 +21,12 @@ function DayPopover({ date, events, onClose, onOpenDay, onSchedule }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-ink/40 p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[70] grid place-items-center bg-ink/40 p-3.5 sm:p-4 backdrop-blur-[2px]"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative w-full max-w-[440px] rounded-2xl border border-line bg-white p-5 shadow-2xl">
+      <div className="relative flex max-h-[85dvh] w-full max-w-[440px] flex-col rounded-2xl border border-line bg-white p-4 sm:p-5 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 border-b border-line pb-3.5">
           <div className="min-w-0">
@@ -132,7 +132,7 @@ function DayPopover({ date, events, onClose, onOpenDay, onSchedule }) {
 }
 
 /** Month grid (Apple Calendar style) with Category Dots and Quick Popover on click. */
-export default function MonthGrid({ date, todayDate, events, onSelect, onOpenDay }) {
+export default function MonthGrid({ date, todayDate, events, onSelect, onOpenDay, enablePopover = true }) {
   const { openIssueModal } = useApp();
   const [popoverDate, setPopoverDate] = useState(null);
 
@@ -158,9 +158,9 @@ export default function MonthGrid({ date, todayDate, events, onSelect, onOpenDay
     <>
       <div className="overflow-hidden rounded-xl border border-line">
         {/* Weekday Header */}
-        <div className="grid grid-cols-7 bg-[#f4f7f5] text-center text-[13px] font-medium text-ink/70">
+        <div className="grid grid-cols-7 bg-[#f4f7f5] text-center text-[11.5px] font-semibold text-ink/70 sm:text-[13px] sm:font-medium">
           {weekdays.map((day) => (
-            <div key={day} className="border-r border-line py-2.5 last:border-r-0">
+            <div key={day} className="border-r border-line py-2 last:border-r-0 sm:py-2.5">
               {day}
             </div>
           ))}
@@ -178,13 +178,12 @@ export default function MonthGrid({ date, todayDate, events, onSelect, onOpenDay
               <div
                 key={cell}
                 onClick={() => {
-                  if (onSelect) {
-                    onSelect(cell);
-                  } else if (list.length > 0) {
+                  onSelect?.(cell);
+                  if (enablePopover) {
                     setPopoverDate(cell);
                   }
                 }}
-                className={`group relative flex min-h-[96px] cursor-pointer flex-col justify-between border-r border-t border-line p-2 transition last:border-r-0 [&:nth-child(7n)]:border-r-0 ${
+                className={`group relative flex min-h-[68px] min-w-0 cursor-pointer flex-col justify-between overflow-hidden border-r border-t border-line p-0.5 transition last:border-r-0 [&:nth-child(7n)]:border-r-0 sm:min-h-[96px] sm:p-2 ${
                   isSelected
                     ? "bg-[#f2f9f4]"
                     : inMonth
@@ -193,9 +192,9 @@ export default function MonthGrid({ date, todayDate, events, onSelect, onOpenDay
                 }`}
               >
                 {/* Top: Date Number & Count */}
-                <div className="flex w-full items-center justify-between">
+                <div className="flex w-full items-center justify-center pt-0.5 sm:justify-between sm:pt-0">
                   <span
-                    className={`grid h-[26px] w-[26px] place-items-center rounded-full text-[13px] font-medium transition ${
+                    className={`grid h-[22px] w-[22px] place-items-center rounded-full text-[11.5px] font-medium transition sm:h-[26px] sm:w-[26px] sm:text-[13px] ${
                       isToday
                         ? "bg-brand-700 font-bold text-white shadow-sm"
                         : isSelected
@@ -209,7 +208,7 @@ export default function MonthGrid({ date, todayDate, events, onSelect, onOpenDay
                   </span>
 
                   {list.length > 0 && (
-                    <span className="text-[11px] font-semibold text-muted/70 group-hover:text-brand-700">
+                    <span className="hidden text-[11px] font-semibold text-muted/70 group-hover:text-brand-700 sm:inline">
                       {list.length}
                     </span>
                   )}
@@ -217,15 +216,17 @@ export default function MonthGrid({ date, todayDate, events, onSelect, onOpenDay
 
                 {/* Middle / Bottom: Color Dots + Category Badge */}
                 {list.length > 0 ? (
-                  <div className="my-auto flex flex-col items-center gap-1.5 py-1">
+                  <div className="my-auto flex w-full min-w-0 flex-col items-center gap-1 py-0.5 sm:gap-1.5 sm:py-1">
                     {/* Category Dots */}
-                    <div className="flex items-center justify-center gap-1.5">
-                      {list.slice(0, 4).map((event) => {
+                    <div className="flex items-center justify-center gap-1 sm:gap-1.5">
+                      {list.slice(0, 4).map((event, idx) => {
                         const tone = toneOf(event);
                         return (
                           <span
                             key={event.id}
-                            className="h-2 w-2 rounded-full ring-1 ring-white shadow-xs"
+                            className={`h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-white shadow-xs sm:h-2 sm:w-2 ${
+                              idx === 3 ? "hidden sm:block" : ""
+                            }`}
                             style={{ background: tone.dot }}
                             title={event.title}
                           />
@@ -233,7 +234,7 @@ export default function MonthGrid({ date, todayDate, events, onSelect, onOpenDay
                       })}
                       {list.length > 4 && (
                         <span
-                          className="h-1.5 w-1.5 rounded-full bg-ink/30"
+                          className="hidden h-1.5 w-1.5 shrink-0 rounded-full bg-ink/30 sm:block"
                           title={`+${list.length - 4} more`}
                         />
                       )}
@@ -241,7 +242,7 @@ export default function MonthGrid({ date, todayDate, events, onSelect, onOpenDay
 
                     {/* Category Pill / Count Badge */}
                     <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold transition ${
+                      className={`inline-block max-w-full whitespace-nowrap rounded-full px-1 py-0.5 text-center text-[8.5px] font-bold leading-[1.15] tracking-tight transition sm:px-2 sm:text-[11px] sm:font-semibold sm:tracking-normal ${
                         list.length === 1
                           ? `${toneOf(list[0]).bg} ${toneOf(list[0]).text}`
                           : "bg-ink/5 text-ink/75 group-hover:bg-brand-100 group-hover:text-brand-800"
@@ -253,7 +254,7 @@ export default function MonthGrid({ date, todayDate, events, onSelect, onOpenDay
                     </span>
                   </div>
                 ) : (
-                  <div className="h-5" />
+                  <div className="h-4 sm:h-5" />
                 )}
               </div>
             );

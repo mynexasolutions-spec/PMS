@@ -16,7 +16,7 @@ export default function WeekView({ date, todayDate, todos, onSelect }) {
         const items = todos.filter((todo) => todo.todoDate === day);
         const selected = day === date;
         return (
-          <section key={day} className={`min-h-[180px] rounded-xl border p-2 ${selected ? "border-brand-400 bg-[#eef8f0]" : "border-line bg-[#f6f9f7]"}`}>
+          <section key={day} className={`min-h-[88px] sm:min-h-[180px] rounded-xl border p-2 ${selected ? "border-brand-400 bg-[#eef8f0]" : "border-line bg-[#f6f9f7]"}`}>
             <button onClick={() => onSelect(day)} className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left hover:bg-white/70">
               <span className="text-[13px] text-muted">{weekdayShort.format(parseLocalDate(day))}</span>
               <strong

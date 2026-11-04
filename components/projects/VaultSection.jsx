@@ -369,32 +369,37 @@ function SecretModal({ initialKind = "env", projectId, projectName, secret, init
   return (
     <Modal
       size="wide"
-      icon={<Icon size={28} />}
+      compact
+      icon={<Icon size={22} className="sm:h-7 sm:w-7" />}
       eyebrow={`Project Storage Vault · ${projectName}`}
       title={secret ? `Edit ${secret.label}` : kind === "env" ? "Add a .env Configuration" : "Add Account Login / Credential"}
       subtitle="Encrypted with AES-256 before saving. Accessible to project members and admins."
       onClose={onClose}
     >
-      <form onSubmit={submit} autoComplete="off" className="grid gap-4">
+      <form onSubmit={submit} autoComplete="off" className="grid gap-3 sm:gap-4">
         {!secret && (
-          <div className="flex rounded-xl border border-line bg-[#f0f5f2] p-1 text-[13.5px] font-semibold w-fit">
+          <div className="grid w-full grid-cols-2 rounded-xl border border-line bg-[#f0f5f2] p-1 text-[12px] font-semibold sm:flex sm:w-fit sm:text-[13.5px]">
             <button
               type="button"
               onClick={() => setKind("env")}
-              className={`rounded-lg px-3.5 py-1.5 transition inline-flex items-center gap-1.5 ${
-                kind === "env" ? "bg-white text-ink shadow-xs" : "text-ink/65 hover:text-ink"
+              className={`inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 transition sm:px-3.5 ${
+                kind === "env" ? "bg-white font-bold text-ink shadow-xs" : "text-ink/65 hover:text-ink"
               }`}
             >
-              <FileCode2 size={15} /> .env Configuration File
+              <FileCode2 size={14} className="shrink-0 sm:h-[15px] sm:w-[15px]" />
+              <span className="sm:hidden">.env File</span>
+              <span className="hidden sm:inline">.env Configuration File</span>
             </button>
             <button
               type="button"
               onClick={() => setKind("credential")}
-              className={`rounded-lg px-3.5 py-1.5 transition inline-flex items-center gap-1.5 ${
-                kind === "credential" ? "bg-white text-ink shadow-xs" : "text-ink/65 hover:text-ink"
+              className={`inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 transition sm:px-3.5 ${
+                kind === "credential" ? "bg-white font-bold text-ink shadow-xs" : "text-ink/65 hover:text-ink"
               }`}
             >
-              <KeyRound size={15} /> Account Login / Credential
+              <KeyRound size={14} className="shrink-0 sm:h-[15px] sm:w-[15px]" />
+              <span className="sm:hidden">Account Login</span>
+              <span className="hidden sm:inline">Account Login / Credential</span>
             </button>
           </div>
         )}
@@ -414,13 +419,13 @@ function SecretModal({ initialKind = "env", projectId, projectName, secret, init
         {kind === "env" ? (
           <div className="grid gap-1.5">
             <div className="flex items-center justify-between">
-              <label htmlFor="env-contents" className="text-[13.5px] font-medium text-ink/80">
+              <label htmlFor="env-contents" className="text-[13px] sm:text-[13.5px] font-medium text-ink/80">
                 File contents
               </label>
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-[#f4fbf6] px-2.5 py-1 text-[12.5px] font-semibold text-brand-700 transition hover:bg-[#e6f6eb] hover:border-brand-400"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-[#f4fbf6] px-2.5 py-1 text-[12px] sm:text-[12.5px] font-semibold text-brand-700 transition hover:bg-[#e6f6eb] hover:border-brand-400"
               >
                 <Upload size={13} strokeWidth={2.2} /> Upload .env file
               </button>
@@ -453,11 +458,11 @@ function SecretModal({ initialKind = "env", projectId, projectName, secret, init
               <textarea
                 id="env-contents"
                 required
-                rows={10}
+                rows={6}
                 maxLength={20000}
                 spellCheck={false}
                 placeholder={"DATABASE_URL=postgres://...\nSECRET_KEY=...\n\n(Tip: Click 'Upload .env file' above or drop your .env file here)"}
-                className="w-full rounded-lg border border-line bg-white px-3 py-2 font-mono text-[13px] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+                className="w-full rounded-lg border border-line bg-white px-3 py-2 font-mono text-[12.5px] sm:text-[13px] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
                 value={text}
                 onChange={(event) => setText(event.target.value)}
               />
@@ -465,58 +470,58 @@ function SecretModal({ initialKind = "env", projectId, projectName, secret, init
           </div>
         ) : (
           <>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
               <label className="field">
                 Service / Platform
-                <input maxLength={80} placeholder="Hostinger, AWS, GoDaddy, cPanel..." value={fields.service} onChange={setField("service")} />
+                <input maxLength={80} placeholder="AWS, Hostinger..." value={fields.service} onChange={setField("service")} />
               </label>
               <label className="field">
                 Login URL / Link
                 <input type="url" maxLength={200} placeholder="https://..." value={fields.url} onChange={setField("url")} />
               </label>
               <label className="field">
-                Username or email
+                Username / Email
                 <input maxLength={200} autoComplete="off" value={fields.username} onChange={setField("username")} />
               </label>
               <label className="field">
-                Password / Secret Key
+                Password / Key
                 <span className="relative block">
                   <input
                     type={showPassword ? "text" : "password"}
                     maxLength={300}
                     autoComplete="new-password"
-                    className="pr-10"
+                    className="pr-9"
                     value={fields.password}
                     onChange={setField("password")}
                   />
                   <button
                     type="button"
-                    className="dots-btn absolute right-1.5 top-1/2 -translate-y-1/2"
+                    className="dots-btn absolute right-1 top-1/2 -translate-y-1/2"
                     onClick={() => setShowPassword((value) => !value)}
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
-                    {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>
                 </span>
               </label>
             </div>
             <label className="field">
               Notes / Extra Details
-              <textarea rows={3} maxLength={1000} placeholder="2FA details, SSH port, server IP, renewal info..." value={fields.notes} onChange={setField("notes")} />
+              <textarea rows={2} maxLength={1000} placeholder="2FA details, SSH port, server IP, renewal info..." value={fields.notes} onChange={setField("notes")} />
             </label>
           </>
         )}
 
         {error && (
-          <p role="alert" className="rounded-xl bg-[#fde4e4] px-4 py-2.5 text-[13.5px] font-medium text-[#b42323]">
+          <p role="alert" className="rounded-xl bg-[#fde4e4] px-4 py-2 text-[13px] font-medium text-[#b42323]">
             {error}
           </p>
         )}
-        <div className="flex justify-end gap-3">
-          <button type="button" className="btn-secondary" onClick={onClose}>
+        <div className="flex justify-end gap-2.5 pt-1">
+          <button type="button" className="btn-secondary h-10 px-4 text-[13.5px]" onClick={onClose}>
             Cancel
           </button>
-          <button className="btn-primary" disabled={busy}>
+          <button className="btn-primary h-10 px-4 text-[13.5px]" disabled={busy}>
             {busy ? "Saving..." : secret ? "Update Secret" : "Save to Project Vault"}
           </button>
         </div>
@@ -565,67 +570,74 @@ function ProjectStorageVaultList({ project, defaultKind = "all" }) {
   }, [allSecrets, kindFilter, query]);
 
   return (
-    <div className="space-y-[14px]">
+    <div className="space-y-3 sm:space-y-[14px]">
       {/* Header Banner */}
-      <section className="panel flex flex-wrap items-center justify-between gap-4 p-5">
+      <section className="panel flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3.5 sm:gap-4 p-4 sm:p-5">
         <div>
           <p className="eyebrow flex items-center gap-1.5 text-brand-700">
             <ShieldCheck size={15} /> Project Storage Vault
           </p>
-          <h2 className="mt-0.5 text-[21px] font-bold tracking-tight text-ink">
+          <h2 className="mt-0.5 text-[18px] sm:text-[21px] font-bold tracking-tight text-ink leading-snug">
             {project.name} — .env &amp; Credentials Vault
           </h2>
-          <p className="mt-1 text-[13.5px] text-muted">
+          <p className="mt-1 text-[12.5px] sm:text-[13.5px] text-muted leading-relaxed">
             Unlimited encrypted storage for this project&apos;s .env files, logins, and API keys. Accessible directly to all project members and admins.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-2.5">
           <button
             type="button"
-            className="btn-secondary h-10 px-4 text-[13.5px]"
+            className="btn-secondary h-9 sm:h-10 px-2.5 sm:px-4 text-[12px] sm:text-[13.5px] justify-center whitespace-nowrap"
             onClick={() => setModal({ kind: "env", secret: null, initial: null })}
           >
-            <FileCode2 size={16} className="text-brand-700" /> Add .env File
+            <FileCode2 size={15} className="text-brand-700 shrink-0" /> Add .env File
           </button>
           <button
             type="button"
-            className="btn-primary h-10 px-4 text-[13.5px]"
+            className="btn-primary h-9 sm:h-10 px-2.5 sm:px-4 text-[12px] sm:text-[13.5px] justify-center whitespace-nowrap"
             onClick={() => setModal({ kind: "credential", secret: null, initial: null })}
           >
-            <Plus size={16} /> Add Login / Credential
+            <Plus size={15} className="shrink-0" />
+            <span className="sm:hidden">Add Credential</span>
+            <span className="hidden sm:inline">Add Login / Credential</span>
           </button>
         </div>
       </section>
 
       {/* Filter Tabs & Search */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white p-3 shadow-xs">
-        <div className="flex rounded-xl border border-line bg-[#f0f5f2] p-1 text-[13.5px] font-semibold">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 rounded-2xl border border-line bg-white p-2.5 sm:p-3 shadow-xs">
+        <div className="grid w-full grid-cols-3 rounded-xl border border-line bg-[#f0f5f2] p-1 text-[11.5px] font-semibold sm:flex sm:w-auto sm:text-[13.5px]">
           <button
             type="button"
             onClick={() => setKindFilter("all")}
-            className={`rounded-lg px-3.5 py-1.5 transition ${
-              kindFilter === "all" ? "bg-white text-ink shadow-xs" : "text-ink/65 hover:text-ink"
+            className={`inline-flex items-center justify-center whitespace-nowrap rounded-lg px-2 py-1.5 transition sm:px-3.5 ${
+              kindFilter === "all" ? "bg-white font-bold text-ink shadow-xs" : "text-ink/65 hover:text-ink"
             }`}
           >
-            All Items ({allSecrets.length})
+            <span className="sm:hidden">All ({allSecrets.length})</span>
+            <span className="hidden sm:inline">All Items ({allSecrets.length})</span>
           </button>
           <button
             type="button"
             onClick={() => setKindFilter("env")}
-            className={`rounded-lg px-3.5 py-1.5 transition inline-flex items-center gap-1.5 ${
-              kindFilter === "env" ? "bg-white text-ink shadow-xs" : "text-ink/65 hover:text-ink"
+            className={`inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-lg px-2 py-1.5 transition sm:gap-1.5 sm:px-3.5 ${
+              kindFilter === "env" ? "bg-white font-bold text-ink shadow-xs" : "text-ink/65 hover:text-ink"
             }`}
           >
-            <FileCode2 size={15} /> .env Files ({envCount})
+            <FileCode2 size={13} className="shrink-0 sm:h-[15px] sm:w-[15px]" />
+            <span className="sm:hidden">.env ({envCount})</span>
+            <span className="hidden sm:inline">.env Files ({envCount})</span>
           </button>
           <button
             type="button"
             onClick={() => setKindFilter("credential")}
-            className={`rounded-lg px-3.5 py-1.5 transition inline-flex items-center gap-1.5 ${
-              kindFilter === "credential" ? "bg-white text-ink shadow-xs" : "text-ink/65 hover:text-ink"
+            className={`inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-lg px-2 py-1.5 transition sm:gap-1.5 sm:px-3.5 ${
+              kindFilter === "credential" ? "bg-white font-bold text-ink shadow-xs" : "text-ink/65 hover:text-ink"
             }`}
           >
-            <KeyRound size={15} /> Account Logins ({credCount})
+            <KeyRound size={13} className="shrink-0 sm:h-[15px] sm:w-[15px]" />
+            <span className="sm:hidden">Logins ({credCount})</span>
+            <span className="hidden sm:inline">Account Logins ({credCount})</span>
           </button>
         </div>
 
@@ -645,31 +657,31 @@ function ProjectStorageVaultList({ project, defaultKind = "all" }) {
       {secrets === null ? (
         <div className="empty-view">Loading project vault...</div>
       ) : filtered.length === 0 ? (
-        <div className="panel py-14 px-6 text-center text-muted">
-          <KeyRound size={32} className="mx-auto text-ink/30 mb-2" />
-          <p className="text-[16px] font-bold text-ink">
+        <div className="panel py-10 px-4 sm:py-14 sm:px-6 text-center text-muted">
+          <KeyRound size={30} className="mx-auto text-ink/30 mb-2" />
+          <p className="text-[15px] sm:text-[16px] font-bold text-ink">
             {allSecrets.length === 0
               ? `No .env files or credentials stored for ${project.name} yet.`
               : "No matching items found in this filter."}
           </p>
-          <p className="mt-1 text-[13.5px] max-w-md mx-auto">
+          <p className="mt-1 text-[12.5px] sm:text-[13.5px] max-w-md mx-auto">
             Project members and admins can store unlimited .env configurations (Development, Staging, Production) and service logins here.
           </p>
           {allSecrets.length === 0 && (
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5">
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-2.5">
               <button
                 type="button"
-                className="btn-secondary"
+                className="btn-secondary h-9 sm:h-10 px-2.5 sm:px-4 text-[12px] sm:text-[13.5px] justify-center whitespace-nowrap"
                 onClick={() => setModal({ kind: "env", secret: null, initial: null })}
               >
-                <FileCode2 size={16} /> Store First .env File
+                <FileCode2 size={15} className="shrink-0" /> Store First .env
               </button>
               <button
                 type="button"
-                className="btn-primary"
+                className="btn-primary h-9 sm:h-10 px-2.5 sm:px-4 text-[12px] sm:text-[13.5px] justify-center whitespace-nowrap"
                 onClick={() => setModal({ kind: "credential", secret: null, initial: null })}
               >
-                <Plus size={16} /> Store First Credential
+                <Plus size={15} className="shrink-0" /> Store Credential
               </button>
             </div>
           )}

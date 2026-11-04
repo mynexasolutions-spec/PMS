@@ -18,7 +18,11 @@ export async function GET(request) {
       .map((p) => p.id),
   );
 
-  const tasks = getTasks().filter((t) => myProjectIds.has(t.projectId));
+  const tasks = getTasks().filter((t) =>
+    t.projectId == null
+      ? t.createdBy === auth.user.id || t.assigneeId === auth.user.id
+      : myProjectIds.has(t.projectId),
+  );
   return Response.json({ tasks });
 }
 
@@ -34,10 +38,13 @@ export async function POST(request) {
   if (!TASK_TYPES.includes(body.type)) return fail("Invalid task type.");
   if (!TASK_STATUSES.includes(body.status)) return fail("Invalid task status.");
   if (!PRIORITIES.includes(body.priority)) return fail("Invalid priority.");
-  if (!Number.isInteger(body.projectId)) return fail("A project is required.");
+  if (body.projectId != null && !Number.isInteger(body.projectId)) return fail("Invalid project.");
   if (body.parentId != null && !Number.isInteger(body.parentId)) return fail("Invalid parent task.");
   // Anyone can assign a task to anyone on the team (only active team members, though).
   if (body.assigneeId != null && !(Number.isInteger(body.assigneeId) && getUser(body.assigneeId)?.active)) return fail("Choose an active team member to assign this to.");
+
+  const projectId = body.projectId ?? null;
+  const assigneeId = projectId == null ? (body.assigneeId ?? auth.user.id) : (body.assigneeId ?? null);
 
   try {
     const task = createTask({
@@ -46,9 +53,9 @@ export async function POST(request) {
       type: body.type,
       status: body.status,
       priority: body.priority,
-      projectId: body.projectId,
+      projectId,
       parentId: body.parentId ?? null,
-      assigneeId: body.assigneeId ?? null,
+      assigneeId,
       createdBy: auth.user.id,
       startDate: typeof body.startDate === "string" ? body.startDate : null,
       dueAt: typeof body.dueAt === "string" ? body.dueAt : null,
@@ -56,13 +63,13 @@ export async function POST(request) {
       loggedHours: Number(body.loggedHours) >= 0 ? Number(body.loggedHours) : 0,
       blockerReason: typeof body.blockerReason === "string" ? body.blockerReason.trim() : null,
     });
-    if (body.assigneeId) {
+    if (assigneeId && Number(assigneeId) !== auth.user.id) {
       try {
         createNotification({
-          userId: Number(body.assigneeId),
+          userId: Number(assigneeId),
           title: "New Task Assigned",
           message: `${auth.user.name} assigned you to task "${task.issueKey}: ${task.title}"`,
-          link: `/projects/${task.projectId}`,
+          link: task.projectId ? `/projects/${task.projectId}` : "/",
         });
       } catch (err) {
         console.error("Failed to create notification:", err);

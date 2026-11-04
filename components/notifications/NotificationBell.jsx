@@ -135,7 +135,7 @@ export default function NotificationBell() {
 
       {open && (
         <div
-          className="absolute right-0 top-full mt-2 z-50 w-[330px] sm:w-[380px] rounded-2xl border border-line bg-white shadow-[0_20px_50px_rgba(16,60,35,0.22)] overflow-hidden"
+          className="fixed inset-x-3.5 top-[66px] sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 z-50 sm:w-[380px] max-h-[80dvh] flex flex-col rounded-2xl border border-line bg-white shadow-[0_20px_50px_rgba(16,60,35,0.22)] overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}

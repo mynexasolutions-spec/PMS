@@ -1,13 +1,28 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ChevronDown, FileText, Folder, LayoutGrid, List, Maximize2, Minimize2, Paperclip, Plus, Save, Search, X, Zap } from "lucide-react";
+import {
+  ChevronDown,
+  FileText,
+  Folder,
+  LayoutGrid,
+  List,
+  Maximize2,
+  Minimize2,
+  Paperclip,
+  Plus,
+  Save,
+  Search,
+  X,
+  Zap,
+} from "lucide-react";
 import { useApp } from "@/components/AppProvider";
 import Dropdown from "@/components/ui/Dropdown";
 import { useCloseOnOutsideClick } from "@/components/ui/useCloseOnOutsideClick";
 import { NOTE_TAGS } from "@/lib/constants";
 import { longDate, parseLocalDate } from "@/lib/datetime";
 import NoteCard from "./NoteCard";
+import NoteDetailModal from "./NoteDetailModal";
 import RichEditor from "./RichEditor";
 import { TagChip, noteTags } from "./tags";
 import { TEMPLATES } from "./templates";
@@ -91,7 +106,7 @@ function TemplateMenu({ onPick }) {
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
-        className="px-2 py-1 text-[14px] font-semibold text-brand-700 hover:underline"
+        className="px-2 py-1 text-[13px] sm:text-[14px] font-semibold text-brand-700 hover:underline"
         onClick={(event) => {
           event.stopPropagation();
           setOpen((isOpen) => !isOpen);
@@ -100,9 +115,16 @@ function TemplateMenu({ onPick }) {
         Use template
       </button>
       {open && (
-        <div className="menu-popover">
+        <div className="menu-popover right-0 z-50">
           {TEMPLATES.map((template) => (
-            <button key={template.id} onClick={() => onPick(template)}>
+            <button
+              key={template.id}
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onPick(template);
+              }}
+            >
               <template.Icon size={16} /> {template.name}
             </button>
           ))}
@@ -113,12 +135,14 @@ function TemplateMenu({ onPick }) {
 }
 
 export default function NotesView() {
-  const { notes, projects, todayDate, notify, createNote, updateNote, removeAttachment } = useApp();
+  const { notes, projects, todayDate, notify, createNote, updateNote, deleteNote, removeAttachment } = useApp();
   const [form, setForm] = useState(blank);
   const [files, setFiles] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [mobileFormOpen, setMobileFormOpen] = useState(false);
+  const [selectedNoteId, setSelectedNoteId] = useState(null);
   const [search, setSearch] = useState("");
   const [projectFilter, setProjectFilter] = useState("all");
   const [tagFilter, setTagFilter] = useState("all");
@@ -128,6 +152,7 @@ export default function NotesView() {
   const set = (patch) => setForm((current) => ({ ...current, ...patch }));
 
   const editing = notes.find((note) => note.id === editingId);
+  const selectedNote = notes.find((note) => note.id === selectedNoteId) || null;
   const slotsLeft = MAX_FILES - (editing?.attachments.length ?? 0) - files.length;
 
   const needle = search.trim().toLowerCase();
@@ -139,14 +164,18 @@ export default function NotesView() {
   );
 
   const focusForm = () => {
-    titleRef.current?.focus();
-    titleRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setMobileFormOpen(true);
+    setTimeout(() => {
+      titleRef.current?.focus();
+      titleRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 60);
   };
 
   function reset() {
     setForm(blank);
     setFiles([]);
     setEditingId(null);
+    setMobileFormOpen(false);
   }
 
   function startEdit(note) {
@@ -157,11 +186,12 @@ export default function NotesView() {
   }
 
   function applyTemplate(template) {
+    const formattedDate = templateDate.format(parseLocalDate(todayDate));
     setEditingId(null);
     setFiles([]);
     setForm((current) => ({
-      title: `${template.title} – ${templateDate.format(parseLocalDate(todayDate))}`,
-      content: template.content,
+      title: `${template.title} – ${formattedDate}`,
+      content: template.content.replace(/\{\{DATE\}\}/g, formattedDate),
       tag: template.tag,
       projectId: current.projectId,
     }));
@@ -194,40 +224,98 @@ export default function NotesView() {
     if (ok) reset();
   }
 
-  const chipBase = "inline-flex h-[38px] items-center gap-1.5 rounded-lg px-4 text-[14px] font-medium transition";
-  const toggleBtn = "grid h-[46px] w-[50px] place-items-center transition";
+  const chipBase = "inline-flex h-[36px] items-center gap-1.5 rounded-lg px-3.5 text-[13.5px] font-medium transition";
+  const toggleBtn = "grid h-9 w-9 sm:h-[44px] sm:w-[46px] place-items-center transition";
+
+  const projectOptions = [
+    { value: "all", label: "All projects" },
+    ...projects.map((project) => ({ value: project.id, label: project.name })),
+  ];
+  const tagOptions = [
+    { value: "all", label: "All tags" },
+    ...NOTE_TAGS.map((id) => ({ value: id, label: noteTags[id].label })),
+  ];
 
   return (
-    <div className="px-5 pb-8 md:px-[34px]">
-      <header className="relative min-h-[150px] overflow-hidden rounded-2xl pt-6">
+    <div className="px-3.5 pb-8 pt-3.5 sm:px-5 sm:pt-6 md:px-[34px]">
+      <header className="relative overflow-hidden rounded-2xl xl:min-h-[150px] xl:pt-2">
         <HeaderArt />
         <div className="relative">
-          <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-ink/70">{longDate(todayDate, true)}</p>
-          <h1 className="mt-2 text-[44px] font-extrabold leading-none tracking-tight md:text-[50px]">
-            My <span className="text-brand-600">notes</span>
-          </h1>
-          <p className="mt-3 max-w-[560px] text-[16px] text-muted">Your private workspace for meeting notes, ideas, requirements, and useful links.</p>
+          <p className="text-[11px] sm:text-[13px] font-semibold uppercase tracking-[0.16em] sm:tracking-[0.18em] text-ink/70">
+            {longDate(todayDate, true)}
+          </p>
+          <div className="mt-1 sm:mt-2 flex items-center justify-between gap-2.5">
+            <h1 className="text-[26px] sm:text-[42px] md:text-[50px] font-extrabold leading-none tracking-tight">
+              My <span className="text-brand-600">notes</span>
+            </h1>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (mobileFormOpen && !editingId) {
+                  setMobileFormOpen(false);
+                } else {
+                  setEditingId(null);
+                  setForm(blank);
+                  focusForm();
+                }
+              }}
+              className="btn-primary h-8 px-3 text-[12px] xl:hidden whitespace-nowrap"
+            >
+              {mobileFormOpen ? (
+                <>
+                  <X size={14} /> Close editor
+                </>
+              ) : (
+                <>
+                  <Plus size={15} /> New note
+                </>
+              )}
+            </button>
+          </div>
+          <p className="mt-1.5 sm:mt-3 max-w-[560px] text-[12.5px] sm:text-[16px] text-muted">
+            Your private workspace for meeting notes, ideas, requirements, and useful links.
+          </p>
         </div>
       </header>
 
-      <div className={`mt-4 grid items-start gap-5 ${expanded ? "grid-cols-1" : "xl:grid-cols-[minmax(0,440px)_minmax(0,1fr)]"}`}>
-        <form onSubmit={submit} className="panel p-5">
-          <div className="flex items-center gap-3">
-            <span className="grid h-[44px] w-[44px] place-items-center rounded-full bg-[#e3f5e8] text-brand-700">
-              <FileText size={22} />
+      <div className={`mt-3.5 sm:mt-4 grid grid-cols-[minmax(0,1fr)] items-start gap-4 sm:gap-5 ${expanded ? "" : "xl:grid-cols-[minmax(0,440px)_minmax(0,1fr)]"}`}>
+        {/* Note Editor Form: Collapsible on Mobile (<xl), Always Visible on Laptop (xl:) */}
+        <form
+          onSubmit={submit}
+          className={`panel p-4 sm:p-5 ${mobileFormOpen || editingId ? "block" : "hidden xl:block"}`}
+        >
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <span className="grid h-9 w-9 sm:h-[44px] sm:w-[44px] shrink-0 place-items-center rounded-full bg-[#e3f5e8] text-brand-700">
+              <FileText size={19} className="sm:h-[22px] sm:w-[22px]" />
             </span>
-            <h2 className="flex-1 text-[19px] font-bold tracking-tight">{editingId ? "Edit note" : "Create a new note"}</h2>
-            <button type="button" className="icon-btn h-[40px] w-[40px] !border-transparent !bg-[#f1f6f2]" onClick={() => setExpanded((on) => !on)} aria-label={expanded ? "Shrink editor" : "Expand editor"}>
+            <h2 className="flex-1 text-[17px] sm:text-[19px] font-bold tracking-tight">
+              {editingId ? "Edit note" : "Create a new note"}
+            </h2>
+            <button
+              type="button"
+              className="hidden xl:grid icon-btn h-[40px] w-[40px] !border-transparent !bg-[#f1f6f2]"
+              onClick={() => setExpanded((on) => !on)}
+              aria-label={expanded ? "Shrink editor" : "Expand editor"}
+            >
               {expanded ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+            </button>
+            <button
+              type="button"
+              className="grid xl:hidden h-8 w-8 place-items-center rounded-lg bg-[#f1f6f2] text-ink/70"
+              onClick={reset}
+              aria-label="Close editor"
+            >
+              <X size={16} />
             </button>
           </div>
 
-          <div className="mt-5">
+          <div className="mt-4 sm:mt-5">
             <div className="flex items-baseline justify-between">
-              <label htmlFor="note-title" className="text-[15px] font-semibold">
+              <label htmlFor="note-title" className="text-[14px] sm:text-[15px] font-semibold">
                 Title
               </label>
-              <span className="text-[13px] text-muted">
+              <span className="text-[12px] sm:text-[13px] text-muted">
                 {form.title.length}/{MAX_TITLE}
               </span>
             </div>
@@ -239,37 +327,46 @@ export default function NotesView() {
               value={form.title}
               onChange={(event) => set({ title: event.target.value })}
               placeholder="e.g. Sprint planning notes..."
-              className="mt-2 h-[48px] w-full rounded-xl border border-line bg-white px-4 text-[15px] outline-none placeholder:text-muted focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+              className="mt-1.5 sm:mt-2 h-[42px] sm:h-[48px] w-full rounded-xl border border-line bg-white px-3.5 sm:px-4 text-[14px] sm:text-[15px] outline-none placeholder:text-muted focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
             />
           </div>
 
-          <div className="mt-4">
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              <p className="text-[15px] font-semibold">Content</p>
-              {/* Only appears once a template (or an existing note) has set a tag; it can be cleared here. */}
+          <div className="mt-3.5 sm:mt-4">
+            <div className="mb-1.5 sm:mb-2 flex flex-wrap items-center gap-2">
+              <p className="text-[14px] sm:text-[15px] font-semibold">Content</p>
               {form.tag && (
                 <span className="inline-flex items-center gap-1">
                   <TagChip tag={form.tag} className="!py-0.5" />
-                  <button type="button" className="dots-btn !h-6 !w-6" aria-label="Remove tag" onClick={() => set({ tag: null })}>
+                  <button
+                    type="button"
+                    className="dots-btn !h-6 !w-6"
+                    aria-label="Remove tag"
+                    onClick={() => set({ tag: null })}
+                  >
                     <X size={13} />
                   </button>
                 </span>
               )}
             </div>
-            <RichEditor value={form.content} onChange={(content) => set({ content })} tall={expanded} placeholder="Write your meeting notes, requirements or links here..." />
+            <RichEditor
+              value={form.content}
+              onChange={(content) => set({ content })}
+              tall={expanded}
+              placeholder="Write your meeting notes, requirements or links here..."
+            />
           </div>
 
-          <div className="mt-4">
-            <label htmlFor="note-project" className="mb-2 block text-[15px] font-semibold">
+          <div className="mt-3.5 sm:mt-4">
+            <label htmlFor="note-project" className="mb-1.5 sm:mb-2 block text-[14px] sm:text-[15px] font-semibold">
               Add to project <span className="font-normal text-muted">(optional)</span>
             </label>
             <div className="relative">
-              <Folder size={19} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink/70" />
+              <Folder size={18} className="pointer-events-none absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 text-ink/70" />
               <select
                 id="note-project"
                 value={form.projectId ?? ""}
                 onChange={(event) => set({ projectId: event.target.value ? Number(event.target.value) : null })}
-                className="h-[48px] w-full cursor-pointer appearance-none rounded-xl border border-line bg-white pl-12 pr-10 text-[15px] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+                className="h-[42px] sm:h-[48px] w-full cursor-pointer appearance-none rounded-xl border border-line bg-white pl-10 sm:pl-12 pr-10 text-[14px] sm:text-[15px] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
               >
                 <option value="">Select a project</option>
                 {projects.map((project) => (
@@ -278,26 +375,42 @@ export default function NotesView() {
                   </option>
                 ))}
               </select>
-              <ChevronDown size={18} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2" />
+              <ChevronDown size={17} className="pointer-events-none absolute right-3.5 sm:right-4 top-1/2 -translate-y-1/2" />
             </div>
           </div>
 
           {(editing?.attachments.length > 0 || files.length > 0) && (
-            <ul className="mt-4 flex flex-wrap gap-2">
+            <ul className="mt-3.5 sm:mt-4 flex flex-wrap gap-2">
               {editing?.attachments.map((file) => (
-                <li key={file.id} className="inline-flex items-center gap-2 rounded-lg bg-[#f3f7f4] py-1.5 pl-3 pr-1.5 text-[13px] font-medium">
+                <li
+                  key={file.id}
+                  className="inline-flex items-center gap-2 rounded-lg bg-[#f3f7f4] py-1.5 pl-3 pr-1.5 text-[12.5px] sm:text-[13px] font-medium"
+                >
                   <Paperclip size={14} className="shrink-0" />
                   <span className="break-all">{file.filename}</span>
-                  <button type="button" className="dots-btn !h-6 !w-6" aria-label={`Remove ${file.filename}`} onClick={() => removeAttachment(editing.id, file.id)}>
+                  <button
+                    type="button"
+                    className="dots-btn !h-6 !w-6"
+                    aria-label={`Remove ${file.filename}`}
+                    onClick={() => removeAttachment(editing.id, file.id)}
+                  >
                     <X size={14} />
                   </button>
                 </li>
               ))}
               {files.map((file, index) => (
-                <li key={`${file.name}-${index}`} className="inline-flex items-center gap-2 rounded-lg bg-[#e8f6ec] py-1.5 pl-3 pr-1.5 text-[13px] font-medium text-brand-800">
+                <li
+                  key={`${file.name}-${index}`}
+                  className="inline-flex items-center gap-2 rounded-lg bg-[#e8f6ec] py-1.5 pl-3 pr-1.5 text-[12.5px] sm:text-[13px] font-medium text-brand-800"
+                >
                   <Paperclip size={14} className="shrink-0" />
                   <span className="break-all">{file.name}</span>
-                  <button type="button" className="dots-btn !h-6 !w-6" aria-label={`Remove ${file.name}`} onClick={() => setFiles((current) => current.filter((_, i) => i !== index))}>
+                  <button
+                    type="button"
+                    className="dots-btn !h-6 !w-6"
+                    aria-label={`Remove ${file.name}`}
+                    onClick={() => setFiles((current) => current.filter((_, i) => i !== index))}
+                  >
                     <X size={14} />
                   </button>
                 </li>
@@ -305,7 +418,7 @@ export default function NotesView() {
             </ul>
           )}
 
-          <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-line pt-4">
+          <div className="mt-4 sm:mt-5 flex flex-wrap items-center gap-2 sm:gap-3 border-t border-line pt-3.5 sm:pt-4">
             <input
               ref={fileRef}
               type="file"
@@ -317,54 +430,107 @@ export default function NotesView() {
                 event.target.value = "";
               }}
             />
-            <button type="button" className="btn-secondary h-[46px] px-4" onClick={() => fileRef.current?.click()} disabled={slotsLeft <= 0}>
-              <Paperclip size={18} /> Add attachment
+            <button
+              type="button"
+              className="btn-secondary h-9 sm:h-[44px] px-3 sm:px-4 text-[12.5px] sm:text-[14px]"
+              onClick={() => fileRef.current?.click()}
+              disabled={slotsLeft <= 0}
+            >
+              <Paperclip size={16} /> Attach
             </button>
-            <button type="button" className="btn-secondary ml-auto h-[46px] px-6" onClick={reset}>
+            <button
+              type="button"
+              className="btn-secondary ml-auto h-9 sm:h-[44px] px-4 sm:px-5 text-[12.5px] sm:text-[14px]"
+              onClick={reset}
+            >
               Cancel
             </button>
-            <button className="btn-primary h-[46px] px-6" disabled={saving}>
-              <Save size={18} /> {saving ? "Saving..." : editingId ? "Update note" : "Save note"}
+            <button className="btn-primary h-9 sm:h-[44px] px-4 sm:px-5 text-[12.5px] sm:text-[14px]" disabled={saving}>
+              <Save size={16} /> {saving ? "Saving..." : editingId ? "Update note" : "Save note"}
             </button>
           </div>
         </form>
 
-        <div className="min-w-0 space-y-5">
-          <section className="panel p-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <label className="flex h-[46px] min-w-[200px] flex-1 items-center gap-2.5 rounded-xl border border-line bg-white px-4">
-                <Search size={19} className="shrink-0 text-ink/70" />
-                <input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search notes..."
-                  className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted"
+        <div className="min-w-0 space-y-4 sm:space-y-5">
+          <section className="panel p-3.5 sm:p-4">
+            {/* Toolbar: Search + View Toggle + Filter Dropdowns */}
+            <div className="space-y-2 sm:space-y-0 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5">
+              <div className="flex items-center gap-2 sm:flex-1 sm:min-w-[200px]">
+                <label className="flex h-9 sm:h-[44px] flex-1 items-center gap-2 rounded-xl border border-line bg-white px-3 sm:px-4">
+                  <Search size={16} className="shrink-0 text-ink/60 sm:h-[18px] sm:w-[18px]" />
+                  <input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search notes..."
+                    className="min-w-0 flex-1 bg-transparent text-[13.5px] sm:text-[15px] outline-none placeholder:text-muted"
+                  />
+                </label>
+
+                <div className="flex shrink-0 overflow-hidden rounded-xl border border-line bg-white sm:hidden">
+                  <button
+                    type="button"
+                    className={`${toggleBtn} ${view === "grid" ? "bg-brand-700 text-white" : "text-ink/60 hover:bg-[#f6faf7]"}`}
+                    onClick={() => setView("grid")}
+                    aria-label="Grid view"
+                    aria-pressed={view === "grid"}
+                  >
+                    <LayoutGrid size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className={`${toggleBtn} ${view === "list" ? "bg-brand-700 text-white" : "text-ink/60 hover:bg-[#f6faf7]"}`}
+                    onClick={() => setView("list")}
+                    aria-label="List view"
+                    aria-pressed={view === "list"}
+                  >
+                    <List size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {/* 2-Column Dropdowns on Mobile, Inline on Desktop */}
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2.5">
+                <Dropdown
+                  value={projectFilter}
+                  options={projectOptions}
+                  onChange={setProjectFilter}
+                  className="w-full justify-between !h-9 !px-3 !text-[12.5px] sm:w-auto sm:!h-[44px] sm:!text-[14px]"
                 />
-              </label>
-              <Dropdown
-                value={projectFilter}
-                options={[{ value: "all", label: "All projects" }, ...projects.map((project) => ({ value: project.id, label: project.name }))]}
-                onChange={setProjectFilter}
-                className="!h-[46px]"
-              />
-              <Dropdown
-                value={tagFilter}
-                options={[{ value: "all", label: "All tags" }, ...NOTE_TAGS.map((id) => ({ value: id, label: noteTags[id].label }))]}
-                onChange={setTagFilter}
-                className="!h-[46px]"
-              />
-              <div className="flex overflow-hidden rounded-xl border border-line bg-white">
-                <button className={`${toggleBtn} ${view === "grid" ? "bg-brand-700 text-white" : "text-ink/60 hover:bg-[#f6faf7]"}`} onClick={() => setView("grid")} aria-label="Grid view" aria-pressed={view === "grid"}>
-                  <LayoutGrid size={19} />
+                <Dropdown
+                  value={tagFilter}
+                  options={tagOptions}
+                  onChange={setTagFilter}
+                  align="right"
+                  className="w-full justify-between !h-9 !px-3 !text-[12.5px] sm:w-auto sm:!h-[44px] sm:!text-[14px]"
+                />
+              </div>
+
+              <div className="hidden sm:flex overflow-hidden rounded-xl border border-line bg-white">
+                <button
+                  type="button"
+                  className={`${toggleBtn} ${view === "grid" ? "bg-brand-700 text-white" : "text-ink/60 hover:bg-[#f6faf7]"}`}
+                  onClick={() => setView("grid")}
+                  aria-label="Grid view"
+                  aria-pressed={view === "grid"}
+                >
+                  <LayoutGrid size={18} />
                 </button>
-                <button className={`${toggleBtn} ${view === "list" ? "bg-brand-700 text-white" : "text-ink/60 hover:bg-[#f6faf7]"}`} onClick={() => setView("list")} aria-label="List view" aria-pressed={view === "list"}>
-                  <List size={19} />
+                <button
+                  type="button"
+                  className={`${toggleBtn} ${view === "list" ? "bg-brand-700 text-white" : "text-ink/60 hover:bg-[#f6faf7]"}`}
+                  onClick={() => setView("list")}
+                  aria-label="List view"
+                  aria-pressed={view === "list"}
+                >
+                  <List size={18} />
                 </button>
               </div>
             </div>
 
-            <div className="mt-3.5 flex flex-wrap gap-2">
+            {/* Tag Chips on Desktop (sm:) */}
+            <div className="mt-3 hidden sm:flex sm:flex-wrap sm:gap-2">
               <button
+                type="button"
                 onClick={() => setTagFilter("all")}
                 className={`${chipBase} ${tagFilter === "all" ? "bg-brand-700 text-white shadow-md" : "bg-[#eef3ef] text-ink/80 hover:bg-[#e3ece6]"}`}
               >
@@ -375,6 +541,7 @@ export default function NotesView() {
                 return (
                   <button
                     key={id}
+                    type="button"
                     onClick={() => setTagFilter(tagFilter === id ? "all" : id)}
                     className={`${chipBase} ${meta.chip} ${tagFilter === id ? "ring-2 ring-current/50" : "hover:brightness-95"}`}
                   >
@@ -385,20 +552,35 @@ export default function NotesView() {
               })}
             </div>
 
-            <div className="mt-4">
+            <div className="mt-3.5 sm:mt-4">
               {notes.length === 0 ? (
-                <div className="rounded-2xl border border-line bg-white/60 px-6 py-9 text-center">
+                <div className="rounded-2xl border border-line bg-white/60 px-5 py-8 text-center">
                   <EmptyArt />
-                  <h3 className="mt-2 text-[22px] font-bold tracking-tight">No notes yet</h3>
-                  <p className="mx-auto mt-1 max-w-[380px] text-[15px] text-muted">Start capturing your meeting notes, requirements, ideas and important links.</p>
-                  <button className="btn-primary mt-5 h-[50px] px-7 text-[15.5px]" onClick={focusForm}>
-                    <Plus size={19} /> Create your first note
+                  <h3 className="mt-2 text-[19px] sm:text-[22px] font-bold tracking-tight">No notes yet</h3>
+                  <p className="mx-auto mt-1 max-w-[380px] text-[13.5px] sm:text-[15px] text-muted">
+                    Start capturing your meeting notes, requirements, ideas and important links.
+                  </p>
+                  <button className="btn-primary mt-4 h-10 sm:h-[46px] px-5 sm:px-6 text-[14px]" onClick={focusForm}>
+                    <Plus size={18} /> Create your first note
                   </button>
                 </div>
               ) : (
-                <div className={`grid gap-4 ${view === "grid" ? (expanded ? "sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4" : "md:grid-cols-2") : "grid-cols-1"}`}>
+                <div
+                  className={`grid grid-cols-[minmax(0,1fr)] gap-3 sm:gap-4 ${
+                    view === "grid"
+                      ? expanded
+                        ? "sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4"
+                        : "sm:grid-cols-2"
+                      : ""
+                  }`}
+                >
                   {shown.map((note) => (
-                    <NoteCard key={note.id} note={note} onEdit={startEdit} />
+                    <NoteCard
+                      key={note.id}
+                      note={note}
+                      onEdit={startEdit}
+                      onSelect={(n) => setSelectedNoteId(n.id)}
+                    />
                   ))}
                   {!shown.length && <div className="empty-view col-span-full">No notes match your filters.</div>}
                 </div>
@@ -406,25 +588,34 @@ export default function NotesView() {
             </div>
           </section>
 
-          <section className="panel p-4">
-            <div className="flex items-center gap-2.5 px-1">
-              <Zap size={20} className="text-[#f0a020]" fill="currentColor" />
-              <h2 className="text-[18px] font-bold tracking-tight">Quick templates</h2>
+          <section className="panel p-3.5 sm:p-4">
+            <div className="flex items-center gap-2 px-1">
+              <Zap size={18} className="text-[#f0a020] sm:h-5 sm:w-5" fill="currentColor" />
+              <h2 className="text-[16.5px] sm:text-[18px] font-bold tracking-tight">Quick templates</h2>
               <TemplateMenu onPick={applyTemplate} />
             </div>
-            <div className={`mt-3.5 grid gap-3 sm:grid-cols-2 ${expanded ? "lg:grid-cols-4" : "2xl:grid-cols-4"}`}>
+            <div className={`mt-3 grid grid-cols-2 gap-2.5 sm:gap-3 ${expanded ? "lg:grid-cols-4" : "2xl:grid-cols-4"}`}>
               {TEMPLATES.map((template) => (
-                <div key={template.id} className="flex flex-col rounded-xl border border-line bg-white p-3.5 shadow-[0_1px_3px_rgba(16,60,35,0.06)]">
-                  <div className="flex items-start gap-3">
-                    <span className={`grid h-[38px] w-[38px] shrink-0 place-items-center rounded-lg ${template.tone.tile}`}>
-                      <template.Icon size={20} />
+                <div
+                  key={template.id}
+                  className="flex flex-col justify-between rounded-xl border border-line bg-white p-3 sm:p-3.5 shadow-[0_1px_3px_rgba(16,60,35,0.06)]"
+                >
+                  <div className="flex flex-col sm:flex-row items-start gap-2 sm:gap-3">
+                    <span className={`grid h-8 w-8 sm:h-[38px] sm:w-[38px] shrink-0 place-items-center rounded-lg ${template.tone.tile}`}>
+                      <template.Icon size={17} className="sm:h-5 sm:w-5" />
                     </span>
                     <div className="min-w-0">
-                      <p className="text-[15px] font-bold leading-tight">{template.name}</p>
-                      <p className="mt-0.5 text-[12.5px] leading-snug text-muted">{template.description}</p>
+                      <p className="text-[13px] sm:text-[15px] font-bold leading-tight">{template.name}</p>
+                      <p className="mt-0.5 text-[11px] sm:text-[12.5px] leading-snug text-muted line-clamp-2">
+                        {template.description}
+                      </p>
                     </div>
                   </div>
-                  <button type="button" onClick={() => applyTemplate(template)} className={`mt-3.5 h-[38px] rounded-lg text-[14px] font-semibold transition ${template.tone.button}`}>
+                  <button
+                    type="button"
+                    onClick={() => applyTemplate(template)}
+                    className={`mt-2.5 sm:mt-3.5 h-8 sm:h-[38px] rounded-lg text-[12px] sm:text-[14px] font-semibold transition ${template.tone.button}`}
+                  >
                     Use template
                   </button>
                 </div>
@@ -433,6 +624,16 @@ export default function NotesView() {
           </section>
         </div>
       </div>
+
+      {/* Click-to-View Note Detail Modal (Mobile & Laptop) */}
+      {selectedNote && (
+        <NoteDetailModal
+          note={selectedNote}
+          onClose={() => setSelectedNoteId(null)}
+          onEdit={startEdit}
+          onDelete={deleteNote}
+        />
+      )}
     </div>
   );
 }

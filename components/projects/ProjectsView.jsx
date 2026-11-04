@@ -88,27 +88,27 @@ function useProjectStats() {
 function SummaryCard({ tint, tile, icon, label, value, foot }) {
   return (
     <div
-      className="relative flex flex-col justify-between rounded-2xl border border-line p-5 shadow-card transition-all hover:shadow-md"
+      className="relative flex flex-col justify-between min-w-0 rounded-2xl border border-line p-3.5 sm:p-5 shadow-card transition-all hover:shadow-md"
       style={{ background: tint }}
     >
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-1.5 sm:gap-2">
         <div
-          className="grid h-12 w-12 shrink-0 place-items-center rounded-xl shadow-[0_4px_12px_-2px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.8)]"
+          className="grid h-9 w-9 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-xl shadow-[0_4px_12px_-2px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.8)]"
           style={{ background: tile }}
         >
           {icon}
         </div>
         {foot && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-white/85 px-2.5 py-1 text-[11.5px] font-semibold text-brand-700 shadow-sm border border-brand-200/60 backdrop-blur-xs">
-            <ArrowUp size={11} strokeWidth={2.4} className="shrink-0 text-brand-600" />
+          <span className="inline-flex items-center gap-0.5 sm:gap-1 rounded-full bg-white/85 px-2 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-[11.5px] font-semibold text-brand-700 shadow-sm border border-brand-200/60 backdrop-blur-xs whitespace-nowrap">
+            <ArrowUp size={10} strokeWidth={2.4} className="shrink-0 text-brand-600 sm:h-[11px] sm:w-[11px]" />
             {foot}
           </span>
         )}
       </div>
 
-      <div className="mt-4">
-        <p className="text-[30px] font-extrabold leading-none tracking-tight text-ink">{value}</p>
-        <p className="mt-1.5 text-[14px] font-medium text-ink/70">{label}</p>
+      <div className="mt-2.5 sm:mt-4 min-w-0">
+        <p className="text-[21px] sm:text-[30px] font-extrabold leading-none tracking-tight text-ink truncate">{value}</p>
+        <p className="mt-1 sm:mt-1.5 text-[12.5px] sm:text-[14px] font-semibold sm:font-medium text-ink/75 truncate">{label}</p>
       </div>
     </div>
   );
@@ -118,7 +118,7 @@ function Ring({ percent }) {
   const r = 14;
   const c = 2 * Math.PI * r;
   return (
-    <svg viewBox="0 0 36 36" className="h-[30px] w-[30px] -rotate-90" aria-hidden="true">
+    <svg viewBox="0 0 36 36" className="h-[22px] w-[22px] sm:h-[30px] sm:w-[30px] -rotate-90" aria-hidden="true">
       <circle cx="18" cy="18" r={r} fill="none" stroke="#f9d9a8" strokeWidth="5" />
       <circle cx="18" cy="18" r={r} fill="none" stroke="#e8860c" strokeWidth="5" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - percent / 100)} />
     </svg>
@@ -243,51 +243,51 @@ function ProjectCard({ stat }) {
 
   return (
     <article
-      className="panel relative flex flex-col p-5 transition hover:-translate-y-0.5 hover:shadow-[0_16px_36px_-14px_rgba(16,60,35,0.3)]"
+      className="panel relative flex flex-col p-4 sm:p-5 transition hover:-translate-y-0.5 hover:shadow-[0_16px_36px_-14px_rgba(16,60,35,0.3)]"
       style={{ background: `linear-gradient(120deg, #ffffff 45%, ${project.color}22 100%)` }}
     >
-      <div className="flex items-start gap-3.5">
-        <ProjectTile project={project} />
+      <div className="flex items-start gap-3 sm:gap-3.5">
+        <ProjectTile project={project} size={46} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h2 className="text-[19px] font-bold leading-tight tracking-tight">
+            <h2 className="text-[17.5px] sm:text-[19px] font-bold leading-tight tracking-tight truncate">
               {/* The whole card is clickable through this link; the ··· menu sits above it. */}
               <Link href={`/projects/${project.id}`} className="after:absolute after:inset-0 after:rounded-2xl">
                 {project.name}
               </Link>
             </h2>
             {project.isBlacklisted && (
-              <span className="relative z-10 rounded-full bg-red-100 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-red-700">
+              <span className="relative z-10 shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wider text-red-700">
                 Blacklisted
               </span>
             )}
           </div>
-          <p className="mt-1 text-[14px] leading-snug text-ink/65">{project.description || "No description yet"}</p>
+          <p className="mt-0.5 sm:mt-1 text-[13px] sm:text-[14px] leading-snug text-ink/65 line-clamp-2">{project.description || "No description yet"}</p>
         </div>
         <CardMenu project={project} className="-mr-1.5 -mt-1" />
       </div>
 
-      <div className="mt-4">
+      <div className="mt-3.5 sm:mt-4">
         <StageBar stage={project.stage} />
       </div>
 
-      <div className="mt-4 flex items-center gap-3">
-        <div className="h-[7px] flex-1 rounded-full bg-[#e8ecea]">
+      <div className="mt-3 sm:mt-4 flex items-center gap-3">
+        <div className="h-[6px] sm:h-[7px] flex-1 rounded-full bg-[#e8ecea]">
           <div className="h-full rounded-full transition-all" style={{ width: `${percent}%`, background: project.color }} />
         </div>
-        <span className="w-[38px] text-right text-[13.5px] font-medium text-ink/80">{percent}%</span>
+        <span className="w-[38px] text-right text-[13px] sm:text-[13.5px] font-semibold sm:font-medium text-ink/80">{percent}%</span>
       </div>
 
-      <div className="mt-4 grid grid-cols-4 gap-2 text-center">
+      <div className="mt-3 sm:mt-4 grid grid-cols-4 gap-1.5 sm:gap-2 text-center">
         {tiles.map(([label, value, tone]) => (
-          <div key={label} className={`rounded-lg px-1 py-2.5 ${tone}`}>
-            <p className="text-[19px] font-bold leading-none">{value}</p>
-            <p className="mt-1 text-[12px] font-medium leading-tight">{label}</p>
+          <div key={label} className={`rounded-lg px-1 py-2 sm:py-2.5 ${tone}`}>
+            <p className="text-[17px] sm:text-[19px] font-bold leading-none">{value}</p>
+            <p className="mt-1 text-[10.5px] sm:text-[12px] font-semibold sm:font-medium leading-tight whitespace-nowrap">{label}</p>
           </div>
         ))}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13.5px]">
+      <div className="mt-3 sm:mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[12.5px] sm:text-[13.5px]">
         <NextDue stat={stat} />
       </div>
     </article>
@@ -418,25 +418,44 @@ export default function ProjectsView() {
   const overallProgressVal = progress;
 
   return (
-    <div className="space-y-5 px-5 pb-8 pt-6 md:px-[34px]">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-ink/70">{longDate(todayDate, true)}</p>
-          <h1 className="mt-2 text-[44px] font-extrabold leading-none tracking-tight text-brand-900 md:text-[50px]">Projects</h1>
-          <p className="mt-3 text-[16px] text-muted">All projects you have created or joined as a team member.</p>
+    <div className="space-y-3.5 sm:space-y-5 px-3.5 pb-8 pt-3.5 sm:px-5 sm:pt-6 md:px-[34px]">
+      <header className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
+        <div className="min-w-0">
+          <p className="text-[11px] sm:text-[13px] font-semibold uppercase tracking-[0.16em] sm:tracking-[0.18em] text-ink/70">
+            {longDate(todayDate, true)}
+          </p>
+          <div className="mt-1 sm:mt-2 flex items-center justify-between gap-2">
+            <h1 className="text-[24px] sm:text-[40px] md:text-[50px] font-extrabold leading-none tracking-tight text-brand-900">
+              Projects
+            </h1>
+            {canCreate && (
+              <button
+                className="inline-flex sm:hidden items-center gap-1 rounded-lg bg-brand-700 h-7 px-2.5 text-[11.5px] font-semibold text-white shadow-2xs hover:bg-brand-800 active:scale-[0.98] transition shrink-0"
+                onClick={() => setProjectModalOpen(true)}
+              >
+                <Plus size={13} strokeWidth={2.4} /> New project
+              </button>
+            )}
+          </div>
+          <p className="mt-1 sm:mt-3 text-[12.5px] sm:text-[16px] text-muted leading-snug">
+            All projects you have created or joined as a team member.
+          </p>
         </div>
         {canCreate && (
-          <button className="btn-primary h-[52px] px-6 text-[16px]" onClick={() => setProjectModalOpen(true)}>
+          <button
+            className="hidden sm:inline-flex btn-primary h-[48px] md:h-[52px] px-6 text-[15.5px] md:text-[16px]"
+            onClick={() => setProjectModalOpen(true)}
+          >
             <Plus size={20} /> New project
           </button>
         )}
       </header>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Project summary">
+      <section className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4" aria-label="Project summary">
         <SummaryCard
           tint="linear-gradient(135deg,#f6fcf7,#e7f6eb)"
           tile="linear-gradient(145deg,#d8f2de,#b5e4c1)"
-          icon={<FolderKanban size={24} strokeWidth={1.7} className="text-[#1f7a42]" />}
+          icon={<FolderKanban size={19} strokeWidth={1.8} className="text-[#1f7a42] sm:h-6 sm:w-6" />}
           label="Total Projects"
           value={totalProjectsVal}
           foot={newProjects === null ? null : `+${newProjects} this month`}
@@ -444,7 +463,7 @@ export default function ProjectsView() {
         <SummaryCard
           tint="linear-gradient(135deg,#f6f9ff,#e9f1ff)"
           tile="linear-gradient(145deg,#dfe9ff,#c3d4ff)"
-          icon={<ListChecks size={24} strokeWidth={1.7} className="text-[#3558d6]" />}
+          icon={<ListChecks size={19} strokeWidth={1.8} className="text-[#3558d6] sm:h-6 sm:w-6" />}
           label="Total Tasks"
           value={totalTasksVal}
           foot={newTasks === null ? null : `+${newTasks} this week`}
@@ -452,7 +471,7 @@ export default function ProjectsView() {
         <SummaryCard
           tint="linear-gradient(135deg,#faf6ff,#f1e9fd)"
           tile="linear-gradient(145deg,#eadcfb,#d8c3f6)"
-          icon={<ShieldCheck size={24} strokeWidth={1.7} className="text-[#7c3aed]" />}
+          icon={<ShieldCheck size={19} strokeWidth={1.8} className="text-[#7c3aed] sm:h-6 sm:w-6" />}
           label="Completed"
           value={totalCompletedVal}
           foot={doneThisWeek === null ? null : `+${doneThisWeek} this week`}
@@ -466,8 +485,163 @@ export default function ProjectsView() {
         />
       </section>
 
-      {/* Active / Blacklisted Tabs */}
-      <div className="flex items-center gap-1.5 rounded-xl border border-line bg-white p-1.5 shadow-[0_1px_3px_rgba(16,60,35,0.05)] w-fit">
+      {/* ================= MOBILE COMPACT 3-ROW TOOLBAR (<md) ================= */}
+      <div className="space-y-2.5 md:hidden">
+        {/* Row 1: Full-Width Spacious Segmented Active / Blacklisted Tabs */}
+        <div className="grid grid-cols-2 gap-2 rounded-xl border border-line bg-white p-1.5 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => setProjectTab("active")}
+            className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-[13px] font-bold transition whitespace-nowrap ${
+              projectTab === "active"
+                ? "bg-brand-700 text-white shadow-2xs"
+                : "text-ink/70 hover:text-ink bg-[#f6faf7]/60"
+            }`}
+          >
+            <FolderKanban size={15} className="shrink-0" />
+            <span>Active</span>
+            <span
+              className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${
+                projectTab === "active" ? "bg-white/20 text-white" : "bg-black/5 text-ink/70"
+              }`}
+            >
+              {activeCount}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setProjectTab("blacklisted")}
+            className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-[13px] font-bold transition whitespace-nowrap ${
+              projectTab === "blacklisted"
+                ? "bg-red-600 text-white shadow-2xs"
+                : "text-ink/70 hover:text-red-700 bg-[#f6faf7]/60"
+            }`}
+          >
+            <Ban size={15} className="shrink-0" />
+            <span>Blacklisted</span>
+            <span
+              className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${
+                projectTab === "blacklisted" ? "bg-white/20 text-white" : "bg-black/5 text-ink/70"
+              }`}
+            >
+              {blacklistedCount}
+            </span>
+          </button>
+        </div>
+
+        {/* Row 2: Search Input + View Toggle + More Menu */}
+        <div className="flex items-center gap-2">
+          <label className="relative flex h-[38px] flex-1 min-w-0 items-center gap-2 rounded-xl border border-line bg-white px-3 shadow-2xs">
+            <Search size={15} className="shrink-0 text-ink/55" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search projects..."
+              className="min-w-0 flex-1 bg-transparent text-[13px] font-medium outline-none placeholder:text-muted"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="grid h-5 w-5 place-items-center rounded-md text-ink/40 hover:text-ink"
+                title="Clear search"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </label>
+
+          <div className="flex shrink-0 overflow-hidden rounded-xl border border-line bg-white shadow-2xs">
+            {[
+              ["grid", LayoutGrid, "Grid view"],
+              ["list", List, "List view"],
+            ].map(([id, Icon, label]) => (
+              <button
+                key={id}
+                aria-label={label}
+                aria-pressed={view === id}
+                onClick={() => setView(id)}
+                className={`grid h-[38px] w-[38px] place-items-center transition ${
+                  view === id ? "bg-brand-700 text-white" : "text-ink/60 hover:bg-[#f6faf7]"
+                }`}
+              >
+                <Icon size={16} />
+              </button>
+            ))}
+          </div>
+
+          <div className="relative shrink-0">
+            <button
+              className="grid h-[38px] w-[38px] place-items-center rounded-xl border border-line bg-white text-ink/70 shadow-2xs"
+              aria-label="More actions"
+              aria-expanded={moreOpen}
+              onClick={(event) => {
+                event.stopPropagation();
+                setMoreOpen((open) => !open);
+              }}
+            >
+              <Ellipsis size={17} />
+            </button>
+            {moreOpen && (
+              <div className="menu-popover right-0">
+                {canCreate && (
+                  <button onClick={() => setProjectModalOpen(true)}>
+                    <Plus size={16} /> New project
+                  </button>
+                )}
+                <button onClick={resetFilters} disabled={!filtering && sort === "recent"}>
+                  <X size={16} /> Reset filters
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Row 3: 3 Equal Filter Dropdowns */}
+        <div className="grid grid-cols-3 gap-2">
+          <select
+            value={stage}
+            onChange={(e) => setStage(e.target.value)}
+            aria-label="Filter by stage"
+            className="h-8 w-full rounded-lg border border-line bg-white px-2 text-[11.5px] font-semibold text-ink shadow-2xs truncate focus:border-brand-500 focus:outline-hidden"
+          >
+            {stageOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            aria-label="Filter by task status"
+            className="h-8 w-full rounded-lg border border-line bg-white px-2 text-[11.5px] font-semibold text-ink shadow-2xs truncate focus:border-brand-500 focus:outline-hidden"
+          >
+            {statusOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.value === "all" ? "All statuses" : opt.label}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            aria-label="Sort projects"
+            className="h-8 w-full rounded-lg border border-line bg-white px-2 text-[11.5px] font-semibold text-ink shadow-2xs truncate focus:border-brand-500 focus:outline-hidden"
+          >
+            {sortOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                Sort: {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* ================= DESKTOP TABS & FILTERS (md+) ================= */}
+      <div className="hidden md:flex items-center gap-1.5 rounded-xl border border-line bg-white p-1.5 shadow-[0_1px_3px_rgba(16,60,35,0.05)] w-fit">
         <button
           type="button"
           onClick={() => setProjectTab("active")}
@@ -508,7 +682,7 @@ export default function ProjectsView() {
         </button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="hidden md:flex flex-wrap items-center gap-3">
         <label className="flex h-[44px] min-w-[220px] flex-1 items-center gap-2.5 rounded-xl border border-line bg-white px-4 shadow-[0_1px_3px_rgba(16,60,35,0.05)]">
           <Search size={19} className="shrink-0 text-ink/70" />
           <input

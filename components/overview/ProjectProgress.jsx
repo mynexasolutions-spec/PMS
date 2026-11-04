@@ -9,7 +9,7 @@ function Ring({ percent }) {
   const r = 82;
   const c = 2 * Math.PI * r;
   return (
-    <div className="relative grid h-[180px] w-[180px] shrink-0 place-items-center">
+    <div className="relative grid h-[88px] w-[88px] sm:h-[128px] sm:w-[128px] md:h-[180px] md:w-[180px] shrink-0 place-items-center">
       <svg viewBox="0 0 180 180" className="absolute inset-0 -rotate-90">
         <defs>
           <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
@@ -25,10 +25,10 @@ function Ring({ percent }) {
           className="transition-[stroke-dashoffset] duration-500"
         />
       </svg>
-      <div className="grid h-[148px] w-[148px] place-items-center rounded-full bg-white shadow-[0_2px_16px_rgba(20,80,40,0.14)]">
+      <div className="grid h-[70px] w-[70px] sm:h-[104px] sm:w-[104px] md:h-[148px] md:w-[148px] place-items-center rounded-full bg-white shadow-[0_2px_16px_rgba(20,80,40,0.14)]">
         <div className="text-center leading-tight">
-          <p className="text-[38px] font-bold tracking-tight">{percent}%</p>
-          <p className="text-[16px] text-ink/80">Complete</p>
+          <p className="text-[19px] sm:text-[26px] md:text-[38px] font-bold tracking-tight">{percent}%</p>
+          <p className="text-[10px] sm:text-[12.5px] md:text-[16px] text-ink/80">Complete</p>
         </div>
       </div>
     </div>
@@ -38,7 +38,7 @@ function Ring({ percent }) {
 function PhaseBadge({ n, done, current }) {
   const tone = done ? "bg-brand-700 text-white" : current ? "bg-[#cdeed4] text-brand-800" : "bg-[#eceeed] text-ink/80";
   return (
-    <span className={`grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full text-[15px] font-bold ${tone}`}>
+    <span className={`hidden sm:grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full text-[15px] font-bold ${tone}`}>
       {done ? <Check size={16} strokeWidth={3} /> : n}
     </span>
   );
@@ -56,13 +56,13 @@ export default function ProjectProgress() {
   const displayProgress = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
 
   return (
-    <section className="panel p-5 h-full flex flex-col justify-between">
+    <section className="panel p-4 sm:p-5 h-full flex flex-col justify-between">
       <div className="flex items-center gap-3.5">
         <div>
-          <p className="eyebrow">My Projects</p>
-          <h2 className="text-[21px] font-bold tracking-tight">Project progress</h2>
+          <p className="eyebrow text-[11px] sm:text-[12.5px]">My Projects</p>
+          <h2 className="text-[18px] sm:text-[21px] font-bold tracking-tight">Project progress</h2>
         </div>
-        <Link href="/projects" className="ml-auto inline-flex items-center gap-1.5 text-[14px] font-medium text-brand-700 hover:underline">
+        <Link href="/projects" className="ml-auto inline-flex items-center gap-1.5 text-[13px] sm:text-[14px] font-medium text-brand-700 hover:underline">
           View all <ArrowRight size={15} />
         </Link>
       </div>
@@ -75,40 +75,52 @@ export default function ProjectProgress() {
           </p>
         </div>
       ) : (
-        <div className="mt-4 flex flex-1 flex-col items-center gap-8 md:flex-row">
-          <div className="md:pl-3">
+        <div className="mt-3.5 sm:mt-4 flex flex-1 flex-row items-center gap-3.5 sm:gap-6 md:gap-8">
+          <div className="flex flex-col items-center gap-1.5 md:pl-3">
             <Ring percent={displayProgress} />
+            <span className="rounded-full bg-[#eef7f1] px-2 py-0.5 text-[10.5px] font-semibold text-brand-800 md:hidden">
+              {doneTasks}/{totalTasks} done
+            </span>
           </div>
-          <ul className="w-full flex-1 space-y-[13px] md:border-l md:border-line md:pl-8">
+          <ul className="min-w-0 flex-1 space-y-2.5 sm:space-y-[13px] border-l border-line pl-3.5 sm:pl-6 md:pl-8">
             {list.map(({ project, total, done, percent }, index) => {
               const complete = total > 0 && percent === 100;
               const current = percent > 0 && percent < 100;
               return (
-                <li key={project.id} className="flex items-center gap-3.5">
+                <li key={project.id} className="flex items-center gap-2.5 sm:gap-3.5">
                   <PhaseBadge n={index + 1} done={complete} current={current} />
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <Link
-                        href={`/projects/${project.id}`}
-                        className="text-[15px] font-semibold leading-tight hover:text-brand-700 hover:underline transition"
-                      >
-                        {project.name}
-                      </Link>
-                      <StageChip stage={project.stage} />
-                    </div>
-                    <p className="mt-0.5 text-[13px] text-muted">
-                      {done} of {total} tasks done
-                    </p>
-                    {current && (
-                      <div className="mt-1.5 h-[6px] rounded-full bg-[#e8ecea]">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-[#3cb865] to-[#1f8a4c]"
-                          style={{ width: `${percent}%` }}
-                        />
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+                        <Link
+                          href={`/projects/${project.id}`}
+                          className="truncate text-[13.5px] sm:text-[15px] font-semibold leading-tight hover:text-brand-700 hover:underline transition"
+                        >
+                          {project.name}
+                        </Link>
+                        <span className="hidden sm:inline-flex">
+                          <StageChip stage={project.stage} />
+                        </span>
                       </div>
-                    )}
+                      <span className="shrink-0 text-right text-[12.5px] sm:text-[14px] font-semibold sm:font-normal text-ink/80">
+                        {percent}%
+                      </span>
+                    </div>
+                    <div className="mt-0.5 flex items-center justify-between gap-2">
+                      <p className="text-[11.5px] sm:text-[13px] text-muted">
+                        {done} of {total} tasks done
+                      </p>
+                      <span className="scale-90 origin-right sm:hidden">
+                        <StageChip stage={project.stage} />
+                      </span>
+                    </div>
+                    <div className="mt-1 sm:mt-1.5 h-[5px] sm:h-[6px] rounded-full bg-[#e8ecea]">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-[#3cb865] to-[#1f8a4c] transition-all"
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
                   </div>
-                  <span className="w-[44px] text-right text-[14px] text-ink/80">{percent}%</span>
                 </li>
               );
             })}

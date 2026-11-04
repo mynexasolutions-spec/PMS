@@ -109,7 +109,7 @@ function Note({ note, now, list, onPin, onToggleComplete, onDelete, onRead, inde
   return (
     <div
       onClick={() => onRead(note)}
-      className={`group relative ${list ? "min-h-[140px]" : "h-[215px]"} flex flex-col justify-between p-4 pb-3 cursor-pointer transition-all duration-200 hover:rotate-0 hover:scale-[1.02] hover:z-10 ${tilt} ${isResolved ? "opacity-85 hover:opacity-100" : ""}`}
+      className={`group relative min-w-0 ${list ? "min-h-[140px]" : "h-[205px] sm:h-[215px]"} flex flex-col justify-between p-4 pb-3 cursor-pointer transition-all duration-200 hover:rotate-0 hover:scale-[1.02] hover:z-10 ${tilt} ${isResolved ? "opacity-85 hover:opacity-100" : ""}`}
       style={{
         filter: "drop-shadow(0 4px 6px rgba(25, 40, 30, 0.12)) drop-shadow(0 1px 2px rgba(25, 40, 30, 0.08))",
       }}
@@ -307,16 +307,145 @@ export default function StickyPage() {
 
   return (
     <div>
-      <header className="border-b border-line bg-white/50 px-5 pb-5 pt-7 md:px-[34px]">
-        <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-ink/70">{longDate(todayDate, true)}</p>
-        <h1 className="mt-2 text-[40px] font-extrabold leading-none tracking-tight md:text-[46px]">
-          My Sticky <span className="text-brand-600">Notes</span>
-        </h1>
-        <p className="mt-3 text-[16px] text-muted">Your personal quick reminders, thoughts, and scratchpad.</p>
+      <header className="border-b border-line bg-white/50 px-3.5 pb-3.5 pt-3.5 sm:px-5 sm:pb-5 sm:pt-7 md:px-[34px]">
+        <p className="text-[11px] sm:text-[13px] font-semibold uppercase tracking-[0.16em] sm:tracking-[0.18em] text-ink/70">
+          {longDate(todayDate, true)}
+        </p>
+        <div className="mt-1 sm:mt-2 flex items-center justify-between gap-2.5">
+          <h1 className="text-[26px] sm:text-[40px] font-extrabold leading-tight sm:leading-none tracking-tight md:text-[46px]">
+            My Sticky <span className="text-brand-600">Notes</span>
+          </h1>
+          <button
+            type="button"
+            className="md:hidden btn-primary !h-9 !px-3.5 !text-[12.5px] font-semibold shrink-0 whitespace-nowrap shadow-xs"
+            onClick={() => setStickyModalOpen(true)}
+          >
+            <Plus size={15} /> New note
+          </button>
+        </div>
+        <p className="mt-1 sm:mt-3 text-[12.5px] sm:text-[16px] text-muted">
+          Your personal quick reminders, thoughts, and scratchpad.
+        </p>
       </header>
 
-      <div className="space-y-6 px-5 py-5 md:px-[34px]">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="space-y-4 sm:space-y-6 px-3.5 py-4 sm:px-5 sm:py-5 md:px-[34px]">
+        {/* Mobile Compact 2-Row Filter Bar (<md) */}
+        <div className="md:hidden space-y-2 rounded-2xl border border-line bg-white p-2.5 shadow-xs">
+          {/* Row 1: Search + Grid/List View Toggle */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex h-[38px] flex-1 min-w-0 items-center gap-2 rounded-xl border border-line bg-[#fbfdfb] px-3 focus-within:border-brand-500">
+              <Search size={15} className="shrink-0 text-ink/60 pointer-events-none" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search notes..."
+                className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="text-muted hover:text-ink text-[15px] -mr-1"
+                >
+                  &times;
+                </button>
+              )}
+            </div>
+
+            <div className="flex h-[38px] shrink-0 overflow-hidden rounded-xl border border-line bg-white">
+              <button
+                className={`grid h-full w-9 place-items-center transition ${
+                  view === "grid" ? "bg-brand-700 text-white" : "text-ink/60 hover:bg-[#f6faf7]"
+                }`}
+                onClick={() => setView("grid")}
+                aria-label="Grid view"
+                aria-pressed={view === "grid"}
+              >
+                <LayoutGrid size={16} />
+              </button>
+              <button
+                className={`grid h-full w-9 place-items-center transition ${
+                  view === "list" ? "bg-brand-700 text-white" : "text-ink/60 hover:bg-[#f6faf7]"
+                }`}
+                onClick={() => setView("list")}
+                aria-label="List view"
+                aria-pressed={view === "list"}
+              >
+                <List size={16} />
+              </button>
+            </div>
+          </div>
+
+          {/* Row 2: Category Dropdown + Date Filter Dropdown + Pick Date */}
+          <div className="flex items-center gap-1.5">
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              aria-label="Filter by category"
+              className="h-[38px] flex-1 min-w-0 rounded-xl border border-line bg-white px-2 text-[12px] font-semibold text-ink outline-none focus:border-brand-500"
+            >
+              <option value="all">All Categories ({sticky.length})</option>
+              {STICKY_CATEGORIES.map((id) => (
+                <option key={id} value={id}>
+                  {categoryMeta[id].label} ({count(id)})
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={dateFilter}
+              onChange={(e) => {
+                setDateFilter(e.target.value);
+                if (e.target.value !== "all") setCustomDate("");
+              }}
+              aria-label="Filter by date range"
+              className="h-[38px] shrink-0 rounded-xl border border-line bg-white px-2 text-[12px] font-semibold text-ink outline-none focus:border-brand-500"
+            >
+              <option value="all">All dates</option>
+              <option value="today">Today</option>
+              <option value="week">Past 7d</option>
+              <option value="month">Past 30d</option>
+            </select>
+
+            <div
+              onClick={() => {
+                try {
+                  dateInputRef.current?.showPicker();
+                } catch {
+                  dateInputRef.current?.focus();
+                }
+              }}
+              className={`relative flex h-[38px] shrink-0 items-center justify-center gap-1 rounded-xl border px-2.5 text-[11.5px] font-semibold transition cursor-pointer select-none ${
+                customDate
+                  ? "bg-brand-50 border-brand-500 text-brand-900"
+                  : "bg-white border-line text-ink hover:bg-neutral-50"
+              }`}
+              title="Click to pick an exact date"
+            >
+              <Calendar size={14} className={customDate ? "text-brand-700" : "text-muted"} />
+              {customDate && (
+                <>
+                  <span className="whitespace-nowrap">{formatDisplayDate(customDate)}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCustomDate("");
+                      if (dateInputRef.current) dateInputRef.current.value = "";
+                    }}
+                    className="relative z-10 -mr-1 rounded-full p-0.5 text-brand-700 hover:bg-brand-100"
+                    title="Clear custom date"
+                  >
+                    <X size={12} />
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop Filter Bar (md+) */}
+        <div className="hidden md:flex flex-wrap items-center gap-3">
           <button
             onClick={() => setFilter("all")}
             className={`${chipBase} ${filter === "all" ? "bg-brand-700 text-white shadow-md" : "bg-[#e9f5ec] text-brand-800 hover:bg-[#dcf0e1]"}`}
@@ -433,7 +562,7 @@ export default function StickyPage() {
           </div>
         </div>
 
-        <div className={`grid gap-5 ${view === "grid" ? "sm:grid-cols-2 xl:grid-cols-4 items-start" : "grid-cols-1"}`}>
+        <div className={`grid gap-4 sm:gap-5 ${view === "grid" ? "grid-cols-[minmax(0,1fr)] sm:grid-cols-2 xl:grid-cols-4 items-start" : "grid-cols-[minmax(0,1fr)]"}`}>
           {visible.map((note, index) => (
             <Note
               key={note.id}

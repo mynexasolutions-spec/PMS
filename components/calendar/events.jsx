@@ -46,10 +46,10 @@ export function buildEvents({ tasks, todos }) {
         startDate: startDateStr,
         dueDate: dueDateStr,
         projectId: task.projectId,
-        projectName: task.projectName,
+        projectName: task.projectName || "Personal Workspace",
         priority: task.priority,
         done: task.status === "done",
-        href: `/projects/${task.projectId}`,
+        href: task.projectId ? `/projects/${task.projectId}` : "/",
       });
 
       if (startDateStr && startDateStr !== dueDateStr) {
@@ -64,10 +64,10 @@ export function buildEvents({ tasks, todos }) {
           startDate: startDateStr,
           dueDate: dueDateStr,
           projectId: task.projectId,
-          projectName: task.projectName,
+          projectName: task.projectName || "Personal Workspace",
           priority: task.priority,
           done: task.status === "done",
-          href: `/projects/${task.projectId}`,
+          href: task.projectId ? `/projects/${task.projectId}` : "/",
         });
       }
     } else if (startDateStr) {
@@ -82,10 +82,10 @@ export function buildEvents({ tasks, todos }) {
         startDate: startDateStr,
         dueDate: null,
         projectId: task.projectId,
-        projectName: task.projectName,
+        projectName: task.projectName || "Personal Workspace",
         priority: task.priority,
         done: task.status === "done",
-        href: `/projects/${task.projectId}`,
+        href: task.projectId ? `/projects/${task.projectId}` : "/",
       });
     }
   }

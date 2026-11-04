@@ -50,7 +50,7 @@ export default function ProjectColorPicker({ value, onChange }) {
   return (
     <div>
       <div className="relative">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           {PROJECT_COLORS.map((color) => {
             const selected = same(value, color);
             return (
@@ -61,10 +61,10 @@ export default function ProjectColorPicker({ value, onChange }) {
                 aria-label={color}
                 aria-pressed={selected}
                 onClick={() => onChange(color)}
-                className={`grid h-10 w-10 place-items-center rounded-xl transition hover:scale-105 ${selected ? "ring-2 ring-brand-500 ring-offset-2" : ""}`}
+                className={`grid h-8 w-8 sm:h-10 sm:w-10 place-items-center rounded-xl transition hover:scale-105 ${selected ? "ring-2 ring-brand-500 ring-offset-2" : ""}`}
                 style={{ background: color }}
               >
-                {selected && <Check size={20} strokeWidth={3} className={tickClass(color)} />}
+                {selected && <Check size={17} strokeWidth={3} className={`${tickClass(color)} sm:h-5 sm:w-5`} />}
               </button>
             );
           })}
@@ -75,9 +75,9 @@ export default function ProjectColorPicker({ value, onChange }) {
             aria-expanded={open}
             title="Custom colour"
             onClick={() => setOpen((current) => !current)}
-            className={`grid h-10 w-10 place-items-center rounded-xl border border-line bg-white shadow-[0_1px_3px_rgba(16,60,35,0.08)] transition hover:bg-[#f6faf7] ${open ? "ring-2 ring-brand-300" : ""}`}
+            className={`grid h-8 w-8 sm:h-10 sm:w-10 place-items-center rounded-xl border border-line bg-white shadow-[0_1px_3px_rgba(16,60,35,0.08)] transition hover:bg-[#f6faf7] ${open ? "ring-2 ring-brand-300" : ""}`}
           >
-            <Pipette size={19} />
+            <Pipette size={16} className="sm:h-[19px] sm:w-[19px]" />
           </button>
         </div>
 

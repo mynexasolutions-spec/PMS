@@ -66,7 +66,7 @@ function ProjectFilter({ projects, value, onChange }) {
   };
 
   return (
-    <div className="relative">
+    <div className="relative w-full sm:w-auto">
       <button
         type="button"
         aria-haspopup="listbox"
@@ -75,9 +75,9 @@ function ProjectFilter({ projects, value, onChange }) {
           event.stopPropagation();
           setOpen((isOpen) => !isOpen);
         }}
-        className="inline-flex h-[34px] sm:h-[36px] items-center justify-between gap-1.5 rounded-lg border border-line bg-white px-2.5 sm:px-3 text-[12.5px] sm:text-[13px] font-medium shadow-xs hover:bg-[#f6faf7] transition max-w-[150px]"
+        className="inline-flex h-[36px] w-full sm:w-auto items-center justify-between gap-1.5 rounded-lg border border-line bg-white px-3 text-[12.5px] sm:text-[13px] font-medium shadow-xs hover:bg-[#f6faf7] transition sm:max-w-[160px]"
       >
-        <span className="truncate">{current ? current.name : "Project"}</span>
+        <span className="truncate">{current ? current.name : "All projects"}</span>
         <ChevronDown size={14} className="shrink-0 text-muted" />
       </button>
       {open && (
@@ -195,10 +195,10 @@ export default function DailyBoard() {
   }
 
   const pills = [
-    { id: "all", label: "All Tasks", count: dayTodos.length },
-    { id: "high", label: "High", count: count("high"), icon: <span className="h-2.5 w-2.5 rounded-full border-2 border-[#e5484d]" /> },
-    { id: "medium", label: "Medium", count: count("medium"), icon: <span className="h-2.5 w-2.5 rounded-full bg-[#f59e0b]" /> },
-    { id: "low", label: "Low", count: count("low"), icon: <ChevronsDown size={15} strokeWidth={2.6} className="text-[#2e9e4f]" /> },
+    { id: "all", label: "All Tasks", shortLabel: "All", count: dayTodos.length },
+    { id: "high", label: "High", shortLabel: "High", count: count("high"), icon: <span className="h-2 w-2 sm:h-2.5 sm:w-2.5 shrink-0 rounded-full border-2 border-[#e5484d]" /> },
+    { id: "medium", label: "Medium", shortLabel: "Med", count: count("medium"), icon: <span className="h-2 w-2 sm:h-2.5 sm:w-2.5 shrink-0 rounded-full bg-[#f59e0b]" /> },
+    { id: "low", label: "Low", shortLabel: "Low", count: count("low"), icon: <ChevronsDown size={13} strokeWidth={2.6} className="shrink-0 text-[#2e9e4f]" /> },
   ];
 
   // Right sidebar tab badges
@@ -214,78 +214,85 @@ export default function DailyBoard() {
   ];
 
   return (
-    <div className="mx-auto max-w-[1720px] px-3.5 py-4 sm:px-5 sm:py-6 md:px-7 md:py-7">
+    <div className="mx-auto max-w-[1720px] px-3.5 py-3.5 sm:px-5 sm:py-6 md:px-7 md:py-7">
       {/* 1. Header */}
-      <header className="mb-5 sm:mb-6 space-y-3 sm:space-y-4">
+      <header className="mb-4 sm:mb-6 space-y-2.5 sm:space-y-4">
         {/* Top Header Row */}
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold tracking-tight text-ink sm:text-2xl md:text-[28px]">
+        <div>
+          <p className="sm:hidden text-[10.5px] font-semibold uppercase tracking-[0.16em] text-brand-700">
+            Personal Planner
+          </p>
+          <div className="mt-0.5 sm:mt-0 flex items-center justify-between gap-2">
+            <div className="min-w-0 flex items-center gap-2.5">
+              <h1 className="whitespace-nowrap text-[21px] font-bold tracking-tight text-ink sm:text-2xl md:text-[28px]">
                 My Daily <span className="text-brand-700">To-Do</span>
               </h1>
-              <span className="inline-flex items-center rounded-md bg-[#edf7f0] px-2 py-0.5 text-[11px] sm:text-[12px] font-semibold text-brand-800 border border-brand-200/60">
+              <span className="hidden sm:inline-flex items-center rounded-md bg-[#edf7f0] px-2 py-0.5 text-[12px] font-semibold text-brand-800 border border-brand-200/60">
                 Personal Planner
               </span>
             </div>
-            <p className="mt-0.5 text-[12px] sm:text-[13.5px] text-muted">Organize, track, and review your daily work</p>
-          </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              className="btn-primary !h-[36px] sm:!h-[38px] !px-3.5 sm:!px-4 !text-[12.5px] sm:!text-[13.5px] font-semibold gap-1.5 shadow-sm"
-              onClick={() => setModalStatus("todo")}
-            >
-              <Plus size={16} /> <span>Add task</span>
-            </button>
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+              <button
+                className="btn-primary !h-[34px] sm:!h-[38px] !px-3 sm:!px-4 !text-[12px] sm:!text-[13.5px] font-semibold gap-1.5 whitespace-nowrap shadow-sm"
+                onClick={() => setModalStatus("todo")}
+              >
+                <Plus size={15} /> <span>Add task</span>
+              </button>
 
-            <button
-              onClick={handleToggleSidebar}
-              className={`relative icon-btn h-[36px] w-[36px] sm:h-[38px] sm:w-[38px] rounded-lg border transition shadow-xs ${
-                sidebarOpen || mobileDrawerOpen
-                  ? "border-brand-300 bg-brand-50 text-brand-800"
-                  : "border-line bg-white text-ink/70 hover:bg-[#f6faf7]"
-              }`}
-              title="Review & Standup Panel"
-              aria-label="Toggle side panel"
-            >
-              <PanelRightClose size={17} />
-              {(dayCommentsCount > 0 || pendingFocusCount > 0) && (
-                <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-brand-600 px-1 text-[9.5px] font-bold text-white ring-2 ring-white shadow-xs">
-                  {dayCommentsCount + pendingFocusCount}
-                </span>
-              )}
-            </button>
+              <button
+                onClick={handleToggleSidebar}
+                className={`relative icon-btn h-[34px] w-[34px] sm:h-[38px] sm:w-[38px] shrink-0 rounded-lg border transition shadow-xs ${
+                  sidebarOpen || mobileDrawerOpen
+                    ? "border-brand-300 bg-brand-50 text-brand-800"
+                    : "border-line bg-white text-ink/70 hover:bg-[#f6faf7]"
+                }`}
+                title="Review & Standup Panel"
+                aria-label="Toggle side panel"
+              >
+                <PanelRightClose size={16} />
+                {(dayCommentsCount > 0 || pendingFocusCount > 0) && (
+                  <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-brand-600 px-1 text-[9.5px] font-bold text-white ring-2 ring-white shadow-xs">
+                    {dayCommentsCount + pendingFocusCount}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
+          <p className="mt-1 text-[12px] sm:text-[13.5px] text-muted">
+            Organize, track, and review your daily work
+          </p>
         </div>
 
         {/* Controls Row: Date Navigation & View Modes */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
           {/* Date Controls */}
           <div className="flex w-full sm:w-auto items-center justify-between sm:justify-start gap-1 rounded-xl border border-line bg-white p-1 shadow-xs">
-            <button className={navBtn} onClick={() => setPicked(shiftDate(date, -1))} aria-label="Previous day">
-              <ChevronLeft size={16} />
-            </button>
-            <button
-              onClick={openPicker}
-              className="flex h-8 sm:h-9 items-center gap-1.5 whitespace-nowrap rounded-lg px-2 sm:px-3 text-[12.5px] sm:text-[13.5px] font-medium hover:bg-[#f6faf7] transition"
-            >
-              <CalendarDays size={15} strokeWidth={1.8} className="text-brand-700 shrink-0" />
-              <span className="hidden md:inline">{longDate(date, true)}</span>
-              <span className="inline md:hidden">{formatShortDate(date)}</span>
-            </button>
-            <input
-              ref={dateInput}
-              type="date"
-              value={date}
-              tabIndex={-1}
-              aria-hidden="true"
-              onChange={(event) => event.target.value && setPicked(event.target.value)}
-              className="pointer-events-none absolute left-12 top-[38px] h-0 w-0 opacity-0"
-            />
-            <button className={navBtn} onClick={() => setPicked(shiftDate(date, 1))} aria-label="Next day">
-              <ChevronRight size={16} />
-            </button>
+            <div className="flex items-center gap-0.5">
+              <button className={navBtn} onClick={() => setPicked(shiftDate(date, -1))} aria-label="Previous day">
+                <ChevronLeft size={16} />
+              </button>
+              <button
+                onClick={openPicker}
+                className="flex h-8 sm:h-9 items-center gap-1.5 whitespace-nowrap rounded-lg px-2 sm:px-3 text-[12.5px] sm:text-[13.5px] font-semibold sm:font-medium text-ink hover:bg-[#f6faf7] transition"
+              >
+                <CalendarDays size={15} strokeWidth={1.8} className="text-brand-700 shrink-0" />
+                <span className="hidden md:inline">{longDate(date, true)}</span>
+                <span className="inline md:hidden">{formatShortDate(date)}</span>
+              </button>
+              <input
+                ref={dateInput}
+                type="date"
+                value={date}
+                tabIndex={-1}
+                aria-hidden="true"
+                onChange={(event) => event.target.value && setPicked(event.target.value)}
+                className="pointer-events-none absolute left-12 top-[38px] h-0 w-0 opacity-0"
+              />
+              <button className={navBtn} onClick={() => setPicked(shiftDate(date, 1))} aria-label="Next day">
+                <ChevronRight size={16} />
+              </button>
+            </div>
             <button
               className={`h-8 sm:h-9 rounded-lg px-2.5 sm:px-3 text-[12px] sm:text-[13px] font-medium transition ${
                 date === todayDate
@@ -300,12 +307,12 @@ export default function DailyBoard() {
 
           {/* View Modes Capsule */}
           <div className="flex w-full sm:w-auto items-center justify-between sm:justify-start rounded-xl border border-line bg-white p-1 shadow-xs">
-            <div className="flex flex-1 sm:flex-initial items-center">
+            <div className="grid grid-cols-3 flex-1 sm:flex sm:flex-initial items-center gap-0.5">
               {modes.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => setMode(item.id)}
-                  className={`inline-flex flex-1 sm:flex-initial h-8 sm:h-9 items-center justify-center gap-1.5 rounded-lg px-2.5 sm:px-3 text-[12.5px] sm:text-[13px] font-medium transition ${
+                  className={`inline-flex h-8 sm:h-9 items-center justify-center gap-1.5 rounded-lg px-2 sm:px-3 text-[12px] sm:text-[13px] font-medium whitespace-nowrap transition ${
                     mode === item.id
                       ? "bg-brand-700 font-semibold text-white shadow-xs"
                       : "text-ink/75 hover:bg-[#f6faf7]"
@@ -344,28 +351,29 @@ export default function DailyBoard() {
       <div className={`grid gap-5 sm:gap-6 transition-all ${sidebarOpen ? "xl:grid-cols-[minmax(0,1fr)_385px]" : "grid-cols-1"}`}>
         {/* Main Board Area */}
         <div className="min-w-0">
-          <section className="panel rounded-2xl border border-line/80 bg-white p-3.5 sm:p-5 md:p-6 shadow-xs">
-            {/* Filter Controls: Idea 1 (2 Structured Clean Rows) */}
-            <div className="space-y-3.5 border-b border-line/60 pb-4">
-              {/* Row 1: Priority Filter Strip + Corner Counter (Zero Scrollbar) */}
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          <section className="panel rounded-2xl border border-line/80 bg-white p-3 sm:p-5 md:p-6 shadow-xs">
+            {/* Filter Controls: Clean Mobile & Desktop Layout */}
+            <div className="space-y-2.5 sm:space-y-3.5 border-b border-line/60 pb-3.5 sm:pb-4">
+              {/* Row 1: 1-Line Priority Filter Strip + Desktop Counter */}
+              <div className="flex items-center justify-between gap-2.5">
+                <div className="grid grid-cols-4 gap-1.5 w-full sm:w-auto sm:flex sm:flex-wrap sm:items-center sm:gap-2">
                   {pills.map((pill) => {
                     const isSelected = priority === pill.id;
                     return (
                       <button
                         key={pill.id}
                         onClick={() => setPriority(pill.id)}
-                        className={`inline-flex h-[32px] sm:h-[34px] items-center gap-1.5 rounded-lg px-2.5 sm:px-3 text-[12px] sm:text-[12.5px] transition ${
+                        className={`inline-flex h-[32px] sm:h-[34px] items-center justify-center sm:justify-start gap-1 sm:gap-1.5 rounded-lg px-1.5 sm:px-3 text-[11.5px] sm:text-[12.5px] transition ${
                           isSelected
                             ? "bg-brand-700 font-semibold text-white shadow-xs"
                             : `${chip[pill.id]} font-medium`
                         }`}
                       >
                         {pill.icon}
-                        <span className="whitespace-nowrap">{pill.label}</span>
+                        <span className="whitespace-nowrap sm:hidden">{pill.shortLabel}</span>
+                        <span className="whitespace-nowrap hidden sm:inline">{pill.label}</span>
                         <span
-                          className={`grid h-[18px] min-w-[18px] place-items-center rounded-full px-1 text-[10.5px] font-bold ${
+                          className={`grid h-[16px] min-w-[16px] sm:h-[18px] sm:min-w-[18px] place-items-center rounded-full px-1 text-[10px] sm:text-[10.5px] font-bold ${
                             isSelected ? "bg-white/25 text-white" : "bg-black/5 text-ink/80"
                           }`}
                         >
@@ -376,15 +384,15 @@ export default function DailyBoard() {
                   })}
                 </div>
 
-                {/* Top Corner Task Counter Badge */}
-                <div className="shrink-0 rounded-lg bg-[#f0f4f1] border border-line/70 px-2.5 py-1 text-[11.5px] sm:text-[12px] font-medium text-muted">
+                {/* Desktop Top Corner Task Counter Badge */}
+                <div className="hidden sm:block shrink-0 rounded-lg bg-[#f0f4f1] border border-line/70 px-2.5 py-1 text-[12px] font-medium text-muted">
                   Showing <span className="font-semibold text-ink/85">{visible.length}</span> of {dayTodos.length} tasks
                 </div>
               </div>
 
-              {/* Row 2: Search Input (Full breathing width) + Project & Assignee Dropdowns */}
-              <div className="flex flex-wrap items-center gap-2.5">
-                <label className="flex h-[36px] flex-1 min-w-[180px] items-center gap-2.5 rounded-lg border border-line bg-white px-3 shadow-xs focus-within:border-brand-500 focus-within:ring-1 focus-within:ring-brand-500 transition">
+              {/* Row 2: Search Input + 2-Column Mobile Filter Dropdowns */}
+              <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-2.5">
+                <label className="flex h-[36px] w-full sm:flex-1 sm:min-w-[180px] items-center gap-2 rounded-lg border border-line bg-white px-3 shadow-xs focus-within:border-brand-500 focus-within:ring-1 focus-within:ring-brand-500 transition">
                   <Search size={15} className="shrink-0 text-muted" />
                   <input
                     value={search}
@@ -392,24 +400,29 @@ export default function DailyBoard() {
                     placeholder="Search tasks..."
                     className="w-full min-w-0 bg-transparent text-[13px] outline-none placeholder:text-muted"
                   />
+                  <span className="sm:hidden shrink-0 rounded-md bg-[#f0f4f1] px-1.5 py-0.5 text-[10.5px] font-semibold text-muted">
+                    {visible.length}/{dayTodos.length}
+                  </span>
                 </label>
 
-                <ProjectFilter projects={isMember ? myProjects : projects} value={projectId} onChange={setProjectId} />
+                <div className="grid grid-cols-2 sm:flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+                  <ProjectFilter projects={isMember ? myProjects : projects} value={projectId} onChange={setProjectId} />
 
-                {!isMember ? (
-                  <Dropdown
-                    label="For"
-                    value={assignee}
-                    options={assigneeOptions}
-                    onChange={setAssignee}
-                    align="right"
-                    className="!h-[36px] !rounded-lg !px-3 !text-[13px] !shadow-xs max-w-[190px]"
-                  />
-                ) : (
-                  <span className="inline-flex h-[36px] items-center gap-1.5 rounded-lg border border-line bg-[#f4fbf6] px-3 text-[13px] font-semibold text-brand-800 shadow-xs">
-                    For me
-                  </span>
-                )}
+                  {!isMember ? (
+                    <Dropdown
+                      label="For"
+                      value={assignee}
+                      options={assigneeOptions}
+                      onChange={setAssignee}
+                      align="right"
+                      className="!h-[36px] !w-full sm:!w-auto !justify-between !rounded-lg !px-2.5 sm:!px-3 !text-[12.5px] sm:!text-[13px] !shadow-xs sm:max-w-[190px]"
+                    />
+                  ) : (
+                    <span className="inline-flex h-[36px] w-full sm:w-auto items-center justify-center gap-1.5 rounded-lg border border-line bg-[#f4fbf6] px-3 text-[12.5px] sm:text-[13px] font-semibold text-brand-800 shadow-xs">
+                      For me
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 

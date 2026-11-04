@@ -57,7 +57,7 @@ function Note({ note, compact, onPin, onToggleComplete, onDelete, onRead, index 
   return (
     <div
       onClick={() => onRead(note)}
-      className={`group relative ${compact ? "h-[195px] max-w-[340px] w-full mx-auto" : "h-[215px]"} flex flex-col justify-between p-3.5 pb-2.5 cursor-pointer transition-all duration-200 hover:rotate-0 hover:scale-[1.015] hover:z-10 ${tilt} ${
+      className={`group relative ${compact ? "h-[185px] w-[260px] shrink-0 snap-start sm:h-[195px] sm:max-w-[340px] sm:w-full sm:mx-auto" : "h-[215px]"} flex flex-col justify-between p-3.5 pb-2.5 cursor-pointer transition-all duration-200 hover:rotate-0 hover:scale-[1.015] hover:z-10 ${tilt} ${
         isResolved ? "opacity-85 hover:opacity-100" : ""
       }`}
       style={{
@@ -229,11 +229,11 @@ export default function StickyBoard({ compact = false, className = "", bare = fa
       </div>
 
       <div
-        className={`grid ${
+        className={
           compact
-            ? "mt-3 max-h-[460px] grid-cols-1 sm:grid-cols-2 md:grid-cols-1 overflow-y-auto custom-scrollbar p-1 gap-3.5"
-            : "mt-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5"
-        }`}
+            ? "mt-3 flex overflow-x-auto snap-x snap-mandatory gap-3 pb-2 pt-0.5 px-1 no-scrollbar sm:grid sm:max-h-[460px] sm:grid-cols-2 md:grid-cols-1 sm:overflow-y-auto custom-scrollbar sm:p-1 sm:gap-3.5"
+            : "mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5"
+        }
       >
         {notes.map((note, index) => (
           <Note
@@ -281,7 +281,7 @@ export default function StickyBoard({ compact = false, className = "", bare = fa
 
   if (bare) return content;
   return (
-    <section className={`panel flex flex-col ${compact ? "rounded-2xl p-4 shadow-xs" : "p-5"} ${className}`}>
+    <section className={`panel min-w-0 flex flex-col ${compact ? "rounded-2xl p-4 shadow-xs" : "p-5"} ${className}`}>
       {content}
     </section>
   );

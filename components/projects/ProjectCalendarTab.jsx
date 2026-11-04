@@ -4,6 +4,7 @@
 import { useState, useMemo, useEffect } from "react";
 import {
   CalendarClock,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -35,6 +36,7 @@ const EVENT_TYPES = [
 ];
 
 const monthTitle = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" });
+const shortMonthTitle = new Intl.DateTimeFormat("en-GB", { month: "short", year: "numeric" });
 const dayMonth = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
 
 function addMonths(iso, amount) {
@@ -52,6 +54,7 @@ export default function ProjectCalendarTab({ project }) {
   const [view, setView] = useState("month"); // "month" | "week" | "agenda"
   const [customEvents, setCustomEvents] = useState([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
+  const [upcomingOpen, setUpcomingOpen] = useState(false);
 
   // Selected date popover/modal state
   const [selectedDate, setSelectedDate] = useState(null);
@@ -165,65 +168,70 @@ export default function ProjectCalendarTab({ project }) {
   }, [combinedEvents, selectedDate]);
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-3 sm:space-y-4">
       {/* ---------------- 1. CLEAN HEADER (No Add Task Button) ---------------- */}
-      <div className="panel p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="font-bold text-[18px] text-ink">{project.name} Calendar</h3>
-            <span className="rounded-full bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 text-[11px]">
+      <div className="panel flex flex-col justify-between gap-3 p-3.5 sm:p-4 lg:flex-row lg:items-center lg:gap-4">
+        <div className="min-w-0">
+          <div className="flex items-start justify-between gap-2 sm:items-center sm:justify-start">
+            <h3 className="text-[16.5px] font-bold leading-snug text-ink sm:text-[18px]">{project.name} Calendar</h3>
+            <span className="shrink-0 whitespace-nowrap rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
               {combinedEvents.length} scheduled item{combinedEvents.length === 1 ? "" : "s"}
             </span>
           </div>
-          <p className="text-[13px] text-muted mt-0.5">
+          <p className="mt-1 text-[12px] leading-relaxed text-muted sm:mt-0.5 sm:text-[13px]">
             Click on any date to schedule meetings, project milestones, releases, or deadlines.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Month Stepper */}
-          <div className="inline-flex items-center gap-1 rounded-xl border border-line bg-white p-1 shadow-2xs">
-            <button
-              type="button"
-              onClick={() => setPicked(addMonths(date, -1))}
-              className="grid h-8 w-8 place-items-center rounded-lg text-ink/65 hover:bg-black/5 hover:text-ink"
-              title="Previous month"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <span className="min-w-[130px] text-center text-[13.5px] font-bold text-ink">
-              {monthTitle.format(parseLocalDate(date))}
-            </span>
-            <button
-              type="button"
-              onClick={() => setPicked(addMonths(date, 1))}
-              className="grid h-8 w-8 place-items-center rounded-lg text-ink/65 hover:bg-black/5 hover:text-ink"
-              title="Next month"
-            >
-              <ChevronRight size={16} />
-            </button>
+        <div className="flex flex-nowrap items-center justify-between gap-1.5 sm:flex-wrap sm:justify-start sm:gap-2.5">
+          <div className="flex min-w-0 items-center gap-1 sm:gap-1.5">
+            {/* Month Stepper */}
+            <div className="inline-flex shrink-0 items-center rounded-xl border border-line bg-white p-0.5 shadow-2xs sm:gap-1 sm:p-1">
+              <button
+                type="button"
+                onClick={() => setPicked(addMonths(date, -1))}
+                className="grid h-6 w-5 place-items-center rounded-lg text-ink/65 hover:bg-black/5 hover:text-ink sm:h-8 sm:w-8"
+                title="Previous month"
+              >
+                <ChevronLeft size={14} className="sm:h-[15px] sm:w-[15px]" />
+              </button>
+              <span className="min-w-[58px] px-0.5 text-center text-[11px] font-bold text-ink whitespace-nowrap sm:hidden">
+                {shortMonthTitle.format(parseLocalDate(date))}
+              </span>
+              <span className="hidden min-w-[130px] px-1 text-center text-[13.5px] font-bold text-ink sm:inline">
+                {monthTitle.format(parseLocalDate(date))}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPicked(addMonths(date, 1))}
+                className="grid h-6 w-5 place-items-center rounded-lg text-ink/65 hover:bg-black/5 hover:text-ink sm:h-8 sm:w-8"
+                title="Next month"
+              >
+                <ChevronRight size={14} className="sm:h-[15px] sm:w-[15px]" />
+              </button>
+            </div>
+
+            {/* Today Button */}
+            {date !== todayDate && (
+              <button
+                type="button"
+                onClick={() => setPicked(todayDate)}
+                className="shrink-0 rounded-xl border border-line bg-white px-2 py-1 text-[10.5px] font-bold text-brand-700 transition hover:bg-[#f6faf7] sm:px-3 sm:py-1.5 sm:text-[12.5px]"
+              >
+                Today
+              </button>
+            )}
           </div>
 
-          {/* Today Button */}
-          {date !== todayDate && (
-            <button
-              type="button"
-              onClick={() => setPicked(todayDate)}
-              className="rounded-xl border border-line bg-white px-3 py-1.5 text-[12.5px] font-bold text-brand-700 hover:bg-[#f6faf7] transition"
-            >
-              Today
-            </button>
-          )}
-
           {/* View Mode Switcher */}
-          <div className="inline-flex items-center rounded-xl border border-line bg-[#f4f7f5] p-0.5 text-[12.5px] font-semibold">
+          <div className="inline-flex shrink-0 items-center rounded-xl border border-line bg-[#f4f7f5] p-0.5 text-[10.5px] font-semibold sm:text-[12.5px]">
             {["month", "week", "agenda"].map((v) => (
               <button
                 key={v}
                 type="button"
                 onClick={() => setView(v)}
-                className={`rounded-lg px-2.5 py-1.5 capitalize transition ${
-                  view === v ? "bg-white text-ink shadow-xs font-bold" : "text-muted hover:text-ink"
+                className={`rounded-lg px-1.5 py-1 capitalize transition sm:px-2.5 sm:py-1.5 ${
+                  view === v ? "bg-white font-bold text-ink shadow-xs" : "text-muted hover:text-ink"
                 }`}
               >
                 {v}
@@ -233,37 +241,93 @@ export default function ProjectCalendarTab({ project }) {
         </div>
       </div>
 
-      {/* ---------------- 2. UPCOMING TICKER ---------------- */}
+      {/* ---------------- 2. UPCOMING DROPDOWN ---------------- */}
       {upcoming.length > 0 && (
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar rounded-xl bg-white border border-line p-3">
-          <span className="flex items-center gap-1.5 text-[12px] font-bold text-brand-800 uppercase tracking-wide shrink-0">
-            <Clock size={14} /> Upcoming:
-          </span>
-          {upcoming.slice(0, 5).map((evt) => {
-            const isCustom = evt.source === "project_event";
-            return (
-              <div
-                key={evt.id}
-                onClick={() => setSelectedDate(evt.date)}
-                className="inline-flex items-center gap-2 rounded-lg bg-[#f8faf9] border border-line px-2.5 py-1 text-[12.5px] shrink-0 cursor-pointer hover:border-brand-500 transition"
-              >
-                <span className="font-semibold text-ink truncate max-w-[200px]">{evt.title}</span>
-                <span className="rounded bg-black/5 px-1.5 py-0.2 text-[11px] font-bold text-ink/65">
-                  {dayMonth.format(parseLocalDate(evt.date))}
-                </span>
-              </div>
-            );
-          })}
+        <div className="min-w-0 overflow-hidden rounded-xl border border-line bg-white shadow-2xs">
+          <button
+            type="button"
+            aria-expanded={upcomingOpen}
+            onClick={() => setUpcomingOpen((prev) => !prev)}
+            className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left transition hover:bg-[#fafcfb] sm:px-4"
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[#eaf6ee] text-brand-700">
+                <Clock size={14} />
+              </span>
+              <span className="whitespace-nowrap text-[13px] font-bold text-ink sm:text-[13.5px]">
+                Upcoming <span className="hidden sm:inline">Schedule</span>
+              </span>
+              <span className="shrink-0 rounded-full bg-brand-700 px-2 py-0.5 text-[11px] font-bold leading-none text-white">
+                {upcoming.length}
+              </span>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-1.5">
+              <span className="rounded-lg border border-line/80 bg-[#f6f9f7] px-2 py-1 text-[11px] font-semibold text-ink/75">
+                Next: <b className="font-bold text-brand-800">{dayMonth.format(parseLocalDate(upcoming[0].date))}</b>
+              </span>
+              <span className="grid h-6 w-6 place-items-center rounded-lg bg-[#f3f6f4] text-ink/70">
+                <ChevronDown
+                  size={14}
+                  className={`transition-transform duration-150 ${upcomingOpen ? "rotate-180" : ""}`}
+                />
+              </span>
+            </div>
+          </button>
+
+          {upcomingOpen && (
+            <div className="max-h-[260px] space-y-1.5 overflow-y-auto border-t border-line/80 bg-[#fafcfb] p-2.5 sm:p-3">
+              {upcoming.slice(0, 8).map((evt) => {
+                const typeConfig = EVENT_TYPES.find((t) => t.id === evt.kind);
+                const Icon = typeConfig?.icon || CalendarIcon;
+                return (
+                  <button
+                    key={evt.id}
+                    type="button"
+                    onClick={() => {
+                      setPicked(evt.date);
+                      setSelectedDate(evt.date);
+                      setUpcomingOpen(false);
+                    }}
+                    className="flex w-full items-start justify-between gap-2.5 rounded-xl border border-line/80 bg-white p-2.5 text-left transition hover:border-brand-400 hover:bg-[#f5faf7]"
+                  >
+                    <div className="flex min-w-0 items-start gap-2">
+                      <span
+                        className={`mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-lg border ${
+                          typeConfig?.badge || "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        }`}
+                      >
+                        <Icon size={12} />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[12.5px] font-bold leading-snug text-ink sm:text-[13px]">
+                          {evt.title}
+                        </p>
+                        <p className="mt-0.5 text-[11px] font-medium text-muted">
+                          {typeConfig?.label || (evt.key ? `Task (${evt.key})` : "Task")}
+                          {evt.time ? ` · ${formatClock(evt.time)}` : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="shrink-0 rounded-lg bg-[#f2f6f3] px-2 py-1 text-[11px] font-bold text-brand-800">
+                      {dayMonth.format(parseLocalDate(evt.date))}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
       {/* ---------------- 3. MAIN CALENDAR GRID ---------------- */}
-      <div className="panel p-4 sm:p-5">
+      <div className="panel min-w-0 p-1.5 sm:p-5">
         {view === "month" && (
           <MonthGrid
             date={date}
             events={combinedEvents}
             todayDate={todayDate}
+            enablePopover={false}
             onSelect={(d) => {
               setPicked(d);
               setSelectedDate(d);
@@ -299,11 +363,11 @@ export default function ProjectCalendarTab({ project }) {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-xs"
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 p-3.5 sm:p-4 backdrop-blur-xs"
           onClick={() => setSelectedDate(null)}
         >
           <div
-            className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl border border-line animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col"
+            className="w-full max-w-lg rounded-2xl bg-white p-4 sm:p-6 shadow-2xl border border-line animate-in fade-in zoom-in-95 duration-150 max-h-[86dvh] sm:max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}

@@ -82,14 +82,14 @@ export default function Greeting({ title, subtitle, showWave = true, showQuote =
   const greeting = now ? theme.greeting : "Hello";
 
   return (
-    <section className="relative -mt-4 min-h-[136px] pt-[22px]">
+    <section className="relative pt-1 pb-0.5 md:-mt-4 md:min-h-[136px] md:pt-[22px] md:pb-0">
       <Landscape theme={theme} />
       <div className="relative max-w-[620px]">
-        <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-ink/80">{longDate(todayDate)}</p>
-        <h1 className="mt-1.5 text-[30px] font-extrabold leading-tight tracking-tight sm:text-[34px] md:text-[38px]">
+        <p className="text-[11.5px] sm:text-[13px] font-semibold uppercase tracking-[0.16em] text-ink/75">{longDate(todayDate)}</p>
+        <h1 className="mt-1 sm:mt-1.5 text-[24px] font-extrabold leading-tight tracking-tight sm:text-[34px] md:text-[38px]">
           {title ?? `${greeting}, team`} {showWave && <span className="inline-block">{theme.emoji}</span>}
         </h1>
-        <p className="mt-0.5 text-[15px] sm:text-[16px] text-muted">{subtitle ?? "Let's ship great work for every project today."}</p>
+        <p className="mt-0.5 text-[13.5px] sm:text-[16px] text-muted">{subtitle ?? "Let's ship great work for every project today."}</p>
       </div>
       {showQuote && (
         <blockquote className={`relative mt-4 w-[190px] border-l-2 pl-3 text-[14px] italic leading-snug hidden lg:block lg:absolute lg:right-3 lg:top-[30px] lg:mt-0 ${theme.quote}`}>

@@ -131,18 +131,33 @@ export default function ActionCenterView() {
   }
 
   return (
-    <div className="space-y-5 px-5 pb-8 pt-4 md:px-[30px]">
+    <div className="space-y-3.5 sm:space-y-5 px-3.5 pb-8 pt-3.5 sm:px-5 md:px-[30px]">
       {/* ---------------- 1. PAGE HEADER ---------------- */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand-50 text-brand-700">
-              <ShieldCheck size={18} />
+      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <span className="grid h-6 w-6 sm:h-7 sm:w-7 place-items-center rounded-lg bg-brand-50 text-brand-700 shrink-0">
+              <ShieldCheck size={16} className="sm:h-[18px] sm:w-[18px]" />
             </span>
-            <p className="eyebrow">Workspace Operations</p>
+            <p className="eyebrow text-[11px] sm:text-[12.5px]">Workspace Operations</p>
           </div>
-          <h1 className="mt-1 text-[26px] font-bold tracking-tight text-ink">Action Center</h1>
-          <p className="text-[13.5px] text-muted">
+
+          <div className="mt-1 flex items-center justify-between gap-2">
+            <h1 className="text-[22px] sm:text-[26px] font-bold tracking-tight text-ink truncate">
+              Action Center
+            </h1>
+
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="inline-flex sm:hidden items-center gap-1 rounded-lg bg-brand-700 h-7 px-2.5 text-[11.5px] font-semibold text-white shadow-2xs hover:bg-brand-800 active:scale-[0.98] transition shrink-0"
+            >
+              <Plus size={13} strokeWidth={2.4} />
+              New Request
+            </button>
+          </div>
+
+          <p className="mt-0.5 text-[12.5px] sm:text-[13.5px] text-muted leading-snug">
             Delegated operational requests, credentials setup & workspace handoffs.
           </p>
         </div>
@@ -150,75 +165,126 @@ export default function ActionCenterView() {
         <button
           type="button"
           onClick={() => setModalOpen(true)}
-          className="inline-flex items-center gap-2 rounded-xl bg-brand-700 px-4 py-2.5 text-[14px] font-bold text-white shadow-xs hover:bg-brand-800 transition shrink-0 self-start sm:self-auto"
+          className="hidden sm:inline-flex items-center gap-2 rounded-xl bg-brand-700 px-4 py-2.5 text-[14px] font-bold text-white shadow-xs hover:bg-brand-800 transition shrink-0"
         >
           <Plus size={17} />
           New Action Request
         </button>
       </div>
 
-      {/* ---------------- 2. TOP KPI CARDS ROW (Option 2 Style) ---------------- */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="panel p-4 flex items-center gap-3.5 transition hover:shadow-xs">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600">
-            <Inbox size={20} />
+      {/* ---------------- 2. TOP KPI BENTO CARDS ---------------- */}
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-4">
+        <div
+          onClick={() => setActiveTab("assigned")}
+          className="panel p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3.5 transition hover:shadow-xs cursor-pointer"
+        >
+          <div className="flex items-center justify-between sm:block">
+            <div className="grid h-9 w-9 sm:h-11 sm:w-11 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600">
+              <Inbox size={18} className="sm:h-5 sm:w-5" />
+            </div>
+            <p className="text-[22px] font-extrabold leading-none tracking-tight text-ink sm:hidden">
+              {pendingAssignedCount}
+            </p>
           </div>
-          <div>
-            <p className="text-[23px] font-extrabold leading-none tracking-tight text-ink">{pendingAssignedCount}</p>
-            <p className="mt-1.5 text-[12.5px] font-medium text-muted">Assigned to me</p>
-          </div>
-        </div>
-
-        <div className="panel p-4 flex items-center gap-3.5 transition hover:shadow-xs">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-purple-50 text-purple-600">
-            <Send size={20} />
-          </div>
-          <div>
-            <p className="text-[23px] font-extrabold leading-none tracking-tight text-ink">{pendingDelegatedCount}</p>
-            <p className="mt-1.5 text-[12.5px] font-medium text-muted">Delegated by me</p>
-          </div>
-        </div>
-
-        <div className="panel p-4 flex items-center gap-3.5 transition hover:shadow-xs">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-600">
-            <CheckCircle2 size={20} />
-          </div>
-          <div>
-            <p className="text-[23px] font-extrabold leading-none tracking-tight text-ink">{completedCount}</p>
-            <p className="mt-1.5 text-[12.5px] font-medium text-muted">Total completed</p>
+          <div className="min-w-0">
+            <p className="hidden sm:block text-[23px] font-extrabold leading-none tracking-tight text-ink">
+              {pendingAssignedCount}
+            </p>
+            <p className="sm:mt-1.5 text-[12.5px] font-semibold sm:font-medium text-ink/80 sm:text-muted truncate">
+              Assigned to me
+            </p>
           </div>
         </div>
 
-        <div className="panel p-4 flex items-center gap-3.5 transition hover:shadow-xs">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600">
-            <Users size={20} />
+        <div
+          onClick={() => setActiveTab("delegated")}
+          className="panel p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3.5 transition hover:shadow-xs cursor-pointer"
+        >
+          <div className="flex items-center justify-between sm:block">
+            <div className="grid h-9 w-9 sm:h-11 sm:w-11 shrink-0 place-items-center rounded-xl bg-purple-50 text-purple-600">
+              <Send size={18} className="sm:h-5 sm:w-5" />
+            </div>
+            <p className="text-[22px] font-extrabold leading-none tracking-tight text-ink sm:hidden">
+              {pendingDelegatedCount}
+            </p>
           </div>
-          <div>
-            <p className="text-[23px] font-extrabold leading-none tracking-tight text-ink">
+          <div className="min-w-0">
+            <p className="hidden sm:block text-[23px] font-extrabold leading-none tracking-tight text-ink">
+              {pendingDelegatedCount}
+            </p>
+            <p className="sm:mt-1.5 text-[12.5px] font-semibold sm:font-medium text-ink/80 sm:text-muted truncate">
+              Delegated by me
+            </p>
+          </div>
+        </div>
+
+        <div className="panel p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3.5 transition hover:shadow-xs">
+          <div className="flex items-center justify-between sm:block">
+            <div className="grid h-9 w-9 sm:h-11 sm:w-11 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-600">
+              <CheckCircle2 size={18} className="sm:h-5 sm:w-5" />
+            </div>
+            <p className="text-[22px] font-extrabold leading-none tracking-tight text-ink sm:hidden">
+              {completedCount}
+            </p>
+          </div>
+          <div className="min-w-0">
+            <p className="hidden sm:block text-[23px] font-extrabold leading-none tracking-tight text-ink">
+              {completedCount}
+            </p>
+            <p className="sm:mt-1.5 text-[12.5px] font-semibold sm:font-medium text-ink/80 sm:text-muted truncate">
+              Total completed
+            </p>
+          </div>
+        </div>
+
+        <div
+          onClick={() => isSuperAdmin && setActiveTab("all")}
+          className={`panel p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3.5 transition hover:shadow-xs ${
+            isSuperAdmin ? "cursor-pointer" : ""
+          }`}
+        >
+          <div className="flex items-center justify-between sm:block">
+            <div className="grid h-9 w-9 sm:h-11 sm:w-11 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600">
+              <Users size={18} className="sm:h-5 sm:w-5" />
+            </div>
+            <p className="text-[22px] font-extrabold leading-none tracking-tight text-ink sm:hidden">
               {actionRequests.filter((a) => a.status === "pending").length}
             </p>
-            <p className="mt-1.5 text-[12.5px] font-medium text-muted">Active in workspace</p>
+          </div>
+          <div className="min-w-0">
+            <p className="hidden sm:block text-[23px] font-extrabold leading-none tracking-tight text-ink">
+              {actionRequests.filter((a) => a.status === "pending").length}
+            </p>
+            <p className="sm:mt-1.5 text-[12.5px] font-semibold sm:font-medium text-ink/80 sm:text-muted truncate">
+              Active in workspace
+            </p>
           </div>
         </div>
       </div>
 
       {/* ---------------- 3. TABS & CONTROLS ---------------- */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-line pb-1">
-        <div className="flex gap-2">
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between border-b border-line pb-2.5 sm:pb-2">
+        {/* Segmented Control on Mobile, Pill Buttons on Desktop */}
+        <div
+          className={`grid ${
+            isSuperAdmin ? "grid-cols-3" : "grid-cols-2"
+          } gap-1 rounded-xl border border-line bg-[#f2f7f4] p-1 sm:flex sm:gap-2 sm:border-0 sm:bg-transparent sm:p-0`}
+        >
           <button
             type="button"
             onClick={() => setActiveTab("assigned")}
-            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-[14px] font-bold transition ${
+            className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl px-2 py-1.5 sm:px-4 sm:py-2 text-[12px] sm:text-[14px] font-bold transition whitespace-nowrap ${
               activeTab === "assigned"
                 ? "bg-brand-700 text-white shadow-xs"
-                : "bg-white text-ink/70 border border-line hover:bg-[#f6faf7]"
+                : "text-ink/70 hover:text-ink sm:bg-white sm:border sm:border-line sm:hover:bg-[#f6faf7]"
             }`}
           >
-            <Inbox size={16} />
-            Assigned to Me
+            <Inbox size={14} className="shrink-0 sm:h-4 sm:w-4" />
+            <span className="sm:hidden">Assigned</span>
+            <span className="hidden sm:inline">Assigned to Me</span>
             {pendingAssignedCount > 0 && (
               <span
-                className={`ml-1 rounded-full px-2 py-0.2 text-[11px] font-extrabold ${
+                className={`rounded-full px-1.5 py-0.2 text-[10.5px] sm:text-[11px] font-extrabold ${
                   activeTab === "assigned" ? "bg-white/25 text-white" : "bg-blue-100 text-blue-800"
                 }`}
               >
@@ -230,17 +296,18 @@ export default function ActionCenterView() {
           <button
             type="button"
             onClick={() => setActiveTab("delegated")}
-            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-[14px] font-bold transition ${
+            className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl px-2 py-1.5 sm:px-4 sm:py-2 text-[12px] sm:text-[14px] font-bold transition whitespace-nowrap ${
               activeTab === "delegated"
                 ? "bg-brand-700 text-white shadow-xs"
-                : "bg-white text-ink/70 border border-line hover:bg-[#f6faf7]"
+                : "text-ink/70 hover:text-ink sm:bg-white sm:border sm:border-line sm:hover:bg-[#f6faf7]"
             }`}
           >
-            <Send size={16} />
-            Delegated by Me
+            <Send size={14} className="shrink-0 sm:h-4 sm:w-4" />
+            <span className="sm:hidden">Delegated</span>
+            <span className="hidden sm:inline">Delegated by Me</span>
             {pendingDelegatedCount > 0 && (
               <span
-                className={`ml-1 rounded-full px-2 py-0.2 text-[11px] font-extrabold ${
+                className={`rounded-full px-1.5 py-0.2 text-[10.5px] sm:text-[11px] font-extrabold ${
                   activeTab === "delegated" ? "bg-white/25 text-white" : "bg-purple-100 text-purple-800"
                 }`}
               >
@@ -253,39 +320,45 @@ export default function ActionCenterView() {
             <button
               type="button"
               onClick={() => setActiveTab("all")}
-              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-[14px] font-bold transition ${
+              className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl px-2 py-1.5 sm:px-4 sm:py-2 text-[12px] sm:text-[14px] font-bold transition whitespace-nowrap ${
                 activeTab === "all"
                   ? "bg-brand-700 text-white shadow-xs"
-                  : "bg-white text-ink/70 border border-line hover:bg-[#f6faf7]"
+                  : "text-ink/70 hover:text-ink sm:bg-white sm:border sm:border-line sm:hover:bg-[#f6faf7]"
               }`}
             >
-              <Users size={16} />
-              All Team Actions
+              <Users size={14} className="shrink-0 sm:h-4 sm:w-4" />
+              <span className="sm:hidden">All Team</span>
+              <span className="hidden sm:inline">All Team Actions</span>
             </button>
           )}
         </div>
 
         {/* Pending vs All Filter */}
-        <label className="inline-flex items-center gap-2 text-[13px] font-medium text-ink/75 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={filterPendingOnly}
-            onChange={(e) => setFilterPendingOnly(e.target.checked)}
-            className="rounded border-line text-brand-600 focus:ring-brand-500 h-4 w-4"
-          />
-          Show pending only
-        </label>
+        <div className="flex items-center justify-between sm:justify-end px-0.5">
+          <span className="text-[12px] font-semibold text-muted sm:hidden">
+            Showing {displayedList.length} {displayedList.length === 1 ? "request" : "requests"}
+          </span>
+          <label className="inline-flex items-center gap-2 text-[12.5px] sm:text-[13px] font-medium text-ink/75 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={filterPendingOnly}
+              onChange={(e) => setFilterPendingOnly(e.target.checked)}
+              className="rounded border-line text-brand-600 focus:ring-brand-500 h-4 w-4"
+            />
+            Show pending only
+          </label>
+        </div>
       </div>
 
       {/* ---------------- 4. ACTION ITEMS LIST ---------------- */}
       <div className="space-y-3">
         {displayedList.length === 0 ? (
-          <div className="panel p-12 text-center text-muted">
-            <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-[#f4f8f5] text-brand-700 mb-3">
-              <Sparkles size={24} />
+          <div className="panel p-8 sm:p-12 text-center text-muted">
+            <div className="mx-auto grid h-11 w-11 sm:h-12 sm:w-12 place-items-center rounded-2xl bg-[#f4f8f5] text-brand-700 mb-3">
+              <Sparkles size={22} />
             </div>
-            <h3 className="text-[16px] font-bold text-ink">No Action Requests Found</h3>
-            <p className="mt-1 text-[13px] text-muted max-w-sm mx-auto">
+            <h3 className="text-[15.5px] sm:text-[16px] font-bold text-ink">No Action Requests Found</h3>
+            <p className="mt-1 text-[12.5px] sm:text-[13px] text-muted max-w-sm mx-auto">
               {activeTab === "assigned"
                 ? "You have no pending operational actions right now. You're all caught up!"
                 : "You haven't delegated any actions yet. Click 'New Action Request' to assign setup tasks to collaborators."}
@@ -309,16 +382,16 @@ export default function ActionCenterView() {
             return (
               <div
                 key={action.id}
-                className={`panel p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border transition ${
+                className={`panel p-3.5 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border transition ${
                   isCompleted ? "bg-[#fafcfb] opacity-75 border-line/60" : "bg-white hover:border-brand-300 shadow-xs"
                 }`}
               >
-                <div className="flex items-start gap-3.5 min-w-0">
-                  {/* Status Checkbox Button */}
+                <div className="flex items-start gap-3 min-w-0">
+                  {/* Desktop Status Checkbox Button */}
                   <button
                     type="button"
                     onClick={() => handleToggleStatus(action)}
-                    className={`grid h-6 w-6 shrink-0 place-items-center rounded-lg border mt-0.5 transition ${
+                    className={`hidden sm:grid h-6 w-6 shrink-0 place-items-center rounded-lg border mt-0.5 transition ${
                       isCompleted
                         ? "bg-emerald-600 border-emerald-600 text-white shadow-xs"
                         : "border-line/90 hover:border-brand-600 bg-white text-transparent hover:text-brand-600"
@@ -328,40 +401,58 @@ export default function ActionCenterView() {
                     <CheckCircle2 size={16} />
                   </button>
 
-                  <div className="min-w-0 space-y-1.5">
-                    {/* Tags row */}
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-bold border ${categoryInfo.badgeBg}`}
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    {/* Tags row + Mobile Checkbox */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleStatus(action)}
+                        className={`grid sm:hidden h-5 w-5 shrink-0 place-items-center rounded-md border transition ${
+                          isCompleted
+                            ? "bg-emerald-600 border-emerald-600 text-white shadow-2xs"
+                            : "border-slate-300 bg-white text-transparent"
+                        }`}
+                        title={isCompleted ? "Mark pending" : "Mark completed"}
                       >
-                        <CategoryIcon size={12} />
-                        {categoryInfo.label}
-                      </span>
+                        <CheckCircle2 size={13} />
+                      </button>
 
-                      {action.projectName && (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-zinc-100 px-2 py-0.5 text-[11px] font-semibold text-zinc-700">
-                          <span
-                            className="h-1.5 w-1.5 rounded-full"
-                            style={{ backgroundColor: action.projectColor || "#2e9e4f" }}
-                          />
-                          {action.projectName}
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <span
+                          className={`inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-bold border ${categoryInfo.badgeBg}`}
+                        >
+                          <CategoryIcon size={11} />
+                          <span className="sm:hidden">
+                            {action.category === "credentials" ? "Storage Vault" : categoryInfo.label}
+                          </span>
+                          <span className="hidden sm:inline">{categoryInfo.label}</span>
                         </span>
-                      )}
 
-                      {isCompleted ? (
-                        <span className="rounded-md bg-emerald-100 text-emerald-800 px-2 py-0.5 text-[11px] font-bold">
-                          ✓ Completed
-                        </span>
-                      ) : (
-                        <span className="rounded-md bg-amber-100 text-amber-800 px-2 py-0.5 text-[11px] font-bold">
-                          ⏳ Pending
-                        </span>
-                      )}
+                        {action.projectName && (
+                          <span className="inline-flex min-w-0 items-center gap-1 rounded-md bg-zinc-100 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold text-zinc-700 truncate">
+                            <span
+                              className="h-1.5 w-1.5 rounded-full shrink-0"
+                              style={{ backgroundColor: action.projectColor || "#2e9e4f" }}
+                            />
+                            <span className="truncate">{action.projectName}</span>
+                          </span>
+                        )}
+
+                        {isCompleted ? (
+                          <span className="ml-auto sm:ml-0 rounded-md bg-emerald-100 text-emerald-800 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-bold shrink-0 whitespace-nowrap">
+                            ✓ Completed
+                          </span>
+                        ) : (
+                          <span className="ml-auto sm:ml-0 rounded-md bg-amber-100 text-amber-800 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-bold shrink-0 whitespace-nowrap">
+                            ⏳ Pending
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Title */}
                     <h4
-                      className={`text-[15.5px] font-bold text-ink leading-snug break-words ${
+                      className={`text-[14.5px] sm:text-[15.5px] font-bold text-ink leading-snug break-words ${
                         isCompleted ? "line-through text-muted" : ""
                       }`}
                     >
@@ -370,13 +461,13 @@ export default function ActionCenterView() {
 
                     {/* Description */}
                     {action.description && (
-                      <p className="text-[13px] text-muted line-clamp-2">{action.description}</p>
+                      <p className="text-[12.5px] sm:text-[13px] text-muted line-clamp-2">{action.description}</p>
                     )}
 
                     {/* Metadata & Attribution */}
-                    <div className="flex flex-wrap items-center gap-3 text-[12px] text-muted pt-0.5">
-                      <span className="flex items-center gap-1.5">
-                        <Avatar name={action.creatorName} id={action.createdBy} size={18} />
+                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11.5px] sm:text-[12px] text-muted pt-0.5">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Avatar name={action.creatorName} id={action.createdBy} size={16} />
                         <span>
                           From <strong className="text-ink font-semibold">{action.creatorName}</strong>
                         </span>
@@ -384,50 +475,58 @@ export default function ActionCenterView() {
 
                       <span>→</span>
 
-                      <span className="flex items-center gap-1.5">
-                        <Avatar name={action.assigneeName} id={action.assigneeId} size={18} />
+                      <span className="inline-flex items-center gap-1.5">
+                        <Avatar name={action.assigneeName} id={action.assigneeId} size={16} />
                         <span>
                           To <strong className="text-ink font-semibold">{action.assigneeName}</strong>
                         </span>
                       </span>
 
                       {action.dueDate && (
-                        <>
-                          <span className="text-black/20">·</span>
-                          <span className="flex items-center gap-1 text-ink/65">
-                            <Clock size={12} /> Due {formatShortDate(action.dueDate)}
-                          </span>
-                        </>
+                        <span className="hidden sm:inline-flex items-center gap-1 text-ink/65">
+                          <span className="text-black/20 mr-1.5">·</span>
+                          <Clock size={11} /> Due {formatShortDate(action.dueDate)}
+                        </span>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* Right Action buttons */}
-                <div className="flex items-center gap-2 sm:self-center shrink-0 border-t border-line/60 pt-3 sm:border-0 sm:pt-0">
-                  {/* Direct 1-Click Shortcut Button */}
-                  {shortcutUrl && categoryInfo.actionLabel && (
-                    <Link
-                      href={shortcutUrl}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-white px-3 py-1.5 text-[12.5px] font-bold text-brand-700 hover:bg-[#f6faf7] transition shadow-2xs"
-                    >
-                      <CategoryIcon size={14} />
-                      {categoryInfo.actionLabel}
-                      <ExternalLink size={12} className="text-muted" />
-                    </Link>
+                {/* Right Action buttons (Mobile: Due date on left + compact Open Vault on right) */}
+                <div className="flex items-center justify-between sm:justify-end gap-2 sm:self-center shrink-0 border-t border-line/60 pt-2.5 sm:border-0 sm:pt-0">
+                  {action.dueDate ? (
+                    <span className="inline-flex sm:hidden items-center gap-1 text-[11.5px] font-medium text-ink/65">
+                      <Clock size={11} /> Due {formatShortDate(action.dueDate)}
+                    </span>
+                  ) : (
+                    <span className="sm:hidden" />
                   )}
 
-                  {/* Delete Button */}
-                  {canDelete && (
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(action)}
-                      className="grid h-8 w-8 place-items-center rounded-lg text-ink/40 hover:bg-red-50 hover:text-red-600 transition"
-                      title="Delete action request"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  )}
+                  <div className="flex items-center gap-1.5 ml-auto sm:ml-0">
+                    {/* Direct 1-Click Shortcut Button */}
+                    {shortcutUrl && categoryInfo.actionLabel && (
+                      <Link
+                        href={shortcutUrl}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg sm:rounded-xl border border-line bg-[#f8fbf9] sm:bg-white px-2.5 py-1 sm:px-3 sm:py-1.5 text-[11.5px] sm:text-[12.5px] font-bold text-brand-700 hover:bg-[#eef7f1] transition shadow-2xs"
+                      >
+                        <CategoryIcon size={12} className="sm:h-[13px] sm:w-[13px]" />
+                        {categoryInfo.actionLabel}
+                        <ExternalLink size={11} className="text-muted" />
+                      </Link>
+                    )}
+
+                    {/* Delete Button */}
+                    {canDelete && (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(action)}
+                        className="grid h-7 w-7 sm:h-8 sm:w-8 place-items-center rounded-lg text-ink/40 hover:bg-red-50 hover:text-red-600 transition shrink-0"
+                        title="Delete action request"
+                      >
+                        <Trash2 size={14} className="sm:h-[15px] sm:w-[15px]" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             );

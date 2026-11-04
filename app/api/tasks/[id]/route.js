@@ -35,7 +35,7 @@ export async function PATCH(request, { params }) {
   if (body.type !== undefined && !TASK_TYPES.includes(body.type)) return fail("Invalid task type.");
   if (body.status !== undefined && !TASK_STATUSES.includes(body.status)) return fail("Invalid status.");
   if (body.priority !== undefined && !PRIORITIES.includes(body.priority)) return fail("Invalid priority.");
-  if (body.projectId !== undefined && !Number.isInteger(body.projectId)) return fail("Invalid project.");
+  if (body.projectId !== undefined && !isInt(body.projectId)) return fail("Invalid project.");
   if (body.parentId !== undefined && !isInt(body.parentId)) return fail("Invalid parent task.");
   if (body.position !== undefined && !Number.isInteger(body.position)) return fail("Invalid position.");
   if (body.startDate !== undefined && !isText(body.startDate)) return fail("Invalid start date.");
@@ -59,7 +59,7 @@ export async function PATCH(request, { params }) {
         userId: Number(body.assigneeId),
         title: "Task Assigned",
         message: `${auth.user.name} assigned you to task "${task.issueKey}: ${task.title}"`,
-        link: `/projects/${task.projectId}`,
+        link: task.projectId ? `/projects/${task.projectId}` : "/",
       });
     } catch (err) {
       console.error("Failed to create notification:", err);

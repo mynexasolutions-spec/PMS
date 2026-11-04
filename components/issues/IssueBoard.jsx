@@ -255,12 +255,14 @@ function IssueCard({
             refId={task.id}
             title={isSubtask ? `${subtaskNumber} · ${task.title}` : `${task.issueKey} · ${task.title}`}
           />
-          <AssigneePicker
-            align="right"
-            size={20}
-            value={task.assigneeId}
-            onChange={(assigneeId) => updateTask(task.id, { assigneeId })}
-          />
+          {task.projectId != null && (
+            <AssigneePicker
+              align="right"
+              size={20}
+              value={task.assigneeId}
+              onChange={(assigneeId) => updateTask(task.id, { assigneeId })}
+            />
+          )}
         </div>
       </div>
     </article>
@@ -1038,7 +1040,7 @@ function TaskGraphView({ tasks, columns }) {
 }
 
 /** 4-Column Zero-Scroll Task Board with View Mode (Kanban Board vs Tabular View) */
-export default function IssueBoard({ tasks, eyebrow, title, subtitle, projectId }) {
+export default function IssueBoard({ tasks, eyebrow, title, subtitle, projectId, isPersonal = false }) {
   const { updateTask, deleteTask, openIssueModal, openTaskDetail, currentUser } = useApp();
   const [viewMode, setViewMode] = useState("board"); // "board" | "table" | "chart"
   const [over, setOver] = useState(null);
@@ -1047,8 +1049,9 @@ export default function IssueBoard({ tasks, eyebrow, title, subtitle, projectId 
   const [searchQuery, setSearchQuery] = useState("");
   const [doneCollapsed, setDoneCollapsed] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState({});
+  const [mobileColumn, setMobileColumn] = useState("todo");
 
-  const targetProjectId = projectId || tasks[0]?.projectId || null;
+  const targetProjectId = isPersonal || projectId === null ? null : (projectId || tasks[0]?.projectId || null);
   const normalizedSearch = searchQuery.trim().toLowerCase();
 
   const matchesSearch = (t) => {
@@ -1184,18 +1187,23 @@ export default function IssueBoard({ tasks, eyebrow, title, subtitle, projectId 
   }
 
   return (
-    <section className="panel p-4 sm:p-5">
+    <section className="panel min-w-0 p-3.5 sm:p-5">
       {/* Top Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-2 sm:flex-wrap sm:gap-3">
         <div className="min-w-0">
-          <p className="eyebrow">{eyebrow}</p>
-          <h2 className="text-[19px] sm:text-[21px] font-bold tracking-tight">{title}</h2>
-          <span className="text-[12.5px] sm:text-[13.5px] text-muted">{subtitle}</span>
+          <p className="eyebrow hidden sm:block">{eyebrow}</p>
+          <div className="flex items-center gap-2 min-w-0">
+            <h2 className="text-[17px] sm:text-[21px] font-bold tracking-tight truncate">{title}</h2>
+            <span className="inline-flex sm:hidden items-center justify-center rounded-full bg-[#e8f6ec] px-2 py-0.5 text-[11.5px] font-bold text-brand-800 shrink-0">
+              {tasks.length}
+            </span>
+          </div>
+          <span className="hidden sm:inline text-[12.5px] sm:text-[13.5px] text-muted">{subtitle}</span>
         </div>
 
-        {/* View Switcher (Board vs Table) + Create Task Button */}
-        <div className="flex flex-wrap items-center gap-2 ml-auto sm:ml-0">
-          <div className="inline-flex items-center rounded-xl border border-line bg-[#f5f8f6] p-0.5 text-[12.5px] font-semibold">
+        {/* Desktop View Switcher (Board vs Table) + Create Task Button */}
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="hidden md:inline-flex items-center rounded-xl border border-line bg-[#f5f8f6] p-0.5 text-[12.5px] font-semibold">
             <button
               type="button"
               onClick={() => setViewMode("board")}
@@ -1234,14 +1242,110 @@ export default function IssueBoard({ tasks, eyebrow, title, subtitle, projectId 
             </button>
           </div>
 
-          <button className="btn-primary btn-compact shrink-0" onClick={() => openIssueModal(null, targetProjectId)}>
-            <Plus size={16} /> Create task
+          <button
+            className="btn-primary h-8 px-3 text-[12.5px] sm:h-9 sm:px-3.5 sm:text-[13.5px] shrink-0"
+            onClick={() => openIssueModal(null, targetProjectId, null, null, viewMode === "board" ? mobileColumn : undefined)}
+          >
+            <Plus size={15} />
+            <span className="sm:hidden">Create</span>
+            <span className="hidden sm:inline">Create task</span>
           </button>
         </div>
       </div>
 
-      {/* Filter Chips */}
-      <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2.5 border-b border-line/60 pb-3">
+      {/* MOBILE COMPACT 2-ROW CONTROLS (<md) */}
+      <div className="mt-2.5 space-y-2 md:hidden">
+        {/* Mobile Row 1: Search Input + Filter Dropdown */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex flex-1 min-w-0 items-center">
+            <Search size={14} className="pointer-events-none absolute left-2.5 text-ink/45" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search tasks..."
+              className="h-8 w-full rounded-lg border border-line bg-[#f8faf9] pl-8 pr-7 text-[12.5px] font-medium text-ink transition placeholder:text-ink/45 focus:bg-white focus:border-brand-500 focus:outline-hidden"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-1.5 grid h-5 w-5 place-items-center rounded-md text-ink/40 hover:text-ink"
+                title="Clear search"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+
+          <select
+            value={filterMode}
+            onChange={(e) => setFilterMode(e.target.value)}
+            aria-label="Filter tasks"
+            className="h-8 shrink-0 rounded-lg border border-line bg-white px-2.5 text-[12px] font-semibold text-ink shadow-2xs focus:border-brand-500 focus:outline-hidden"
+          >
+            <option value="all">All ({tasks.length})</option>
+            {!isPersonalBoard && <option value="mine">My tasks ({myCount})</option>}
+            <option value="blocked">Blocked ({blockedCount})</option>
+            <option value="high">High priority ({highCount})</option>
+          </select>
+        </div>
+
+        {/* Mobile Row 2: Stage Dropdown + View Mode Dropdown */}
+        <div className="grid grid-cols-2 gap-2">
+          {viewMode === "board" ? (
+            <div className="relative flex items-center">
+              <span
+                className={`pointer-events-none absolute left-2.5 h-2 w-2 rounded-full ${
+                  columns.find((c) => c.id === mobileColumn)?.dot || "bg-slate-400"
+                }`}
+              />
+              <select
+                value={mobileColumn}
+                onChange={(e) => setMobileColumn(e.target.value)}
+                aria-label="Select Kanban stage"
+                className="h-8 w-full rounded-lg border border-line bg-[#f4f8f5] pl-6 pr-2 text-[12.5px] font-bold text-ink shadow-2xs focus:border-brand-500 focus:outline-hidden"
+              >
+                {columns.map((col) => (
+                  <option key={col.id} value={col.id}>
+                    {col.label} ({getColumnEntries(col.id).length})
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : categories.length > 0 ? (
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              aria-label="Filter by category"
+              className="h-8 w-full rounded-lg border border-line bg-[#f4f8f5] px-2.5 text-[12px] font-semibold text-ink shadow-2xs focus:outline-hidden truncate"
+            >
+              <option value="all">All Categories ({tasks.length})</option>
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat} ({tasks.filter((t) => t.category === cat).length})
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div />
+          )}
+
+          <select
+            value={viewMode}
+            onChange={(e) => setViewMode(e.target.value)}
+            aria-label="Select view mode"
+            className="h-8 w-full rounded-lg border border-line bg-white px-2.5 text-[12.5px] font-semibold text-ink shadow-2xs focus:border-brand-500 focus:outline-hidden"
+          >
+            <option value="board">View: Board</option>
+            <option value="table">View: Table</option>
+            <option value="chart">View: Graph</option>
+          </select>
+        </div>
+      </div>
+
+      {/* DESKTOP FILTER CHIPS & SEARCH (md+) */}
+      <div className="mt-3.5 hidden md:flex flex-wrap items-center justify-between gap-2.5 border-b border-line/60 pb-3">
         {/* Quick Filter Pills */}
         <div className="flex flex-wrap items-center gap-1.5">
           <button
@@ -1364,55 +1468,59 @@ export default function IssueBoard({ tasks, eyebrow, title, subtitle, projectId 
         <TaskGraphView tasks={filteredTasks} columns={columns} />
       ) : (
         /* VIEW MODE 2: KANBAN BOARD COLUMNS */
-        <div className="mt-3.5 flex items-start gap-3.5">
-          {columns.map((column) => {
-            const isDone = column.id === "done";
-            const isCollapsed = isDone && doneCollapsed;
+        <>
+          <div className="mt-2.5 md:mt-3.5 flex items-start gap-3.5">
+            {columns.map((column) => {
+              const isDone = column.id === "done";
+              const isCollapsed = isDone && doneCollapsed;
+              const isMobileHidden = mobileColumn !== column.id;
 
-            const entries = getColumnEntries(column.id);
+              const entries = getColumnEntries(column.id);
 
-            // Collapsed Done Column (Slim 44px vertical strip)
-            if (isCollapsed) {
+              // Collapsed Done Column (Slim 44px vertical strip on desktop)
+              if (isCollapsed) {
+                return (
+                  <section
+                    key={column.id}
+                    onClick={() => setDoneCollapsed(false)}
+                    className={`${isMobileHidden ? "hidden md:flex" : "hidden md:flex"} flex-col items-center justify-between w-[44px] shrink-0 min-h-[420px] rounded-2xl border border-emerald-200/80 bg-[#f4fbf6] p-2.5 cursor-pointer hover:bg-[#e8f7ec] transition group shadow-xs`}
+                    title="Click to expand Done column"
+                  >
+                    <div className="flex flex-col items-center gap-2 pt-1">
+                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                      <span className="grid h-[20px] min-w-[20px] place-items-center rounded-full bg-emerald-100 px-1 text-[11px] font-bold text-emerald-800">
+                        {entries.length}
+                      </span>
+                    </div>
+                    <div className="[writing-mode:vertical-lr] rotate-180 text-[13px] font-bold text-emerald-900 tracking-wide select-none">
+                      Done Column
+                    </div>
+                    <div className="grid h-6 w-6 place-items-center rounded-md text-emerald-700 group-hover:bg-emerald-200/50">
+                      <ChevronLeft size={16} />
+                    </div>
+                  </section>
+                );
+              }
+
               return (
                 <section
                   key={column.id}
-                  onClick={() => setDoneCollapsed(false)}
-                  className="flex flex-col items-center justify-between w-[44px] shrink-0 min-h-[420px] rounded-2xl border border-emerald-200/80 bg-[#f4fbf6] p-2.5 cursor-pointer hover:bg-[#e8f7ec] transition group shadow-xs"
-                  title="Click to expand Done column"
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    setOver(column.id);
+                  }}
+                  onDragLeave={() => setOver((current) => (current === column.id ? null : current))}
+                  onDrop={(event) => drop(event, column.id)}
+                  className={`${
+                    isMobileHidden ? "hidden md:flex" : "flex"
+                  } flex-col flex-1 min-w-0 md:min-h-[420px] rounded-2xl border p-2 sm:p-2.5 transition ${
+                    over === column.id
+                      ? "border-brand-400 bg-[#e8f6ec] shadow-inner"
+                      : `${column.border} ${column.bg}`
+                  }`}
                 >
-                  <div className="flex flex-col items-center gap-2 pt-1">
-                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                    <span className="grid h-[20px] min-w-[20px] place-items-center rounded-full bg-emerald-100 px-1 text-[11px] font-bold text-emerald-800">
-                      {entries.length}
-                    </span>
-                  </div>
-                  <div className="[writing-mode:vertical-lr] rotate-180 text-[13px] font-bold text-emerald-900 tracking-wide select-none">
-                    Done Column
-                  </div>
-                  <div className="grid h-6 w-6 place-items-center rounded-md text-emerald-700 group-hover:bg-emerald-200/50">
-                    <ChevronLeft size={16} />
-                  </div>
-                </section>
-              );
-            }
-
-            return (
-              <section
-                key={column.id}
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  setOver(column.id);
-                }}
-                onDragLeave={() => setOver((current) => (current === column.id ? null : current))}
-                onDrop={(event) => drop(event, column.id)}
-                className={`flex flex-col flex-1 min-w-0 min-h-[420px] rounded-2xl border p-2.5 transition ${
-                  over === column.id
-                    ? "border-brand-400 bg-[#e8f6ec] shadow-inner"
-                    : `${column.border} ${column.bg}`
-                }`}
-              >
-                {/* Column Header */}
-                <div className="flex items-center justify-between pb-2.5 pt-1 px-1">
+                {/* Column Header (Hidden on mobile since stage dropdown already shows it) */}
+                <div className="hidden md:flex items-center justify-between pb-2.5 pt-1 px-1">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${column.dot}`} />
                     <h3 className="text-[14px] font-bold text-ink leading-none truncate">{column.label}</h3>
@@ -1508,7 +1616,8 @@ export default function IssueBoard({ tasks, eyebrow, title, subtitle, projectId 
               </section>
             );
           })}
-        </div>
+          </div>
+        </>
       )}
     </section>
   );

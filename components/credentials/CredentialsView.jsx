@@ -808,15 +808,15 @@ export default function CredentialsView() {
   const credCount = secrets.filter((s) => s.kind === "credential").length;
 
   return (
-    <div className="space-y-6 px-5 pb-8 pt-6 md:px-[34px]">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="eyebrow flex items-center gap-1.5 text-brand-700">
-              <ShieldCheck size={16} /> Private Encrypted Storage
+    <div className="space-y-4 sm:space-y-6 px-3.5 pb-8 pt-3.5 sm:px-5 sm:pt-6 md:px-[34px]">
+      <header className="flex flex-col lg:flex-row lg:items-start justify-between gap-3.5 sm:gap-4">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <span className="eyebrow flex items-center gap-1 text-[11px] sm:text-[12px] text-brand-700">
+              <ShieldCheck size={14} className="shrink-0" /> Private Encrypted Storage
             </span>
             <span
-              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11.5px] font-bold ${
+              className={`inline-flex items-center gap-1 rounded-full border px-2 sm:px-2.5 py-0.5 text-[10.5px] sm:text-[11.5px] font-bold ${
                 hasPin
                   ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                   : "border-amber-200 bg-amber-50 text-amber-800"
@@ -826,56 +826,59 @@ export default function CredentialsView() {
               {hasPin ? "PIN Protected" : "Unprotected (No PIN)"}
             </span>
           </div>
-          <h1 className="mt-1 text-[38px] font-extrabold leading-tight tracking-tight text-brand-900 md:text-[46px]">
+          <h1 className="mt-1 text-[26px] sm:text-[36px] font-extrabold leading-tight tracking-tight text-brand-900 md:text-[44px]">
             My Credentials
           </h1>
-          <p className="mt-2 text-[15.5px] text-muted max-w-2xl">
+          <p className="mt-1 sm:mt-2 text-[12.5px] sm:text-[15px] text-muted max-w-2xl leading-relaxed">
             Your personal encrypted storage for private .env configurations, API keys, and login credentials. Strictly private to your account.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto shrink-0">
           <button
             type="button"
-            className="btn-secondary h-[46px] px-4 text-[14px]"
+            className="btn-secondary h-[38px] sm:h-[44px] w-full sm:w-auto justify-center px-3 sm:px-4 text-[12.5px] sm:text-[14px] whitespace-nowrap"
             onClick={() => setPinModalOpen(true)}
             title={hasPin ? "Change or remove your personal 4-digit PIN" : "Protect My Credentials with a personal 4-digit PIN"}
           >
-            {hasPin ? <Lock size={16} className="text-emerald-700" /> : <KeyRound size={16} className="text-amber-600" />}
-            {hasPin ? "PIN Settings" : "Set Vault PIN"}
+            {hasPin ? <Lock size={15} className="text-emerald-700 shrink-0" /> : <KeyRound size={15} className="text-amber-600 shrink-0" />}
+            <span>{hasPin ? "PIN Settings" : "Set Vault PIN"}</span>
           </button>
           <button
             type="button"
-            className="btn-secondary h-[46px] px-4 text-[14.5px]"
+            className="btn-secondary h-[38px] sm:h-[44px] w-full sm:w-auto justify-center px-3 sm:px-4 text-[12.5px] sm:text-[14px] whitespace-nowrap"
             onClick={() => setCreatingVaultProject(true)}
           >
-            <FolderPlus size={17} /> New Personal Folder
+            <FolderPlus size={15} className="shrink-0" />
+            <span className="sm:hidden">New Folder</span>
+            <span className="hidden sm:inline">New Personal Folder</span>
           </button>
           <button
             type="button"
-            className="btn-primary h-[46px] px-5 text-[14.5px]"
+            className="btn-primary col-span-2 sm:col-span-1 h-[40px] sm:h-[44px] w-full sm:w-auto justify-center px-4 sm:px-5 text-[13.5px] sm:text-[14.5px] whitespace-nowrap"
             onClick={() => {
               setPreselectedProjectId(selectedProjectId !== "all" ? Number(selectedProjectId) : null);
               setAddingSecret(true);
             }}
           >
-            <Plus size={18} /> Store Secret
+            <Plus size={17} className="shrink-0" /> Store Secret
           </button>
         </div>
       </header>
 
       {/* ---------------- SECTION 1: PERSONAL VAULT FOLDERS DISPLAY ---------------- */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-[17px] font-bold text-ink flex items-center gap-2">
-            <FolderLock size={19} className="text-brand-700" /> Personal Vault Folders ({vaultOnlyProjects.length})
+      <section className="space-y-2.5 sm:space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-[15px] sm:text-[17px] font-bold text-ink flex items-center gap-2 min-w-0">
+            <FolderLock size={18} className="text-brand-700 shrink-0" />
+            <span className="truncate">Personal Vault Folders ({vaultOnlyProjects.length})</span>
           </h2>
-          <span className="text-[13px] text-muted hidden sm:inline">
+          <span className="text-[13px] text-muted hidden sm:inline shrink-0">
             Private folders visible only to you
           </span>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {vaultOnlyProjects.map((p) => {
             const count = secrets.filter((s) => s.projectId === p.id).length;
             const isSelected = selectedProjectId === String(p.id);
@@ -884,21 +887,21 @@ export default function CredentialsView() {
               <div
                 key={p.id}
                 onClick={() => setSelectedProjectId(isSelected ? "all" : String(p.id))}
-                className={`panel p-4 cursor-pointer transition border relative group hover:shadow-md ${
+                className={`panel min-w-0 p-3.5 sm:p-4 cursor-pointer transition border relative group hover:shadow-md ${
                   isSelected ? "border-brand-500 ring-2 ring-brand-200 bg-[#f7fbf8]" : "hover:border-brand-300"
                 }`}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center justify-between gap-2.5 min-w-0">
+                  <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
                     <span
-                      className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-white shadow-xs"
+                      className="grid h-9 w-9 sm:h-10 sm:w-10 shrink-0 place-items-center rounded-xl text-white shadow-xs"
                       style={{ backgroundColor: p.color || "#2e9e4f" }}
                     >
-                      <FolderLock size={19} />
+                      <FolderLock size={18} />
                     </span>
-                    <div className="min-w-0">
-                      <h3 className="font-bold text-[15px] text-ink truncate leading-snug">{p.name}</h3>
-                      <p className="text-[12.5px] text-muted">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-bold text-[14px] sm:text-[15px] text-ink truncate leading-snug">{p.name}</h3>
+                      <p className="text-[11.5px] sm:text-[12.5px] text-muted truncate">
                         {count === 0 ? "0 credentials saved" : `${count} secret${count === 1 ? "" : "s"} stored`}
                       </p>
                     </div>
@@ -912,15 +915,15 @@ export default function CredentialsView() {
                         setPreselectedProjectId(p.id);
                         setAddingSecret(true);
                       }}
-                      className="btn-secondary h-8 px-2.5 text-[12px] inline-flex items-center gap-1"
+                      className="btn-secondary h-7 sm:h-8 px-2 sm:px-2.5 text-[11.5px] sm:text-[12px] inline-flex items-center gap-1 whitespace-nowrap"
                       title="Add credential or .env to this folder"
                     >
-                      <Plus size={13} /> Add
+                      <Plus size={12} /> Add
                     </button>
                     <button
                       type="button"
                       onClick={(e) => handleDeleteVaultProject(p, e)}
-                      className="grid h-8 w-8 place-items-center rounded-lg text-ink/40 hover:bg-red-50 hover:text-red-600 transition"
+                      className="grid h-7 w-7 sm:h-8 sm:w-8 shrink-0 place-items-center rounded-lg text-ink/40 hover:bg-red-50 hover:text-red-600 transition"
                       title="Delete this personal folder"
                     >
                       <Trash2 size={14} />
@@ -951,60 +954,65 @@ export default function CredentialsView() {
       </section>
 
       {/* ---------------- SECTION 2: SECRETS FILTER & LIST VIEW ---------------- */}
-      <section className="space-y-3 pt-2">
-        <div className="flex items-center justify-between">
-          <h2 className="text-[17px] font-bold text-ink flex items-center gap-2">
-            <KeyRound size={18} className="text-brand-700" /> My Stored Credentials &amp; .env Files ({filteredSecrets.length})
+      <section className="space-y-2.5 sm:space-y-3 pt-1 sm:pt-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-[15px] sm:text-[17px] font-bold text-ink flex items-center gap-2 min-w-0">
+            <KeyRound size={17} className="text-brand-700 shrink-0" />
+            <span className="truncate">My Stored Credentials &amp; .env ({filteredSecrets.length})</span>
           </h2>
           {selectedProjectObj && (
             <button
               onClick={() => setSelectedProjectId("all")}
-              className="text-[13px] font-semibold text-brand-700 hover:underline"
+              className="text-[12px] sm:text-[13px] font-semibold text-brand-700 hover:underline shrink-0"
             >
-              Clear filter ({selectedProjectObj.name})
+              Clear filter
             </button>
           )}
         </div>
 
         {/* Filter and search bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white p-3 shadow-xs">
-          {/* Kind Tabs */}
-          <div className="flex rounded-xl border border-line bg-[#f0f5f2] p-1 text-[13.5px] font-semibold">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3 rounded-2xl border border-line bg-white p-2.5 sm:p-3 shadow-xs">
+          {/* Kind Tabs: 1-line 3-column grid on mobile */}
+          <div className="grid grid-cols-3 sm:flex w-full sm:w-auto rounded-xl border border-line bg-[#f0f5f2] p-1 text-[12px] sm:text-[13.5px] font-semibold">
             <button
               type="button"
               onClick={() => setKindFilter("all")}
-              className={`rounded-lg px-3.5 py-1.5 transition ${
+              className={`rounded-lg px-2 sm:px-3.5 py-1.5 transition text-center whitespace-nowrap ${
                 kindFilter === "all" ? "bg-white text-ink shadow-xs" : "text-ink/65 hover:text-ink"
               }`}
             >
-              All Items ({secrets.length})
+              <span className="sm:hidden">All ({secrets.length})</span>
+              <span className="hidden sm:inline">All Items ({secrets.length})</span>
             </button>
             <button
               type="button"
               onClick={() => setKindFilter("env")}
-              className={`rounded-lg px-3.5 py-1.5 transition inline-flex items-center gap-1.5 ${
+              className={`rounded-lg px-2 sm:px-3.5 py-1.5 transition inline-flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap ${
                 kindFilter === "env" ? "bg-white text-ink shadow-xs" : "text-ink/65 hover:text-ink"
               }`}
             >
-              <FileCode2 size={15} /> .env Files ({envCount})
+              <FileCode2 size={14} className="shrink-0" />
+              <span className="sm:hidden">.env ({envCount})</span>
+              <span className="hidden sm:inline">.env Files ({envCount})</span>
             </button>
             <button
               type="button"
               onClick={() => setKindFilter("credential")}
-              className={`rounded-lg px-3.5 py-1.5 transition inline-flex items-center gap-1.5 ${
+              className={`rounded-lg px-2 sm:px-3.5 py-1.5 transition inline-flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap ${
                 kindFilter === "credential" ? "bg-white text-ink shadow-xs" : "text-ink/65 hover:text-ink"
               }`}
             >
-              <KeyRound size={15} /> Logins ({credCount})
+              <KeyRound size={14} className="shrink-0" />
+              <span>Logins ({credCount})</span>
             </button>
           </div>
 
           {/* Folder Picker & Search Input */}
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-3 w-full lg:w-auto">
             <select
               value={selectedProjectId}
               onChange={(e) => setSelectedProjectId(e.target.value)}
-              className="h-[40px] rounded-xl border border-line bg-white px-3 text-[13.5px] font-medium outline-none text-ink/80 focus:border-brand-500"
+              className="h-[38px] sm:h-[40px] w-full sm:w-auto rounded-xl border border-line bg-white px-3 text-[13px] sm:text-[13.5px] font-medium outline-none text-ink/80 focus:border-brand-500"
             >
               <option value="all">All Personal Folders ({vaultOnlyProjects.length})</option>
               {vaultOnlyProjects.map((p) => (
@@ -1014,14 +1022,14 @@ export default function CredentialsView() {
               ))}
             </select>
 
-            <div className="flex h-[40px] w-[220px] items-center gap-2 rounded-xl border border-line bg-white px-3 shadow-xs focus-within:border-brand-500">
-              <Search size={16} className="text-ink/45 shrink-0" />
+            <div className="flex h-[38px] sm:h-[40px] w-full sm:w-[220px] items-center gap-2 rounded-xl border border-line bg-white px-3 shadow-xs focus-within:border-brand-500">
+              <Search size={15} className="text-ink/45 shrink-0" />
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search my credentials..."
-                className="w-full bg-transparent text-[13.5px] outline-none placeholder:text-ink/40"
+                className="w-full min-w-0 bg-transparent text-[13px] sm:text-[13.5px] outline-none placeholder:text-ink/40"
               />
             </div>
           </div>
@@ -1030,7 +1038,7 @@ export default function CredentialsView() {
         {/* Secret List View */}
         <section className="panel divide-y divide-line overflow-visible shadow-card">
           {loading && (
-            <div className="py-16 text-center text-muted">
+            <div className="py-12 sm:py-16 text-center text-muted">
               <p className="animate-pulse">Loading your personal credentials...</p>
             </div>
           )}
@@ -1041,66 +1049,66 @@ export default function CredentialsView() {
               return (
                 <div
                   key={secret.id}
-                  className="flex flex-wrap items-center gap-4 px-5 py-4 transition hover:bg-[#fafcfb]"
+                  className="flex flex-wrap items-center gap-3 sm:gap-4 px-3.5 sm:px-5 py-3.5 sm:py-4 transition hover:bg-[#fafcfb]"
                 >
                   <span
-                    className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${
+                    className={`grid h-10 w-10 sm:h-11 sm:w-11 shrink-0 place-items-center rounded-xl ${
                       isEnv ? "bg-[#e8f7ec] text-brand-700" : "bg-[#eef4ff] text-[#2b5fd6]"
                     }`}
                   >
-                    {isEnv ? <FileCode2 size={21} /> : <KeyRound size={21} />}
+                    {isEnv ? <FileCode2 size={20} /> : <KeyRound size={20} />}
                   </span>
 
-                  <div className="min-w-[200px] flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                       <button
                         type="button"
                         onClick={() => setViewingSecret(secret)}
-                        className="font-bold text-[16px] text-ink hover:text-brand-700 text-left transition"
+                        className="font-bold text-[15px] sm:text-[16px] text-ink hover:text-brand-700 text-left transition truncate max-w-full"
                       >
                         {secret.label}
                       </button>
                       <span
-                        className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11.5px] font-semibold border"
+                        className="inline-flex items-center gap-1.5 rounded-full px-2 sm:px-2.5 py-0.5 text-[11px] sm:text-[11.5px] font-semibold border max-w-full truncate"
                         style={{
                           backgroundColor: `${secret.projectColor || "#2e9e4f"}15`,
                           borderColor: `${secret.projectColor || "#2e9e4f"}40`,
                           color: secret.projectColor || "#2e9e4f",
                         }}
                       >
-                        <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: secret.projectColor || "#2e9e4f" }} />
-                        {secret.projectName}
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: secret.projectColor || "#2e9e4f" }} />
+                        <span className="truncate">{secret.projectName}</span>
                       </span>
-                      <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10.5px] font-bold text-emerald-800">
+                      <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] sm:text-[10.5px] font-bold text-emerald-800">
                         Personal
                       </span>
                     </div>
-                    <p className="text-[12.5px] text-muted mt-0.5">
+                    <p className="text-[12px] sm:text-[12.5px] text-muted mt-0.5">
                       Updated {formatAuditDate(secret.updatedAt)}
                       {secret.lastViewedAt ? ` · Last opened ${formatAuditDate(secret.lastViewedAt)}` : ""}
                     </p>
                   </div>
 
                   <span
-                    className={`rounded-full px-3 py-1 text-[12px] font-bold ${
+                    className={`hidden md:inline-flex rounded-full px-3 py-1 text-[12px] font-bold ${
                       isEnv ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : "bg-blue-50 text-blue-800 border border-blue-200"
                     }`}
                   >
                     {isEnv ? ".env Configuration" : "Account Login"}
                   </span>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex w-full sm:w-auto items-center justify-end gap-2 pt-1 sm:pt-0 border-t border-line/50 sm:border-0">
                     <button
                       type="button"
                       onClick={() => setViewingSecret(secret)}
-                      className="btn-primary h-9 px-3.5 text-[13px] inline-flex items-center gap-1.5"
+                      className="btn-primary h-8.5 sm:h-9 flex-1 sm:flex-initial justify-center px-3.5 text-[12.5px] sm:text-[13px] inline-flex items-center gap-1.5"
                     >
                       <Eye size={14} /> View &amp; Decrypt
                     </button>
                     <button
                       type="button"
                       onClick={() => setEditingSecret(secret)}
-                      className="icon-btn h-9 w-9 text-ink/65 hover:text-ink"
+                      className="icon-btn h-8.5 w-8.5 sm:h-9 sm:w-9 text-ink/65 hover:text-ink"
                       title="Edit secret"
                     >
                       <Pencil size={15} />
@@ -1108,7 +1116,7 @@ export default function CredentialsView() {
                     <button
                       type="button"
                       onClick={() => handleDelete(secret)}
-                      className="icon-btn h-9 w-9 text-ink/40 hover:text-red-600 hover:bg-red-50"
+                      className="icon-btn h-8.5 w-8.5 sm:h-9 sm:w-9 text-ink/40 hover:text-red-600 hover:bg-red-50"
                       title="Delete secret"
                     >
                       <Trash2 size={15} />
@@ -1119,7 +1127,7 @@ export default function CredentialsView() {
             })}
 
           {!loading && filteredSecrets.length === 0 && (
-            <div className="py-16 text-center text-muted">
+            <div className="px-4 py-10 sm:py-16 text-center text-muted">
               {selectedProjectObj ? (
                 <div>
                   <FolderLock size={34} className="mx-auto text-ink/35 mb-2" />

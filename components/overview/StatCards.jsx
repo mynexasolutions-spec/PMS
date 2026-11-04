@@ -7,9 +7,9 @@ function Spark({ color }) {
   const heights = [11, 17, 23, 30];
   const opacity = [0.35, 0.55, 0.78, 1];
   return (
-    <div className="flex h-[30px] shrink-0 items-end gap-[4px]">
+    <div className="flex h-[24px] sm:h-[30px] shrink-0 items-end gap-[3px] sm:gap-[4px] scale-90 sm:scale-100 origin-bottom-right">
       {heights.map((h, i) => (
-        <span key={i} className="w-[6px] rounded-sm" style={{ height: h, background: color, opacity: opacity[i] }} />
+        <span key={i} className="w-[5px] sm:w-[6px] rounded-sm" style={{ height: h, background: color, opacity: opacity[i] }} />
       ))}
     </div>
   );
@@ -17,26 +17,26 @@ function Spark({ color }) {
 
 function Card({ icon: Icon, tile, iconColor, spark, label, value, foot }) {
   return (
-    <div className="panel flex flex-col justify-between w-[250px] shrink-0 snap-start sm:w-auto p-4 sm:p-5 transition hover:shadow-md">
-      <div className="flex items-center justify-between">
+    <div className="panel flex flex-col justify-between min-w-0 p-3.5 sm:p-5 transition hover:shadow-md active:scale-[0.99]">
+      <div className="flex items-center justify-between gap-2">
         <div
-          className="grid h-11 w-11 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-xl shadow-[0_4px_12px_-2px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.8)]"
+          className="grid h-9 w-9 sm:h-12 sm:w-12 shrink-0 place-items-center rounded-xl shadow-[0_4px_12px_-2px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.8)]"
           style={{ background: tile, color: iconColor }}
         >
-          <Icon size={22} strokeWidth={1.8} className="sm:h-6 sm:w-6" />
+          <Icon size={18} strokeWidth={1.9} className="sm:h-6 sm:w-6" />
         </div>
         <Spark color={spark} />
       </div>
 
-      <div className="mt-3.5 sm:mt-4">
-        <p className="text-[24px] sm:text-[28px] font-extrabold leading-tight tracking-tight text-ink">
+      <div className="mt-2.5 sm:mt-4 min-w-0">
+        <p className="text-[20px] sm:text-[28px] font-extrabold leading-tight tracking-tight text-ink truncate">
           {value}
         </p>
-        <p className="mt-1 text-[13.5px] sm:text-[14px] font-semibold text-ink/80">
+        <p className="mt-0.5 sm:mt-1 text-[12.5px] sm:text-[14px] font-semibold text-ink/85 truncate">
           {label}
         </p>
         {foot && (
-          <p className="mt-0.5 text-[12px] text-muted">
+          <p className="mt-0.5 text-[11px] sm:text-[12px] text-muted truncate">
             {foot}
           </p>
         )}
@@ -56,7 +56,7 @@ export default function StatCards() {
 
   return (
     <section
-      className="flex gap-3 overflow-x-auto pb-1 pt-0.5 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:gap-[14px] sm:grid-cols-2 xl:grid-cols-4"
+      className="grid grid-cols-2 gap-2.5 sm:gap-[14px] xl:grid-cols-4"
       aria-label="Company summary"
     >
       <Card

@@ -46,35 +46,39 @@ function InviteMemberModal({ project, existingUserIds, onClose, onAdded }) {
 
   return (
     <Modal
-      icon={<UserPlus size={26} className="text-brand-700" />}
+      compact
+      icon={<UserPlus size={22} className="text-brand-700 sm:h-[26px] sm:w-[26px]" />}
       eyebrow={project.name}
       title="Invite team member"
       subtitle="Invite members to collaborate on this project."
       onClose={onClose}
     >
       {/* 2-Option Selector Tabs */}
-      <div className="flex rounded-xl bg-[#eef5f0] p-1 mb-4 text-[13.5px] font-semibold">
+      <div className="mb-4 grid grid-cols-2 gap-1.5 rounded-xl border border-line bg-[#eef5f0] p-1 text-[12px] font-semibold sm:text-[13.5px]">
         <button
           type="button"
           onClick={() => setMode("collaborators")}
-          className={`flex-1 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+          className={`inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-2 transition-all ${
             mode === "collaborators"
-              ? "bg-white text-brand-900 shadow-xs"
+              ? "bg-white font-bold text-brand-900 shadow-xs"
               : "text-ink/65 hover:text-ink"
           }`}
         >
-          <Users size={15} /> From Collaborators ({availableCollaborators.length})
+          <Users size={14} className="shrink-0 sm:h-[15px] sm:w-[15px]" />
+          <span className="sm:hidden">Collaborators ({availableCollaborators.length})</span>
+          <span className="hidden sm:inline">From Collaborators ({availableCollaborators.length})</span>
         </button>
         <button
           type="button"
           onClick={() => setMode("email")}
-          className={`flex-1 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+          className={`inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-2 transition-all ${
             mode === "email"
-              ? "bg-white text-brand-900 shadow-xs"
+              ? "bg-white font-bold text-brand-900 shadow-xs"
               : "text-ink/65 hover:text-ink"
           }`}
         >
-          <Mail size={15} /> Direct Email
+          <Mail size={14} className="shrink-0 sm:h-[15px] sm:w-[15px]" />
+          <span>Direct Email</span>
         </button>
       </div>
 
@@ -164,6 +168,7 @@ function InviteMemberModal({ project, existingUserIds, onClose, onAdded }) {
 function MemberItemMenu({ project, member, isOnlyAdmin, onUpdated, onRemoved }) {
   const { notify } = useApp();
   const [open, setOpen] = useState(false);
+  const [openUp, setOpenUp] = useState(false);
   const [busy, setBusy] = useState(false);
   useCloseOnOutsideClick(open, () => setOpen(false));
 
@@ -219,6 +224,9 @@ function MemberItemMenu({ project, member, isOnlyAdmin, onUpdated, onRemoved }) 
         disabled={busy}
         onClick={(e) => {
           e.stopPropagation();
+          const rect = e.currentTarget.getBoundingClientRect();
+          // Flip menu upward if within 190px of the bottom of the viewport (including mobile BottomNav)
+          setOpenUp(window.innerHeight - rect.bottom < 190);
           setOpen((v) => !v);
         }}
       >
@@ -226,7 +234,11 @@ function MemberItemMenu({ project, member, isOnlyAdmin, onUpdated, onRemoved }) 
       </button>
 
       {open && (
-        <div className="menu-popover min-w-[210px] right-0">
+        <div
+          className={`menu-popover min-w-[210px] right-0 z-50 ${
+            openUp ? "!top-auto bottom-[calc(100%+6px)]" : ""
+          }`}
+        >
           {!isPending && (
             <>
               <button onClick={toggleAdminRole}>
@@ -261,16 +273,26 @@ export default function ProjectTeamTab({ project, canManage }) {
   const adminCount = members.filter((m) => m.role === "admin" && m.status !== "pending").length;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-3.5 sm:space-y-4">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <div>
-          <h3 className="text-[19px] font-bold tracking-tight">Project Team</h3>
-          <p className="text-[13.5px] text-muted">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-[18px] sm:text-[19px] font-bold tracking-tight">Project Team</h3>
+            {canManage && (
+              <button
+                className="btn-primary h-8 px-3 text-[12px] sm:hidden whitespace-nowrap"
+                onClick={() => setShowInvite(true)}
+              >
+                <UserPlus size={14} /> Invite member
+              </button>
+            )}
+          </div>
+          <p className="mt-0.5 text-[12.5px] sm:text-[13.5px] text-muted leading-relaxed">
             Collaborators who can view and work on this project. Admins can invite members and manage roles.
           </p>
         </div>
         {canManage && (
-          <button className="btn-primary" onClick={() => setShowInvite(true)}>
+          <button className="btn-primary hidden sm:inline-flex shrink-0" onClick={() => setShowInvite(true)}>
             <UserPlus size={17} /> Invite member
           </button>
         )}
@@ -286,55 +308,59 @@ export default function ProjectTeamTab({ project, canManage }) {
           return (
             <div
               key={member.id || member.userId}
-              className={`flex flex-wrap items-center gap-4 px-5 py-3.5 transition ${
+              className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 transition sm:gap-4 sm:px-5 ${
                 isPending ? "bg-amber-50/30" : ""
               }`}
             >
-              <Avatar name={member.name} id={member.userId} size={42} />
-              <div className="min-w-[180px] flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-bold text-[15.5px] text-ink">{member.name}</p>
-                  {isMe && (
-                    <span className="rounded-full bg-[#e8f6ec] px-2 py-0.5 text-[11px] font-semibold text-brand-800">
-                      You
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <Avatar name={member.name} id={member.userId} size={40} className="shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    <p className="font-bold text-[14.5px] sm:text-[15.5px] text-ink">{member.name}</p>
+                    {isMe && (
+                      <span className="rounded-full bg-[#e8f6ec] px-2 py-0.5 text-[10.5px] sm:text-[11px] font-semibold text-brand-800">
+                        You
+                      </span>
+                    )}
+                    {isCreator && (
+                      <span className="rounded-full bg-[#f4effc] px-2 py-0.5 text-[10.5px] sm:text-[11px] font-semibold text-[#5b2bb0]">
+                        Creator
+                      </span>
+                    )}
+                  </div>
+                  <p className="truncate text-[12.5px] sm:text-[13px] text-muted">{member.email}</p>
+                </div>
+              </div>
+
+              {/* Status / Role Badge + Admin Actions */}
+              <div className="flex w-full items-center justify-between gap-2 pl-[52px] sm:w-auto sm:justify-end sm:pl-0">
+                <div>
+                  {isPending ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-300 px-3 py-1 text-[11.5px] sm:text-[12px] font-bold text-amber-800 shadow-xs">
+                      <Clock size={13} className="text-amber-600 animate-pulse shrink-0" /> Waiting for approval
                     </span>
-                  )}
-                  {isCreator && (
-                    <span className="rounded-full bg-[#f4effc] px-2 py-0.5 text-[11px] font-semibold text-[#5b2bb0]">
-                      Creator
+                  ) : isAdmin ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200/80 px-2.5 py-1 text-[11.5px] sm:text-[12px] font-bold text-amber-800">
+                      <Crown size={13} className="text-amber-600 fill-amber-500/20" /> Project Admin
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 border border-slate-200 px-2.5 py-1 text-[11.5px] sm:text-[12px] font-semibold text-slate-700">
+                      <Users size={13} className="text-slate-500" /> Member
                     </span>
                   )}
                 </div>
-                <p className="text-[13px] text-muted">{member.email}</p>
-              </div>
 
-              {/* Status / Role Badge */}
-              <div className="flex items-center gap-2">
-                {isPending ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-300 px-3 py-1 text-[12px] font-bold text-amber-800 shadow-xs">
-                    <Clock size={13} className="text-amber-600 animate-pulse shrink-0" /> Waiting for approval
-                  </span>
-                ) : isAdmin ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200/80 px-2.5 py-1 text-[12px] font-bold text-amber-800">
-                    <Crown size={13} className="text-amber-600 fill-amber-500/20" /> Project Admin
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 border border-slate-200 px-2.5 py-1 text-[12px] font-semibold text-slate-700">
-                    <Users size={13} className="text-slate-500" /> Member
-                  </span>
+                {/* Admin Actions */}
+                {canManage && (
+                  <MemberItemMenu
+                    project={project}
+                    member={member}
+                    isOnlyAdmin={isAdmin && adminCount <= 1}
+                    onUpdated={(newList) => setMembers(newList)}
+                    onRemoved={(newList) => setMembers(newList)}
+                  />
                 )}
               </div>
-
-              {/* Admin Actions */}
-              {canManage && (
-                <MemberItemMenu
-                  project={project}
-                  member={member}
-                  isOnlyAdmin={isAdmin && adminCount <= 1}
-                  onUpdated={(newList) => setMembers(newList)}
-                  onRemoved={(newList) => setMembers(newList)}
-                />
-              )}
             </div>
           );
         })}

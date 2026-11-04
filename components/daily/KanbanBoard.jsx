@@ -57,7 +57,21 @@ function KanbanCard({ todo }) {
             <EllipsisVertical size={15} />
           </button>
           {menu && (
-            <div className="menu-popover right-0 left-auto">
+            <div className="menu-popover right-0 left-auto min-w-[185px]">
+              {todoColumns
+                .filter((col) => col.id !== todo.status)
+                .map((col) => (
+                  <button
+                    key={col.id}
+                    onClick={() => {
+                      setMenu(false);
+                      void patchTodo(todo, { status: col.id });
+                    }}
+                  >
+                    <ColumnIcon id={col.id} /> Move to {col.label}
+                  </button>
+                ))}
+              <hr />
               <button onClick={() => postponeTodo(todo)}>
                 <CalendarClock size={15} /> Move to tomorrow
               </button>
@@ -93,12 +107,20 @@ function KanbanCard({ todo }) {
   );
 }
 
+const shortStageLabel = {
+  todo: "To Do",
+  progress: "Progress",
+  review: "Review",
+  done: "Done",
+};
+
 /**
  * Status columns; dropping a card on a column changes its status. Four across when wide enough.
  */
 export default function KanbanBoard({ todos, onAdd }) {
   const { patchTodo, todos: allTodos } = useApp();
   const [over, setOver] = useState(null);
+  const [mobileStage, setMobileStage] = useState("todo");
 
   function drop(event, status) {
     event.preventDefault();
@@ -109,9 +131,39 @@ export default function KanbanBoard({ todos, onAdd }) {
 
   return (
     <div className="@container">
+      {/* Mobile Stage Switcher Bar (<480px container width) */}
+      <div className="mb-3 grid grid-cols-4 gap-1 rounded-xl border border-line/80 bg-[#f4f8f5] p-1 @min-[480px]:hidden">
+        {todoColumns.map((column) => {
+          const count = todos.filter((todo) => todo.status === column.id).length;
+          const active = mobileStage === column.id;
+          return (
+            <button
+              key={column.id}
+              type="button"
+              onClick={() => setMobileStage(column.id)}
+              className={`flex h-8 items-center justify-center gap-1 rounded-lg px-1.5 text-[11px] font-semibold whitespace-nowrap transition ${
+                active
+                  ? "bg-brand-700 text-white shadow-xs"
+                  : "text-ink/75 hover:bg-white/70"
+              }`}
+            >
+              <span>{shortStageLabel[column.id] ?? column.label}</span>
+              <span
+                className={`grid h-4 min-w-[16px] place-items-center rounded-full px-1 text-[9.5px] font-bold ${
+                  active ? "bg-white/25 text-white" : "bg-black/8 text-ink/75"
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       <div className="grid grid-cols-1 gap-3.5 @min-[480px]:grid-cols-2 @min-[720px]:grid-cols-4">
         {todoColumns.map((column) => {
           const items = todos.filter((todo) => todo.status === column.id);
+          const isMobileActive = column.id === mobileStage;
           return (
             <section
               key={column.id}
@@ -121,7 +173,9 @@ export default function KanbanBoard({ todos, onAdd }) {
               }}
               onDragLeave={() => setOver((current) => (current === column.id ? null : current))}
               onDrop={(event) => drop(event, column.id)}
-              className={`flex min-h-[380px] min-w-0 flex-col rounded-xl border p-2.5 transition ${
+              className={`${
+                isMobileActive ? "flex" : "hidden @min-[480px]:flex"
+              } min-h-[240px] @min-[480px]:min-h-[380px] min-w-0 flex-col rounded-xl border p-2.5 transition ${
                 over === column.id ? "border-brand-400 bg-[#e8f6ec]" : "border-line/70 bg-[#f8faf9]"
               }`}
             >

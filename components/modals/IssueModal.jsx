@@ -517,13 +517,13 @@ function DatePickerField({ label, value, onChange, min, optional = true }) {
   };
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1 min-w-0">
       <div className="flex items-center justify-between text-[12px] font-semibold text-slate-700">
-        <span className="flex items-center gap-1.5">
-          <Calendar size={13} className={value ? "text-brand-700" : "text-slate-400"} />
-          {label}
+        <span className="flex items-center gap-1 truncate">
+          <Calendar size={12} className={`shrink-0 ${value ? "text-brand-700" : "text-slate-400"}`} />
+          <span className="truncate">{label}</span>
         </span>
-        {optional && <span className="text-[11px] font-normal text-slate-400">Optional</span>}
+        {optional && <span className="hidden sm:inline text-[11px] font-normal text-slate-400">Optional</span>}
       </div>
 
       <div
@@ -534,14 +534,14 @@ function DatePickerField({ label, value, onChange, min, optional = true }) {
             inputRef.current?.focus();
           }
         }}
-        className={`relative flex items-center justify-between rounded-xl border px-3 py-2 text-[13px] font-medium transition cursor-pointer select-none shadow-2xs ${
+        className={`relative flex items-center justify-between gap-1 rounded-xl border px-2.5 sm:px-3 py-2 text-[12.5px] sm:text-[13px] font-medium transition cursor-pointer select-none shadow-2xs ${
           value
             ? "bg-brand-50/60 border-brand-500/60 text-slate-900 ring-1 ring-brand-500/20"
             : "bg-white border-line text-slate-400 hover:bg-slate-50/80 hover:border-slate-300"
         }`}
       >
-        <span className={value ? "text-slate-900 font-semibold" : "text-slate-400"}>
-          {value ? formatDisplayDate(value) : `Pick ${label.toLowerCase()}`}
+        <span className={`truncate ${value ? "text-slate-900 font-semibold" : "text-slate-400"}`}>
+          {value ? formatDisplayDate(value) : `Pick date`}
         </span>
 
         <input
@@ -562,38 +562,38 @@ function DatePickerField({ label, value, onChange, min, optional = true }) {
               onChange("");
               if (inputRef.current) inputRef.current.value = "";
             }}
-            className="rounded-md p-0.5 text-slate-400 hover:text-slate-700 hover:bg-black/5 transition"
+            className="shrink-0 rounded-md p-0.5 text-slate-400 hover:text-slate-700 hover:bg-black/5 transition"
             title="Clear date"
           >
             <X size={13} />
           </button>
         ) : (
-          <Calendar size={14} className="text-slate-400" />
+          <Calendar size={13} className="shrink-0 text-slate-400" />
         )}
       </div>
 
       {/* Quick shortcuts */}
-      <div className="flex items-center gap-1.5 pt-0.5">
+      <div className="flex flex-wrap items-center gap-1 pt-0.5">
         <button
           type="button"
           onClick={() => setPreset(0)}
-          className="rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold text-slate-500 bg-slate-100 hover:bg-brand-50 hover:text-brand-800 transition"
+          className="rounded-md px-1.5 py-0.5 text-[10px] sm:text-[10.5px] font-semibold text-slate-500 bg-slate-100 hover:bg-brand-50 hover:text-brand-800 transition"
         >
           Today
         </button>
         <button
           type="button"
           onClick={() => setPreset(1)}
-          className="rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold text-slate-500 bg-slate-100 hover:bg-brand-50 hover:text-brand-800 transition"
+          className="rounded-md px-1.5 py-0.5 text-[10px] sm:text-[10.5px] font-semibold text-slate-500 bg-slate-100 hover:bg-brand-50 hover:text-brand-800 transition"
         >
           Tomorrow
         </button>
         <button
           type="button"
           onClick={() => setPreset(7)}
-          className="rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold text-slate-500 bg-slate-100 hover:bg-brand-50 hover:text-brand-800 transition"
+          className="rounded-md px-1.5 py-0.5 text-[10px] sm:text-[10.5px] font-semibold text-slate-500 bg-slate-100 hover:bg-brand-50 hover:text-brand-800 transition"
         >
-          +1 Week
+          +1W
         </button>
       </div>
     </div>
@@ -621,16 +621,15 @@ export default function IssueModal() {
   const editingTask = issueModal.task;
   const [saving, setSaving] = useState(false);
 
-  // Resolved projectId
-  const resolvedProjectId =
-    editingTask?.projectId ??
-    parent?.projectId ??
-    issueModal.projectId ??
-    (isMember ? myProjects[0]?.id : projects[0]?.id) ??
-    projects[0]?.id ??
-    null;
+  // Resolved projectId (null = personal task in Personal Workspace)
+  const resolvedProjectId = editingTask
+    ? (editingTask.projectId ?? null)
+    : parent
+    ? (parent.projectId ?? null)
+    : (issueModal.projectId ?? null);
 
-  const currentProject = projects.find((p) => p.id === resolvedProjectId) || null;
+  const isPersonalTask = resolvedProjectId == null;
+  const currentProject = resolvedProjectId ? projects.find((p) => p.id === resolvedProjectId) || null : null;
 
   const [form, setForm] = useState({
     title: editingTask?.title ?? "",
@@ -640,7 +639,7 @@ export default function IssueModal() {
     priority: editingTask?.priority ?? "medium",
     projectId: resolvedProjectId,
     parentId: editingTask?.parentId ?? parent?.id ?? null,
-    assigneeId: editingTask?.assigneeId ?? null,
+    assigneeId: editingTask?.assigneeId ?? (isPersonalTask ? currentUser?.id ?? null : null),
     blockerReason: editingTask?.blockerReason ?? "",
     startDate: editingTask?.startDate ? editingTask.startDate.slice(0, 10) : issueModal.startDate ? issueModal.startDate.slice(0, 10) : "",
     dueAt: editingTask?.dueAt ? editingTask.dueAt.slice(0, 10) : issueModal.dueAt ? issueModal.dueAt.slice(0, 10) : "",
@@ -648,11 +647,12 @@ export default function IssueModal() {
 
   const set = (patch) => setForm((current) => ({ ...current, ...patch }));
 
-  // Get all unique categories across tasks
+  // Get unique categories scoped to personal tasks or the current project
   const availableCategories = useMemo(() => {
     const setCat = new Set();
     tasks.forEach((t) => {
-      if (t.category && typeof t.category === "string" && t.category.trim()) {
+      const sameScope = form.projectId ? t.projectId === form.projectId : !t.projectId;
+      if (sameScope && t.category && typeof t.category === "string" && t.category.trim()) {
         setCat.add(t.category.trim());
       }
     });
@@ -660,13 +660,18 @@ export default function IssueModal() {
       setCat.add(editingTask.category.trim());
     }
     return Array.from(setCat).sort();
-  }, [tasks, editingTask]);
+  }, [tasks, editingTask, form.projectId]);
 
   const [isCustomCategory, setIsCustomCategory] = useState(false);
 
-  // Filter available parent tasks to top-level tasks in the same project
+  // Filter available parent tasks to top-level tasks in the same scope (personal or same project)
   const projectTasks = tasks.filter(
-    (t) => t.projectId === form.projectId && !t.parentId && (!editingTask || t.id !== editingTask.id),
+    (t) =>
+      (form.projectId
+        ? t.projectId === form.projectId
+        : !t.projectId && (t.assigneeId === currentUser?.id || t.createdBy === currentUser?.id)) &&
+      !t.parentId &&
+      (!editingTask || t.id !== editingTask.id),
   );
 
   const isSubtask = Boolean(editingTask?.parentId || parent?.id || form.parentId);
@@ -680,7 +685,8 @@ export default function IssueModal() {
     const payload = {
       ...form,
       category: form.category?.trim() || null,
-      projectId: Number(form.projectId),
+      projectId: form.projectId ? Number(form.projectId) : null,
+      assigneeId: form.projectId ? form.assigneeId : (form.assigneeId ?? currentUser?.id ?? null),
       type: form.type || "Task",
       estimateHours: 0,
       loggedHours: 0,
@@ -733,40 +739,44 @@ export default function IssueModal() {
       size="wide"
       compact={true}
       eyebrow={
-        <span className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1 rounded-md bg-brand-50 px-2 py-0.5 text-[11px] font-bold text-brand-800 uppercase tracking-wider border border-brand-200">
+        <span className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+          <span className="inline-flex shrink-0 whitespace-nowrap items-center gap-1 rounded-md bg-brand-50 px-2 py-0.5 text-[10.5px] sm:text-[11px] font-bold text-brand-800 uppercase tracking-wider border border-brand-200">
             {isSubtask ? <CornerDownRight size={11} /> : <ListTodo size={11} />}
             {isSubtask ? "Subtask" : "Task"}
           </span>
           {editingTask?.issueKey && (
-            <span className="font-mono text-[11.5px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/80">
+            <span className="shrink-0 whitespace-nowrap font-mono text-[11px] sm:text-[11.5px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/80">
               {editingTask.issueKey}
             </span>
           )}
-          {currentProject?.name && (
-            <span className="text-[12px] font-medium text-slate-400 truncate max-w-[200px]">
+          {currentProject?.name ? (
+            <span className="text-[11.5px] sm:text-[12px] font-medium text-slate-400 truncate">
               {currentProject.name}
+            </span>
+          ) : (
+            <span className="text-[11.5px] sm:text-[12px] font-medium text-slate-400 truncate">
+              Personal Workspace
             </span>
           )}
         </span>
       }
-      title={editingTask ? "Edit task details" : "Create new task"}
+      title={editingTask ? (isPersonalTask ? "Edit personal task" : "Edit task details") : (isPersonalTask ? "Create personal task" : "Create new task")}
       subtitle={
         isSubtask && parentTaskObj ? (
-          <span className="flex items-center gap-1.5 text-[12.5px] text-slate-500 mt-0.5">
-            <span>Subtask of:</span>
-            <span className="font-semibold text-brand-800 font-mono bg-brand-50 px-1.5 py-0.2 rounded border border-brand-200">
+          <span className="flex items-center gap-1.5 text-[12px] sm:text-[12.5px] text-slate-500 mt-0.5">
+            <span className="shrink-0">Subtask of:</span>
+            <span className="shrink-0 whitespace-nowrap font-semibold text-brand-800 font-mono bg-brand-50 px-1.5 py-0.2 rounded border border-brand-200">
               {parentTaskObj.issueKey}
             </span>
-            <span className="truncate max-w-sm font-medium text-slate-700">· {parentTaskObj.title}</span>
+            <span className="truncate font-medium text-slate-700">· {parentTaskObj.title}</span>
           </span>
         ) : null
       }
       onClose={closeIssueModal}
     >
-      <form onSubmit={submit} className="space-y-4 pt-1">
+      <form onSubmit={submit} className="space-y-3 sm:space-y-4">
         {/* 1. Task Title / Summary (Hero input) */}
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-1">
           <label className="text-[12px] font-semibold text-slate-700">
             Task summary <span className="text-rose-500">*</span>
           </label>
@@ -776,25 +786,29 @@ export default function IssueModal() {
             value={form.title}
             onChange={(e) => set({ title: e.target.value })}
             placeholder="e.g. 1.1 Create Google Ads campaign"
-            className="w-full rounded-xl border border-line bg-[#f9fbf9] px-3.5 py-2.5 text-[15px] font-semibold text-slate-900 outline-none transition focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 placeholder:font-normal placeholder:text-slate-400 shadow-2xs"
+            className="w-full rounded-xl border border-line bg-[#f9fbf9] px-3 py-2 sm:px-3.5 sm:py-2.5 text-[14px] sm:text-[15px] font-semibold text-slate-900 outline-none transition focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 placeholder:font-normal placeholder:text-slate-400 shadow-2xs"
           />
         </div>
 
-        {/* 2. Metadata Strip: Status, Priority, Assignee */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* 2. Metadata Strip: Status, Priority, Assignee (2-col on mobile so it doesn't stretch vertically) */}
+        <div className={`grid grid-cols-2 ${isPersonalTask ? "sm:grid-cols-2" : "sm:grid-cols-3"} gap-2.5 sm:gap-3`}>
           <StatusSelector value={form.status} onChange={(status) => set({ status })} />
           <PrioritySelector value={form.priority} onChange={(priority) => set({ priority })} />
-          <AssigneeSelector
-            value={form.assigneeId}
-            onChange={(assigneeId) => set({ assigneeId })}
-            users={users}
-            currentUserId={currentUser?.id}
-          />
+          {!isPersonalTask && (
+            <div className="col-span-2 sm:col-span-1">
+              <AssigneeSelector
+                value={form.assigneeId}
+                onChange={(assigneeId) => set({ assigneeId })}
+                users={users}
+                currentUserId={currentUser?.id}
+              />
+            </div>
+          )}
         </div>
 
         {/* Blocker Alert (Only when status is 'blocked') */}
         {form.status === "blocked" && (
-          <div className="flex items-start gap-2.5 rounded-xl border border-rose-300 bg-rose-50/90 p-3 animate-in fade-in duration-150">
+          <div className="flex items-start gap-2.5 rounded-xl border border-rose-300 bg-rose-50/90 p-2.5 sm:p-3 animate-in fade-in duration-150">
             <AlertCircle size={16} className="text-rose-600 shrink-0 mt-0.5" />
             <div className="flex-1">
               <span className="block text-[12px] font-bold text-rose-800 mb-1">Blocker Reason:</span>
@@ -811,7 +825,7 @@ export default function IssueModal() {
         )}
 
         {/* 3. Category & Parent Task */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
           <CategorySelector
             value={form.category}
             onChange={(category) => set({ category })}
@@ -826,15 +840,15 @@ export default function IssueModal() {
           />
         </div>
 
-        {/* 4. Modern Date Picker Fields (Start Date & End Date) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+        {/* 4. Modern Date Picker Fields (Side-by-side 2-col on mobile too) */}
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
           <DatePickerField
             label="Start date"
             value={form.startDate}
             onChange={(startDate) => set({ startDate })}
           />
           <DatePickerField
-            label="End date (Due date)"
+            label="Due date"
             value={form.dueAt}
             min={form.startDate || undefined}
             onChange={(dueAt) => set({ dueAt })}
@@ -842,7 +856,7 @@ export default function IssueModal() {
         </div>
 
         {/* 5. Actions Footer */}
-        <div className="flex items-center justify-between pt-3 border-t border-line mt-2">
+        <div className="flex items-center justify-between gap-2 pt-2.5 sm:pt-3 border-t border-line">
           <div>
             {editingTask ? (
               <button

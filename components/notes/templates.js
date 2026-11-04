@@ -10,7 +10,8 @@ export const TEMPLATES = [
     tone: { tile: "bg-[#e0ecff] text-[#2b6fd6]", button: "bg-[#e6f0fd] text-[#1d4fb8] hover:bg-[#d8e8fc]" },
     tag: "meeting",
     title: "Meeting notes",
-    content: "**Date:** \n**Attendees:** \n\n**Agenda**\n- \n\n**Discussion**\n- \n\n**Decisions**\n- \n\n**Action items**\n- ",
+    content:
+      "**📅 Date:** {{DATE}}\n**👥 Attendees:** \n\n**📌 Agenda**\n- \n\n**💬 Discussion**\n- \n\n**🎯 Decisions**\n- \n\n**✅ Action items**\n- ",
   },
   {
     id: "requirements",
@@ -20,7 +21,8 @@ export const TEMPLATES = [
     tone: { tile: "bg-[#d9f3df] text-[#1f7a42]", button: "bg-[#dcf3e1] text-[#1f6b3a] hover:bg-[#cdeed4]" },
     tag: "requirement",
     title: "Requirements",
-    content: "**Overview**\n\n**Goals**\n- \n\n**Requirements**\n1. \n2. \n\n**Acceptance criteria**\n- \n\n**Open questions**\n- ",
+    content:
+      "**📋 Overview**\n\n**🎯 Goals**\n- \n\n**⚙️ Requirements**\n1. \n2. \n\n**✅ Acceptance criteria**\n- \n\n**❓ Open questions**\n- ",
   },
   {
     id: "weekly",
@@ -30,7 +32,8 @@ export const TEMPLATES = [
     tone: { tile: "bg-[#ece3fb] text-[#7c3aed]", button: "bg-[#efe7fc] text-[#5b2bb0] hover:bg-[#e5d9fa]" },
     tag: "meeting",
     title: "Weekly sync",
-    content: "**Wins this week**\n- \n\n**Blockers**\n- \n\n**Plans for next week**\n- \n\n**Shout-outs**\n- ",
+    content:
+      "**🏆 Wins this week**\n- \n\n**🚧 Blockers**\n- \n\n**📅 Plans for next week**\n- \n\n**🙌 Shout-outs**\n- ",
   },
   {
     id: "ideas",
@@ -40,6 +43,7 @@ export const TEMPLATES = [
     tone: { tile: "bg-[#fdf0c4] text-[#c78a00]", button: "bg-[#fdf1cf] text-[#9a6f08] hover:bg-[#fbe9b4]" },
     tag: "ideas",
     title: "Idea",
-    content: "**The idea**\n\n**Why it matters**\n- \n\n**What it needs**\n- \n\n**Next steps**\n1. ",
+    content:
+      "**💡 The idea**\n\n**🔥 Why it matters**\n- \n\n**🛠️ What it needs**\n- \n\n**🚀 Next steps**\n1. ",
   },
 ];

@@ -231,42 +231,49 @@ export default function ProjectChatTab({ project, onMessagesRead }) {
   return (
     <div className="panel overflow-hidden border border-line shadow-card flex flex-col h-[650px] max-h-[82vh] bg-[#f2f5f3] relative">
       {/* ---------------- 1. CHAT HEADER (WhatsApp Style) ---------------- */}
-      <header className="flex items-center justify-between px-4 py-3 bg-white border-b border-line/80 shrink-0 z-10 shadow-xs">
-        <div className="flex items-center gap-3 min-w-0">
+      <header className="flex items-center justify-between gap-2 px-3 py-2.5 sm:px-4 sm:py-3 bg-white border-b border-line/80 shrink-0 z-10 shadow-xs">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
           <span
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-white font-bold shadow-xs text-[15px]"
+            className="grid h-9 w-9 sm:h-10 sm:w-10 shrink-0 place-items-center rounded-xl text-white font-bold shadow-xs text-[14px] sm:text-[15px]"
             style={{ backgroundColor: project.color || "#2e9e4f" }}
           >
             {project.name.charAt(0).toUpperCase()}
           </span>
 
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="font-bold text-[15.5px] text-ink truncate leading-tight">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <h3 className="font-bold text-[13.5px] sm:text-[15.5px] text-ink leading-tight">
                 {project.name} Team Chat
               </h3>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 border border-emerald-200">
+              <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 border border-emerald-200 shrink-0">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
               </span>
             </div>
-            <p className="text-[12.5px] text-muted flex items-center gap-1.5 mt-0.5 truncate">
-              <Users size={12} className="shrink-0" /> {acceptedMembersCount} member{acceptedMembersCount === 1 ? "" : "s"} in room
+            <p className="text-[11px] sm:text-[12.5px] text-muted flex items-center gap-1 sm:gap-1.5 mt-0.5 whitespace-nowrap">
+              <Users size={11} className="shrink-0 sm:h-3 sm:w-3" /> {acceptedMembersCount} member{acceptedMembersCount === 1 ? "" : "s"} in room
               <span className="text-black/20">·</span>
               <span className="text-brand-700 inline-flex items-center gap-0.5">
-                <Shield size={11} /> Project member private
+                <Shield size={10} className="shrink-0 sm:h-[11px] sm:w-[11px]" />
+                <span className="sm:hidden">Private</span>
+                <span className="hidden sm:inline">Project member private</span>
               </span>
             </p>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => fetchMessages(true)}
-          className="grid h-8 w-8 place-items-center rounded-lg text-ink/50 hover:bg-black/5 hover:text-ink transition"
-          title="Refresh chat"
-        >
-          <RotateCcw size={15} />
-        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          <span className="inline-flex sm:hidden items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
+          </span>
+          <button
+            type="button"
+            onClick={() => fetchMessages(true)}
+            className="grid h-7 w-7 sm:h-8 sm:w-8 place-items-center rounded-lg text-ink/50 hover:bg-black/5 hover:text-ink transition"
+            title="Refresh chat"
+          >
+            <RotateCcw size={14} className="sm:h-[15px] sm:w-[15px]" />
+          </button>
+        </div>
       </header>
 
       {/* ---------------- 2. MESSAGES CONTAINER ---------------- */}

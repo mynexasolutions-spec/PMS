@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Pin, Trash2, X, Copy, Check, Clock } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
 import { categoryMeta } from "@/components/sticky/categories";
@@ -57,15 +58,15 @@ export default function StickyDetailModal({ note, onClose, onTogglePin, onToggle
     }
   };
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 p-3.5 sm:p-5 backdrop-blur-xs animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
-        className="relative flex flex-col w-full max-w-xl max-h-[85vh] rounded-3xl p-6 md:p-7 shadow-2xl border transition animate-in zoom-in-95 duration-150"
+        className="relative flex flex-col w-full max-w-xl max-h-[85dvh] sm:max-h-[88vh] rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-7 shadow-2xl border transition animate-in zoom-in-95 duration-150"
         style={{
           backgroundColor: colorConfig.bg,
           borderColor: colorConfig.border,
@@ -214,6 +215,7 @@ export default function StickyDetailModal({ note, onClose, onTogglePin, onToggle
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
