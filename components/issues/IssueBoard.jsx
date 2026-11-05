@@ -1189,12 +1189,12 @@ export default function IssueBoard({ tasks, eyebrow, title, subtitle, projectId,
   return (
     <section className="panel min-w-0 p-3.5 sm:p-5">
       {/* Top Header */}
-      <div className="flex items-center justify-between gap-2 sm:flex-wrap sm:gap-3">
+      <div className="flex items-center justify-between gap-1.5 sm:flex-wrap sm:gap-3">
         <div className="min-w-0">
           <p className="eyebrow hidden sm:block">{eyebrow}</p>
-          <div className="flex items-center gap-2 min-w-0">
-            <h2 className="text-[17px] sm:text-[21px] font-bold tracking-tight truncate">{title}</h2>
-            <span className="inline-flex sm:hidden items-center justify-center rounded-full bg-[#e8f6ec] px-2 py-0.5 text-[11.5px] font-bold text-brand-800 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+            <h2 className="text-[15px] sm:text-[21px] font-bold tracking-tight whitespace-nowrap">{title}</h2>
+            <span className="inline-flex sm:hidden items-center justify-center rounded-full bg-[#e8f6ec] px-1.5 py-0.5 text-[11px] font-bold text-brand-800 shrink-0">
               {tasks.length}
             </span>
           </div>
@@ -1243,10 +1243,10 @@ export default function IssueBoard({ tasks, eyebrow, title, subtitle, projectId,
           </div>
 
           <button
-            className="btn-primary h-8 px-3 text-[12.5px] sm:h-9 sm:px-3.5 sm:text-[13.5px] shrink-0"
+            className="btn-primary h-8 px-2.5 text-[12px] sm:h-9 sm:px-3.5 sm:text-[13.5px] shrink-0 whitespace-nowrap"
             onClick={() => openIssueModal(null, targetProjectId, null, null, viewMode === "board" ? mobileColumn : undefined)}
           >
-            <Plus size={15} />
+            <Plus size={14} />
             <span className="sm:hidden">Create</span>
             <span className="hidden sm:inline">Create task</span>
           </button>

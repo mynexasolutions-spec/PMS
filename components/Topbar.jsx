@@ -43,14 +43,14 @@ export default function Topbar() {
         <PanelLeft size={19} />
       </button>
 
-      <label className="flex h-10 sm:h-[46px] min-w-0 flex-1 max-w-[633px] items-center gap-2 sm:gap-3 rounded-xl border border-line bg-white px-3 sm:px-4 shadow-[0_1px_3px_rgba(16,60,35,0.05)]">
-        <Search size={19} strokeWidth={1.6} className="shrink-0 text-ink/80" />
+      <label className="flex h-10 sm:h-[46px] min-w-0 flex-1 max-w-[633px] items-center gap-2 sm:gap-3 rounded-xl border border-line bg-white px-2.5 sm:px-4 shadow-[0_1px_3px_rgba(16,60,35,0.05)]">
+        <Search size={17} strokeWidth={1.7} className="shrink-0 text-ink/75 sm:h-[19px] sm:w-[19px]" />
         <input
           ref={searchRef}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          className="min-w-0 flex-1 bg-transparent text-[13.5px] sm:text-[15px] outline-none placeholder:text-muted"
-          placeholder="Search tasks, projects, notes..."
+          className="min-w-0 flex-1 bg-transparent text-[13px] sm:text-[15px] outline-none placeholder:text-muted"
+          placeholder="Search workspace..."
         />
         <kbd className="hidden rounded-md border border-line bg-[#f6faf7] px-2.5 py-1 font-sans text-[13px] text-ink/70 sm:block">Ctrl K</kbd>
       </label>

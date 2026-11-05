@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   Check,
+  ChevronDown,
   Clock,
   Ellipsis,
   FolderKanban,
@@ -166,13 +167,46 @@ export default function CollaboratorsView() {
   } = useApp();
 
   const [activeTab, setActiveTab] = useState("all"); // "all" | "requests" | "project-invites"
+  const [tabMenuOpen, setTabMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [addingModal, setAddingModal] = useState(false);
   const [actionBusy, setActionBusy] = useState(null);
+  useCloseOnOutsideClick(tabMenuOpen, () => setTabMenuOpen(false));
 
   const incomingRequests = collaboratorRequests?.incoming || [];
   const outgoingRequests = collaboratorRequests?.outgoing || [];
   const pendingRequestsCount = incomingRequests.length + outgoingRequests.length;
+
+  const navOptions = [
+    {
+      id: "all",
+      label: "My Collaborators",
+      Icon: Users,
+      badge: collaborators.length,
+      badgeTone: "bg-[#e6f4ea] text-brand-800",
+    },
+    {
+      id: "requests",
+      label: "Pending Requests",
+      Icon: Mail,
+      badge: incomingRequests.length > 0 ? `${incomingRequests.length} new` : pendingRequestsCount,
+      badgeTone:
+        incomingRequests.length > 0
+          ? "bg-amber-100 text-amber-900 ring-1 ring-amber-300"
+          : "bg-slate-100 text-slate-700",
+    },
+    {
+      id: "project-invites",
+      label: "Project Invitations",
+      Icon: FolderKanban,
+      badge: projectInvites.length > 0 ? `${projectInvites.length} new` : 0,
+      badgeTone:
+        projectInvites.length > 0
+          ? "bg-amber-100 text-amber-900 ring-1 ring-amber-300"
+          : "bg-slate-100 text-slate-700",
+    },
+  ];
+  const currentNav = navOptions.find((item) => item.id === activeTab) || navOptions[0];
 
   // Filter collaborators
   const filteredCollaborators = collaborators.filter((c) => {
@@ -209,31 +243,117 @@ export default function CollaboratorsView() {
   }
 
   return (
-    <div className="space-y-6 px-5 pb-12 pt-6 md:px-[34px]">
+    <div className="space-y-4 sm:space-y-6 px-3.5 pb-12 pt-3.5 sm:px-5 sm:pt-6 md:px-[34px]">
       {/* Header */}
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-ink/70">
+      <header className="flex flex-col sm:flex-row sm:flex-wrap sm:items-start justify-between gap-3 sm:gap-4">
+        <div className="min-w-0">
+          <p className="text-[11px] sm:text-[13px] font-semibold uppercase tracking-[0.16em] sm:tracking-[0.18em] text-ink/70">
             {longDate(todayDate, true)}
           </p>
-          <h1 className="mt-2 text-[42px] font-extrabold leading-none tracking-tight text-brand-900 md:text-[48px]">
-            Collaborators
-          </h1>
-          <p className="mt-2.5 text-[15.5px] text-muted max-w-2xl leading-relaxed">
+          <div className="mt-1 sm:mt-2 flex items-center justify-between gap-2.5">
+            <h1 className="text-[26px] sm:text-[42px] font-extrabold leading-tight sm:leading-none tracking-tight text-brand-900 md:text-[48px]">
+              Collaborators
+            </h1>
+            <button
+              className="sm:hidden btn-primary !h-9 !px-3.5 !text-[12.5px] font-semibold shrink-0 whitespace-nowrap shadow-xs flex items-center gap-1.5"
+              onClick={() => setAddingModal(true)}
+            >
+              <Plus size={15} /> Add collaborator
+            </button>
+          </div>
+          <p className="mt-1 sm:mt-2.5 text-[12.5px] sm:text-[15.5px] text-muted max-w-2xl leading-relaxed">
             Your connected network of colleagues and teammates. Collaborators can be quickly invited into projects with one click.
           </p>
         </div>
 
         <button
-          className="btn-primary h-[48px] px-5 text-[15px] shadow-sm flex items-center gap-2"
+          className="hidden sm:flex btn-primary h-[48px] px-5 text-[15px] shadow-sm items-center gap-2 shrink-0"
           onClick={() => setAddingModal(true)}
         >
           <Plus size={19} /> Add collaborator
         </button>
       </header>
 
-      {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-line">
+      {/* Mobile Section Switcher Dropdown (<sm) */}
+      <div className="relative sm:hidden">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setTabMenuOpen((open) => !open);
+          }}
+          aria-haspopup="listbox"
+          aria-expanded={tabMenuOpen}
+          className="flex w-full items-center justify-between gap-2.5 rounded-xl border border-line bg-white px-3.5 py-2.5 text-left shadow-xs transition hover:border-brand-300"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#e8f5ec] text-brand-700">
+              <currentNav.Icon size={16} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted leading-none">
+                View Section
+              </p>
+              <div className="mt-0.5 flex items-center gap-2">
+                <span className="text-[14px] font-bold text-ink truncate">
+                  {currentNav.label}
+                </span>
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${currentNav.badgeTone}`}>
+                  {currentNav.badge}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <span className="inline-flex items-center gap-1 rounded-lg bg-[#f2f6f3] px-2.5 py-1.5 text-[11.5px] font-semibold text-ink/75 shrink-0">
+            Switch
+            <ChevronDown size={14} className={`transition-transform ${tabMenuOpen ? "rotate-180" : ""}`} />
+          </span>
+        </button>
+
+        {tabMenuOpen && (
+          <div
+            role="listbox"
+            onClick={(e) => e.stopPropagation()}
+            className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 rounded-xl border border-line bg-white p-1.5 shadow-lg"
+          >
+            {navOptions.map((item) => {
+              const isSelected = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    setTabMenuOpen(false);
+                  }}
+                  className={`flex w-full items-center justify-between gap-2.5 rounded-lg px-3 py-2.5 text-left text-[13.5px] font-semibold transition ${
+                    isSelected
+                      ? "bg-[#edf7f0] text-brand-900"
+                      : "text-ink/75 hover:bg-[#f6faf7] hover:text-ink"
+                  }`}
+                >
+                  <span className="flex items-center gap-2.5 min-w-0">
+                    <item.Icon size={16} className={isSelected ? "text-brand-700 shrink-0" : "text-ink/50 shrink-0"} />
+                    <span className="truncate">{item.label}</span>
+                  </span>
+                  <span className="flex items-center gap-2 shrink-0">
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${item.badgeTone}`}>
+                      {item.badge}
+                    </span>
+                    {isSelected && <Check size={15} className="text-brand-700" />}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Desktop Navigation Tabs (sm+) */}
+      <div className="hidden sm:flex items-center gap-2 border-b border-line">
         <button
           type="button"
           onClick={() => setActiveTab("all")}
@@ -298,7 +418,7 @@ export default function CollaboratorsView() {
 
       {/* Tab: My Collaborators */}
       {activeTab === "all" && (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {collaborators.length > 0 && (
             <div className="relative max-w-md">
               <input
@@ -306,9 +426,9 @@ export default function CollaboratorsView() {
                 placeholder="Search collaborators by name or email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 h-[42px] text-[14.5px] rounded-xl border border-line bg-white shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                className="w-full pl-9 pr-3 h-[40px] sm:h-[42px] text-[13.5px] sm:text-[14.5px] rounded-xl border border-line bg-white shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
               />
-              <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink/40 pointer-events-none" />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink/40 pointer-events-none" />
               {searchQuery && (
                 <button
                   type="button"
@@ -328,20 +448,20 @@ export default function CollaboratorsView() {
                 return (
                   <div
                     key={collaborator.id}
-                    className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3 px-5 py-4 transition hover:bg-[#fafdfb]"
+                    className="flex flex-wrap items-center justify-between gap-x-5 gap-y-2.5 px-4 sm:px-5 py-3.5 sm:py-4 transition hover:bg-[#fafdfb]"
                   >
-                    <div className="flex items-center gap-3.5 min-w-[220px]">
-                      <Avatar user={collaborator} size={46} />
-                      <div>
-                        <p className="flex items-center gap-2 text-[16px] font-semibold text-ink leading-tight">
+                    <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
+                      <Avatar user={collaborator} size={42} />
+                      <div className="min-w-0">
+                        <p className="flex items-center gap-2 text-[15px] sm:text-[16px] font-semibold text-ink leading-tight truncate">
                           {collaborator.name}
                         </p>
-                        <p className="mt-0.5 text-[13.5px] text-muted break-all">{collaborator.email}</p>
+                        <p className="mt-0.5 text-[12.5px] sm:text-[13.5px] text-muted break-all">{collaborator.email}</p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#eaf4ed] px-3 py-1.5 text-[12.5px] font-semibold text-brand-900">
+                    <div className="flex w-full sm:w-auto items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t border-line/50 sm:border-0">
+                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#eaf4ed] px-2.5 sm:px-3 py-1 sm:py-1.5 text-[12px] sm:text-[12.5px] font-semibold text-brand-900">
                         <FolderKanban size={14} className="text-brand-700" />
                         {sharedCount} {sharedCount === 1 ? "shared project" : "shared projects"}
                       </span>

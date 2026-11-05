@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Pin, Trash2, X, Copy, Check, Clock } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
+import ListenButton from "@/components/ui/ListenButton";
 import { categoryMeta } from "@/components/sticky/categories";
 import { stickyTone } from "@/components/sticky/tones";
 
@@ -75,8 +76,8 @@ export default function StickyDetailModal({ note, onClose, onTogglePin, onToggle
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-black/10">
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2.5 pb-4 border-b border-black/10">
+          <div className="flex min-w-0 items-center gap-2 flex-wrap">
             {meta ? (
               <span
                 className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-bold uppercase tracking-wider bg-white/80 shadow-2xs"
@@ -112,7 +113,11 @@ export default function StickyDetailModal({ note, onClose, onTogglePin, onToggle
             )}
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex max-w-full flex-wrap items-center gap-1 sm:gap-1.5 ml-auto">
+            <ListenButton
+              text={note.content}
+              className="grid h-8 w-8 place-items-center rounded-xl bg-white/60 hover:bg-white text-ink transition shadow-2xs cursor-pointer"
+            />
             {onToggleComplete && (
               <button
                 type="button"

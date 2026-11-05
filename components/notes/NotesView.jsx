@@ -238,10 +238,10 @@ export default function NotesView() {
 
   return (
     <div className="px-3.5 pb-8 pt-3.5 sm:px-5 sm:pt-6 md:px-[34px]">
-      <header className="relative overflow-hidden rounded-2xl xl:min-h-[150px] xl:pt-2">
+      <header className="relative xl:overflow-hidden rounded-2xl xl:min-h-[150px] xl:pt-2">
         <HeaderArt />
         <div className="relative">
-          <p className="text-[11px] sm:text-[13px] font-semibold uppercase tracking-[0.16em] sm:tracking-[0.18em] text-ink/70">
+          <p className="text-[11px] sm:text-[13px] font-semibold uppercase tracking-[0.14em] sm:tracking-[0.18em] text-ink/70">
             {longDate(todayDate, true)}
           </p>
           <div className="mt-1 sm:mt-2 flex items-center justify-between gap-2.5">
@@ -452,17 +452,17 @@ export default function NotesView() {
         </form>
 
         <div className="min-w-0 space-y-4 sm:space-y-5">
-          <section className="panel p-3.5 sm:p-4">
+          <section className="panel min-w-0 p-3.5 sm:p-4">
             {/* Toolbar: Search + View Toggle + Filter Dropdowns */}
             <div className="space-y-2 sm:space-y-0 sm:flex sm:flex-wrap sm:items-center sm:gap-2.5">
-              <div className="flex items-center gap-2 sm:flex-1 sm:min-w-[200px]">
-                <label className="flex h-9 sm:h-[44px] flex-1 items-center gap-2 rounded-xl border border-line bg-white px-3 sm:px-4">
+              <div className="flex min-w-0 items-center gap-2 sm:flex-1 sm:min-w-[200px]">
+                <label className="flex h-9 sm:h-[44px] min-w-0 flex-1 items-center gap-2 rounded-xl border border-line bg-white px-3 sm:px-4">
                   <Search size={16} className="shrink-0 text-ink/60 sm:h-[18px] sm:w-[18px]" />
                   <input
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Search notes..."
-                    className="min-w-0 flex-1 bg-transparent text-[13.5px] sm:text-[15px] outline-none placeholder:text-muted"
+                    className="w-full min-w-0 flex-1 bg-transparent text-[13.5px] sm:text-[15px] outline-none placeholder:text-muted"
                   />
                 </label>
 

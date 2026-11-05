@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Check, Copy, Paperclip, Pencil, Trash2, X, Clock } from "lucide-react";
 import MarkdownLite from "./markdown";
 import { TagChip } from "./tags";
+import ListenButton from "@/components/ui/ListenButton";
 
 const fullDate = new Intl.DateTimeFormat("en-GB", {
   day: "numeric",
@@ -56,7 +57,7 @@ export default function NoteDetailModal({ note, onClose, onEdit, onDelete }) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Header */}
-        <div className="flex items-center justify-between gap-2 border-b border-line pb-3.5 shrink-0">
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2.5 border-b border-line pb-3.5 shrink-0">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             {note.tag ? (
               <TagChip tag={note.tag} />
@@ -73,7 +74,8 @@ export default function NoteDetailModal({ note, onClose, onEdit, onDelete }) {
             )}
           </div>
 
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex max-w-full flex-wrap items-center gap-1 sm:gap-1.5 ml-auto">
+            <ListenButton text={[note.title, note.content].filter(Boolean).join(". ")} />
             <button
               type="button"
               onClick={handleCopy}
