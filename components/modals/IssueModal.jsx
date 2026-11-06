@@ -631,6 +631,26 @@ export default function IssueModal() {
   const isPersonalTask = resolvedProjectId == null;
   const currentProject = resolvedProjectId ? projects.find((p) => p.id === resolvedProjectId) || null : null;
 
+  // Filter assignees to only show members of the project when inside a project task
+  const projectAssigneeUsers = useMemo(() => {
+    if (!currentProject) {
+      return users.filter((u) => u.active);
+    }
+    const memberIds = new Set(
+      (currentProject.members || [])
+        .filter((m) => m.status !== "pending")
+        .map((m) => m.userId),
+    );
+    if (currentProject.createdBy) memberIds.add(currentProject.createdBy);
+    if (currentProject.assigneeId) memberIds.add(currentProject.assigneeId);
+
+    const filtered = users.filter((u) => u.active && memberIds.has(u.id));
+    if (filtered.length === 0 && currentUser) {
+      return users.filter((u) => u.id === currentUser.id && u.active);
+    }
+    return filtered;
+  }, [currentProject, users, currentUser]);
+
   const [form, setForm] = useState({
     title: editingTask?.title ?? "",
     category: editingTask?.category ?? "",
@@ -799,7 +819,7 @@ export default function IssueModal() {
               <AssigneeSelector
                 value={form.assigneeId}
                 onChange={(assigneeId) => set({ assigneeId })}
-                users={users}
+                users={projectAssigneeUsers}
                 currentUserId={currentUser?.id}
               />
             </div>

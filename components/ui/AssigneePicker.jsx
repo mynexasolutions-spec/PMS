@@ -7,8 +7,9 @@ import Avatar from "./Avatar";
 import { useCloseOnOutsideClick } from "./useCloseOnOutsideClick";
 
 /** A round avatar button: click it to hand the task or to-do to anyone on the team (or nobody). */
-export default function AssigneePicker({ value, onChange, size = 26, className = "", align = "left" }) {
-  const { users, isMember } = useApp();
+export default function AssigneePicker({ value, onChange, size = 26, className = "", align = "left", allowedUsers = null }) {
+  const { users: allUsers, isMember } = useApp();
+  const users = allowedUsers || allUsers;
   const [open, setOpen] = useState(false);
   useCloseOnOutsideClick(open, () => setOpen(false));
   const person = users.find((user) => user.id === value);

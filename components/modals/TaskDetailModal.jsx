@@ -75,6 +75,7 @@ export default function TaskDetailModal() {
     deleteTask,
     tasks,
     currentUser,
+    users,
     projects,
     confirmDialog,
   } = useApp();
@@ -90,6 +91,21 @@ export default function TaskDetailModal() {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [closeTaskDetail]);
+
+  // Project members for assignee picker (scoped to project)
+  const projectAssigneeUsers = useMemo(() => {
+    if (!task?.projectId) return null;
+    const proj = projects.find((p) => p.id === task.projectId);
+    if (!proj) return null;
+    const memberIds = new Set(
+      (proj.members || [])
+        .filter((m) => m.status !== "pending")
+        .map((m) => m.userId),
+    );
+    if (proj.createdBy) memberIds.add(proj.createdBy);
+    if (proj.assigneeId) memberIds.add(proj.assigneeId);
+    return (users || []).filter((u) => u.active && memberIds.has(u.id));
+  }, [task?.projectId, projects, users]);
 
   // Find subtasks belonging to this task
   const subtasks = useMemo(() => {
@@ -442,6 +458,7 @@ export default function TaskDetailModal() {
                     <AssigneePicker
                       size={24}
                       value={task.assigneeId}
+                      allowedUsers={projectAssigneeUsers}
                       onChange={(assigneeId) => updateTask(task.id, { assigneeId })}
                     />
                   </div>

@@ -1,5 +1,5 @@
 import { authorize } from "@/lib/auth";
-import { createNotification, createTask, getProjects, getTasks } from "@/lib/db/repo";
+import { createNotification, createTask, getProject, getProjects, getTasks } from "@/lib/db/repo";
 import { getUser } from "@/lib/db/users";
 import { PRIORITIES, TASK_STATUSES, TASK_TYPES } from "@/lib/constants";
 import { fail, readJson } from "@/lib/http";
@@ -38,7 +38,10 @@ export async function POST(request) {
   if (!TASK_TYPES.includes(body.type)) return fail("Invalid task type.");
   if (!TASK_STATUSES.includes(body.status)) return fail("Invalid task status.");
   if (!PRIORITIES.includes(body.priority)) return fail("Invalid priority.");
-  if (body.projectId != null && !Number.isInteger(body.projectId)) return fail("Invalid project.");
+  if (body.projectId != null) {
+    if (!Number.isInteger(body.projectId)) return fail("Invalid project.");
+    if (!getProject(body.projectId)) return fail("Project not found.");
+  }
   if (body.parentId != null && !Number.isInteger(body.parentId)) return fail("Invalid parent task.");
   // Anyone can assign a task to anyone on the team (only active team members, though).
   if (body.assigneeId != null && !(Number.isInteger(body.assigneeId) && getUser(body.assigneeId)?.active)) return fail("Choose an active team member to assign this to.");
@@ -77,7 +80,7 @@ export async function POST(request) {
     }
     return Response.json({ task }, { status: 201 });
   } catch (error) {
-    console.error(error);
-    return fail("Unable to create task.", 500);
+    console.error("Task creation failed:", error);
+    return fail(`Unable to create task: ${error?.message || error}`, 500);
   }
 }
